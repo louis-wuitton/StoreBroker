@@ -1680,7 +1680,15 @@ function Patch-InAppProductSubmission
         $PatchedSubmission.contentType = $NewSubmission.contentType
         $PatchedSubmission.keywords = DeepCopy-Object $NewSubmission.keywords
         $PatchedSubmission.lifetime = $NewSubmission.lifetime
-        $PatchedSubmission.tag = $NewSubmission.tag
+
+        if ($PatchedSubmission | Get-Member -Name 'tag' -MemberType NoteProperty)
+        {
+            $PatchedSubmission.tag = $NewSubmission.tag
+        }
+        else
+        {
+            $PatchedSubmission | Add-Member -Type NoteProperty -Name "tag" -Value $NewSubmission.tag
+        }        
     }
 
     # To better assist with debugging, we'll store exactly the original and modified JSON submission bodies.
