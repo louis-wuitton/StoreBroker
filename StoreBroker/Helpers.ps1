@@ -81,6 +81,11 @@ function Initialize-HelpersGlobalVariables
     {
         $global:SBWebRequestTimeoutSec = 0
     }
+
+    if (!(Get-Variable -Name SBExplicitlyCloseAllConnections -Scope Global -ValueOnly -ErrorAction SilentlyContinue))
+    {
+        $global:SBExplicitlyCloseAllConnections = $false
+    }
 }
 
 # We need to be sure to call this explicitly so that the global variables get initialized.

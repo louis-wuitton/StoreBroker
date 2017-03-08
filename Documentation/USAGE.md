@@ -90,6 +90,10 @@ values of these variables will be honored if they already exist, otherwise they 
  **`$global:SBWebRequestTimeoutSec`** - [int] Number of seconds to use for the timeout of the
    internal `Invoke-WebRequest` call. Defaults to `0` (indefinite)
 
+ **`$global:SBExplicitlyCloseAllConnections`** - [bool] If `$true`, will explicitly close all
+   web connections to the REST endpoint after each call, in case stale connections have been
+   left around which might result in timeouts.  Defaults to `$false`
+
 ### Common Switches
 
 All commands support the `-Verbose` switch in the event that you want fine-grained detail

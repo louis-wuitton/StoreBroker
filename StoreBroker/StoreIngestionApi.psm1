@@ -1523,6 +1523,13 @@ function Invoke-SBRestMethod
     $serviceEndpoint = Get-ServiceEndpoint
     $url = "$serviceEndpoint/v$serviceEndpointVersion/my/$UriFragment"
 
+    # used in the finally
+    if ($global:SBExplicitlyCloseAllConnections)
+    {
+        Add-Type -AssemblyName System.Net
+        $servicePoint = [System.Net.ServicePointManager]::FindServicePoint($url)
+    }
+
     $headers = @{"Authorization" = "Bearer $AccessToken"}
     if ($Method -in ('post', 'put'))
     {
@@ -1566,7 +1573,7 @@ function Invoke-SBRestMethod
                 $params.Add("TimeoutSec", $global:SBWebRequestTimeoutSec)
                 
                 if ($Method -in ('post', 'put') -and (-not [String]::IsNullOrEmpty($Body)))
-                {
+                {   
                     $bodyAsBytes = [System.Text.Encoding]::UTF8.GetBytes($Body)
                     $params.Add("Body", $bodyAsBytes)
                 }
@@ -1773,6 +1780,14 @@ function Invoke-SBRestMethod
         Set-TelemetryException -Exception $ex -ErrorBucket $errorBucket -Properties $localTelemetryProperties
         Write-Log $($output -join [Environment]::NewLine) -Level Error
         throw "Halt Execution"
+    }
+    finally
+    {
+        if ($global:SBExplicitlyCloseAllConnections)
+        {
+            $result = $servicePoint.CloseConnectionGroup("")
+            Write-Log "Explicitly closing connections to the [$($servicePoint.Address)] ConnectionGroup [success = $result]." -Level Verbose
+        }
     }
 }
 
