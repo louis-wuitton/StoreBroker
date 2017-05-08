@@ -2194,6 +2194,7 @@ function Resolve-PackageParameters
 
     # Generic value from config message. Format with parameter name and value
     $fromConfig = "`tUsing config value: {0} = `"{1}`""
+    $fromConfigExpanded = "`tUsing config value: {0} = `"{1}`" (`"{2}`")"
 
     # 'PDPRootPath' and 'ImagesRootPath' are optional.
     # Check if there is a runtime or config value.
@@ -2204,8 +2205,17 @@ function Resolve-PackageParameters
             $configVal = $ConfigObject.packageParameters.$param
             if (-not [String]::IsNullOrWhiteSpace($configVal))
             {
-                $ParamMap[$param] = $configVal
-                Write-Log ($fromConfig -f $param, $configVal) -Level Verbose
+                $configValExpanded = [Environment]::ExpandEnvironmentVariables($configVal)
+                $ParamMap[$param] = $configValExpanded
+
+                if ($configValExpanded -eq $configVal)
+                {
+                    Write-Log ($fromConfig -f $param, $configVal) -Level Verbose
+                }
+                else
+                {
+                    Write-Log ($fromConfigExpanded -f $param, $configVal, $configValExpanded) -Level Verbose
+                }
             }
         }
 
@@ -2255,8 +2265,17 @@ function Resolve-PackageParameters
             }
             else
             {
-                $ParamMap[$script:s_OutPath] = $configVal
-                Write-Log ($fromConfig -f $script:s_OutPath, $configVal) -Level Verbose
+                $configValExpanded = [Environment]::ExpandEnvironmentVariables($configVal)
+                $ParamMap[$script:s_OutPath] = $configValExpanded
+
+                if ($configValExpanded -eq $configVal)
+                {
+                    Write-Log ($fromConfig -f $script:s_OutPath, $configVal) -Level Verbose
+                }
+                else
+                {
+                    Write-Log ($fromConfigExpanded -f $script:s_OutPath, $configVal, $configValExpanded) -Level Verbose
+                }
             }
         }
 
@@ -2278,8 +2297,17 @@ function Resolve-PackageParameters
             }
             else
             {
-                $ParamMap[$script:s_OutName] = $configVal
-                Write-Log ($fromConfig -f $script:s_OutName, $configVal) -Level Verbose
+                $configValExpanded = [Environment]::ExpandEnvironmentVariables($configVal)
+                $ParamMap[$script:s_OutName] = $configValExpanded
+
+                if ($configValExpanded -eq $configVal)
+                {
+                    Write-Log ($fromConfig -f $script:s_OutName, $configVal) -Level Verbose
+                }
+                else
+                {
+                    Write-Log ($fromConfigExpanded -f $script:s_OutName, $configVal, $configValExpanded) -Level Verbose
+                }
             }
         }
     }
