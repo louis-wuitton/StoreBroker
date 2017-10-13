@@ -2285,6 +2285,8 @@ function Remove-UnofficialSubmissionProperties
 
         The properties don't actually need to exist on the submission object before calling this function.
 
+        The Git repo for this module can be found here: http://aka.ms/StoreBroker
+
     .PARAMETER Submission
         A PSCustomObject representing the submission.
 
@@ -2307,6 +2309,52 @@ function Remove-UnofficialSubmissionProperties
     $Submission.PSObject.Properties.Remove("appId")
     $Submission.PSObject.Properties.Remove("iapId")
 
+    foreach ($package in $Submission.applicationPackages)
+    {
+        @(
+            "version",
+            "architecture",
+            "targetPlatform",
+            "languages",
+            "capabilities",
+            "targetDeviceFamilies",
+            "targetDeviceFamiliesEx",
+            "minOSVersion",
+            "innerPackages"
+        ) | ForEach-Object {
+            $package.PSObject.Properties.Remove($_)
+        }
+    }
+}
+
+function Find-RedundantPackages
+{
+    <#
+    .SYNOPSIS
+        Looks for redundant packages (ones that will never be distributed to a user because there is a
+        higher-versioned package in the submission that matches the same criteria).
+
+    .DESCRIPTION
+        Looks for redundant packages (ones that will never be distributed to a user because there is a
+        higher-versioned package in the submission that matches the same criteria).
+
+        The properties that must match for a package to be considered redundant: platform, architecture, minOSVersion
+
+        The Git repo for this module can be found here: http://aka.ms/StoreBroker
+
+    .PARAMETER Submission
+        A PSCustomObject representing the submission.
+
+    .EXAMPLE
+        Find-RedundantPackages -Submission (Get-ApplicationSubmission -AppId $appId -SubmissionId $submissionId)
+#>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [PSCustomObject] $Submission
+    )
+
+    #[System.Version]"2.7.0.19530" -gt [System.Version]"3.0.0.4080"
     foreach ($package in $Submission.applicationPackages)
     {
         @(
