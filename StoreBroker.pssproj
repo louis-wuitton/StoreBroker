@@ -52,6 +52,7 @@
     <Compile Include="PDP\ProductDescription.xsd" />
     <Compile Include="README.md" />
     <Compile Include="StoreBroker\AppConfigTemplate.json" />
+    <Compile Include="StoreBroker\Converters.ps1" />
     <Compile Include="StoreBroker\Helpers.ps1" />
     <Compile Include="StoreBroker\IapConfigTemplate.json" />
     <Compile Include="StoreBroker\NugetTools.ps1" />

@@ -6,13 +6,14 @@
     CompanyName = 'Microsoft Corporation'
     Copyright = 'Copyright (C) Microsoft Corporation.  All rights reserved.'
 
-    ModuleVersion = '1.16.0'
+    ModuleVersion = '1.16.1'
     Description = 'Provides command-line access to the Windows Store Submission REST API.'
 
     RootModule = 'StoreIngestionApi'
 
     # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
     NestedModules = @(
+        'Converters.ps1',
         'Helpers.ps1',
         'NugetTools.ps1',
         'PackageTool.ps1',
