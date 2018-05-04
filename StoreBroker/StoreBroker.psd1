@@ -6,7 +6,7 @@
     CompanyName = 'Microsoft Corporation'
     Copyright = 'Copyright (C) Microsoft Corporation.  All rights reserved.'
 
-    ModuleVersion = '1.16.4'
+    ModuleVersion = '2.0.0'
     Description = 'Provides command-line access to the Windows Store Submission REST API.'
 
     RootModule = 'StoreIngestionApi'
@@ -19,12 +19,26 @@
         'StoreIngestionApplicationApi.ps1',
         'StoreIngestionIapApi.ps1',
         'StoreIngestionFlightingApi.ps1',
+
+        'StoreIngestionProductApi.ps1',
+
+
         'Telemetry.ps1')
 
     # Minimum version of the Windows PowerShell engine required by this module
     PowerShellVersion = '4.0'
 
     FunctionsToExport = @(
+        'Get-ProductInternal',
+        'New-Product',
+        'Remove-Product',
+        'Get-Product',
+        'Get-ProductPackageIdentity',
+        'Get-ProductRelated',
+        'Get-ProductStoreLink',
+
+
+
         'Clear-StoreBrokerAuthentication',
         'Complete-ApplicationFlightSubmission',
         'Complete-ApplicationFlightSubmissionPackageRollout',

@@ -1730,7 +1730,7 @@ function Invoke-SBRestMethod
         [switch] $NoStatus
     )
 
-    $serviceEndpointVersion = "1.0"
+    $serviceEndpointVersion = "2.0"
 
     # The initial number of minutes we'll wait before retrying this command when we've hit an
     # error with a status code that is configured to auto-retry.  To reduce repeated contention, we
@@ -2257,6 +2257,71 @@ function Invoke-SBRestMethodMultipleResult
             $currentStartAt += $MaxResults
         }
         until ((-not $GetAll) -or ($result.value.count -eq 0))
+
+        # Record the telemetry for this event.
+        $stopwatch.Stop()
+        if (-not [String]::IsNullOrEmpty($TelemetryEventName))
+        {
+            $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+            Set-TelemetryEvent -EventName $TelemetryEventName -Properties $TelemetryProperties -Metrics $telemetryMetrics
+        }
+
+        return $finalResult
+    }
+    catch
+    {
+        throw
+    }
+}
+
+function Invoke-SBRestMethodMultipleResult2
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
+    param(
+        [Parameter(Mandatory)]
+        [string] $UriFragment,
+
+        [Parameter(Mandatory)]
+        [string] $Description,
+
+        [string] $AccessToken = "",
+
+        [string] $TelemetryEventName = $null,
+
+        [hashtable] $TelemetryProperties = @{},
+
+        [string] $TelemetryExceptionBucket = $null,
+
+        [switch] $GetAll,
+
+        [switch] $NoStatus
+    )
+
+    if ([System.String]::IsNullOrEmpty($AccessToken))
+    {
+        $AccessToken = Get-AccessToken -NoStatus:$NoStatus
+    }
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    $errorBucket = $TelemetryExceptionBucket
+    if ([String]::IsNullOrEmpty($errorBucket))
+    {
+        $errorBucket = $TelemetryEventName
+    }
+
+    $finalResult = @()
+
+    $nextLink = $UriFragment
+
+    try
+    {
+        do {
+            $result = Invoke-SBRestMethod -UriFragment $nextLink -Method Get -Description $description -AccessToken $AccessToken -TelemetryProperties $TelemetryProperties -TelemetryExceptionBucket $errorBucket -NoStatus:$NoStatus
+            $finalResult += $result.value
+            $nextLink = $result.nextLink
+        }
+        until ((-not $GetAll) -or ([String]::IsNullOrWhiteSpace($nextLink)))
 
         # Record the telemetry for this event.
         $stopwatch.Stop()
