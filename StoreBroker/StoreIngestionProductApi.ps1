@@ -1,23 +1,74 @@
 function Get-Product
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Known")]
     param(
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Known")]
+        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]
+        [string] $ProductId,
+
+        [Parameter(ParameterSetName="Search")]
         [Alias('ExternalId')]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an ProductId instead of an AppId." }})]
+        [ValidateScript({if ($_.Length -eq 12) { $true } else { throw "It looks like you supplied an ProductId instead of an AppId." }})]
         [string] $AppId,
 
+        [Parameter(ParameterSetName="Search")]
         [ValidateSet('Application', 'AvatarItem', 'Bundle', 'Consumable', 'ManagedConsumable', 'Durable', 'DurableWithBits', 'Subscription', 'SeasonPass', 'InternetOfThings')]
         [string[]] $Type = @('Application', 'AvatarItem', 'Bundle', 'InternetOfThings'),
 
-        [string] $AccessToken = "",
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
 
         [switch] $GetAll,
 
         [switch] $NoStatus
     )
+
+    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+
+    if ($PSCmdlet.ParameterSetName -eq "Known")
+    {
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        }
+
+        $params = @{
+            "UriFragment" = "products/$ProductId"
+            "Method" = "Get"
+            "Description" = "Getting product: $ProductId"
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Get-Product"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        return Invoke-SBRestMethod @params
+    }
+    else
+    {
+        $params = @{
+            "AppId" = $AppId
+            "Type" = $Type
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "GetAll" = $GetAll
+            "NoStatus" = $NoStatus
+        }
+     
+        return Get-Products @params    
+    }
 }
 
-function Get-ProductInternal
+function Get-Products
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -28,7 +79,11 @@ function Get-ProductInternal
         [ValidateSet('Application', 'AvatarItem', 'Bundle', 'Consumable', 'ManagedConsumable', 'Durable', 'DurableWithBits', 'Subscription', 'SeasonPass', 'InternetOfThings')]
         [string[]] $Type = @('Application', 'AvatarItem', 'Bundle', 'InternetOfThings'),
 
-        [string] $AccessToken = "",
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
 
         [switch] $GetAll,
 
@@ -64,8 +119,10 @@ function Get-ProductInternal
         $params = @{
             "UriFragment" = 'products?' + ($getParams -join '&')
             "Description" = $description
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-Product"
+            "TelemetryEventName" = "Get-Products"
             "TelemetryProperties" = $telemetryProperties
             "GetAll" = $GetAll
             "NoStatus" = $NoStatus
@@ -79,16 +136,76 @@ function Get-ProductInternal
     }
 }
 
+function New-Product
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $Name,
+
+        [Parameter(Mandatory)]
+        [ValidateSet('Application', 'AvatarItem', 'Bundle', 'Consumable', 'ManagedConsumable', 'Durable', 'DurableWithBits', 'Subscription', 'SeasonPass', 'InternetOfThings')]
+        [string] $Type,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken = "",
+
+        [switch] $NoStatus
+    )
+
+    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+
+    # Convert the input into a Json body.
+    $hashBody = @{}
+    $hashBody["id"] = $ProductId
+    $hashBody["type"] = $Type
+    $hashBody["name"] = $Name
+
+    $body = $hashBody | ConvertTo-Json
+
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::Name = $Name
+        [StoreBrokerTelemetryProperty]::Type = $Type
+    }
+
+    $params = @{
+        "UriFragment" = "products/"
+        "Method" = "Post"
+        "Description" = "Creating a new product called: $Name"
+        "Body" = $body
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "New-Product"
+        "TelemetryProperties" = $telemetryProperties
+        "NoStatus" = $NoStatus
+    }
+
+    return (Invoke-SBRestMethod @params)
+}
+
 function Remove-Product
 {
     [CmdletBinding(SupportsShouldProcess)]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product to find the ProductId for this AppId." } else { $true }})]
+        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
-        [string] $AccessToken = "",
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
 
         [switch] $NoStatus
     )
@@ -103,6 +220,8 @@ function Remove-Product
         "UriFragment" = "products/$ProductId"
         "Method" = "Delete"
         "Description" = "Deleting product: $ProductId"
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
         "AccessToken" = $AccessToken
         "TelemetryEventName" = "Remove-Product"
         "TelemetryProperties" = $telemetryProperties
@@ -117,10 +236,14 @@ function Get-ProductPackageIdentity
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product to find the ProductId for this AppId." } else { $true }})]
+        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
-        [string] $AccessToken = "",
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
 
         [switch] $NoStatus
     )
@@ -134,9 +257,11 @@ function Get-ProductPackageIdentity
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packageidentity"
+            "UriFragment" = "products/$ProductId/packageIdentity"
             "Method" = "Get"
             "Description" = "Getting package identity for product: $ProductId"
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Get-ProductPackageIdentity"
             "TelemetryProperties" = $telemetryProperties
@@ -156,10 +281,14 @@ function Get-ProductStoreLink
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product to find the ProductId for this AppId." } else { $true }})]
+        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
-        [string] $AccessToken = "",
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
 
         [switch] $NoStatus
     )
@@ -176,6 +305,8 @@ function Get-ProductStoreLink
             "UriFragment" = "products/$ProductId/storelink"
             "Method" = "Get"
             "Description" = "Getting store link for product: $ProductId"
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Get-ProductStoreLink"
             "TelemetryProperties" = $telemetryProperties
@@ -195,13 +326,19 @@ function Get-ProductRelated
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product to find the ProductId for this AppId." } else { $true }})]
+        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [ValidateSet('AddOnChild', 'AddOnParent', 'AvailableInBundle', 'SellableBy')]
         [string] $RelationshipType,
 
-        [string] $AccessToken = "",
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $GetAll,
 
         [switch] $NoStatus
     )
@@ -215,16 +352,18 @@ function Get-ProductRelated
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/storelink"
-            "Method" = "Get"
-            "Description" = "Getting store link for product: $ProductId"
+            "UriFragment" = "products/$ProductId/related"
+            "Description" = "Getting related products for product: $ProductId"
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ProductStoreLink"
+            "TelemetryEventName" = "Get-ProductRelated"
             "TelemetryProperties" = $telemetryProperties
+            "GetAll" = $GetAll
             "NoStatus" = $NoStatus
         }
 
-        return Invoke-SBRestMethod @params
+        return Invoke-SBRestMethodMultipleResult2 @params
     }
     catch [System.InvalidOperationException]
     {

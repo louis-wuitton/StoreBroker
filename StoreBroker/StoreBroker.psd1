@@ -29,10 +29,10 @@
     PowerShellVersion = '4.0'
 
     FunctionsToExport = @(
-        'Get-ProductInternal',
+        'Get-Products',
+        'Get-Product',
         'New-Product',
         'Remove-Product',
-        'Get-Product',
         'Get-ProductPackageIdentity',
         'Get-ProductRelated',
         'Get-ProductStoreLink',
