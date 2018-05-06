@@ -20,7 +20,9 @@
         'StoreIngestionIapApi.ps1',
         'StoreIngestionFlightingApi.ps1',
 
+        'StoreIngestionFeatureGroupApi.ps1',
         'StoreIngestionProductApi.ps1',
+        'StoreIngestionSubmissionApi.ps1',
 
 
         'Telemetry.ps1')
@@ -37,6 +39,25 @@
         'Get-ProductRelated',
         'Get-ProductStoreLink',
 
+        'Get-FeatureGroups',
+        'Get-FeatureGroup',
+
+        'Get-Submissions',
+        'Get-Submission',
+        'Get-SubmissionDetail',
+        'Set-SubmissionDetail',
+        'Get-SubmissionReports',
+        'Get-SubmissionValidation',
+        'Remove-Submission',
+        'New-Submission',
+        'Set-SubmissionAutoSubmit',
+        'Stop-Submission',
+        'Submit-Submission',
+        'Publish-Submission',
+        'Push-Submission',
+        
+        
+        
 
 
         'Clear-StoreBrokerAuthentication',
@@ -108,6 +129,14 @@
         'Update-InAppProductSubmission')
 
     AliasesToExport = @(
+        'Delete-Product',
+        'Delete-Submission',
+        'Cancel-Submission',
+        'Commit-Submission',
+        'Complete-Submission',
+        'Promote-Submission',
+
+
         'Commit-ApplicationFlightSubmission',
         'Commit-ApplicationSubmission',
         'Commit-IapSubmission',

@@ -1966,9 +1966,24 @@ function Invoke-SBRestMethod
             $requestId = $result.Headers[$script:headerMSRequestId]
             if (-not [String]::IsNullOrEmpty($requestId))
             {
+                $localTelemetryProperties[$script:headerMSRequestId] = $requestId
                 Write-Log -Message "$($script:headerMSRequestId) : $requestId" -Level Verbose
             }
 
+            $returnedClientRequestId = $result.Headers[$script:headerMSClientRequestId]
+            if (-not [String]::IsNullOrEmpty($returnedClientRequestId))
+            {
+                $localTelemetryProperties[$script:headerMSClientRequestId] = $returnedClientRequestId
+                Write-Log -Message "$($script:headerMSClientRequestId) : $returnedClientRequestId" -Level Verbose
+            }
+
+            $returnedCorrelationId = $result.Headers[$script:headerMSCorrelationId]
+            if (-not [String]::IsNullOrEmpty($returnedCorrelationId))
+            {
+                $localTelemetryProperties[$script:headerMSCorrelationId] = $returnedCorrelationId
+                Write-Log -Message "$($script:headerMSCorrelationId) : $returnedCorrelationId" -Level Verbose
+            }
+            
             # Record the telemetry for this event.
             $stopwatch.Stop()
             if (-not [String]::IsNullOrEmpty($TelemetryEventName))
@@ -2132,6 +2147,7 @@ function Invoke-SBRestMethod
 
             if (-not [String]::IsNullOrEmpty($requestId))
             {
+                $localTelemetryProperties[$script:headerMSRequestId] = $requestId
                 $message = $script:headerMSRequestId + ': ' + $requestId
                 $output += $message
                 Write-Log -Message $message -Level Verbose
@@ -2139,6 +2155,7 @@ function Invoke-SBRestMethod
 
             if (-not [String]::IsNullOrEmpty($returnedClientRequestId))
             {
+                $localTelemetryProperties[$script:returnedClientRequestId] = $returnedClientRequestId
                 $message = $script:headerMSClientRequestId + ': ' + $returnedClientRequestId
                 $output += $message
                 Write-Log -Message $message -Level Verbose
@@ -2146,6 +2163,7 @@ function Invoke-SBRestMethod
 
             if (-not [String]::IsNullOrEmpty($returnedCorrelationId))
             {
+                $localTelemetryProperties[$script:returnedCorrelationId] = $returnedCorrelationId
                 $message = $script:headerMSCorrelationId + ': ' + $returnedCorrelationId
                 $output += $message
                 Write-Log -Message $message -Level Verbose
@@ -2186,7 +2204,7 @@ function Invoke-SBRestMethod
     while ($true) # infinite loop for retrying is ok, since we early return in the postive case, and throw an exception in the failure case.
 }
 
-function Invoke-SBRestMethodMultipleResult
+function Invoke-SBRestMethodMultipleResultOld
 {
 <#
     .SYNOPSIS
@@ -2343,7 +2361,7 @@ function Invoke-SBRestMethodMultipleResult
     }
 }
 
-function Invoke-SBRestMethodMultipleResult2
+function Invoke-SBRestMethodMultipleResult
 {
     [CmdletBinding(SupportsShouldProcess)]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]

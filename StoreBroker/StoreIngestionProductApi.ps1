@@ -36,8 +36,10 @@ function Get-Product
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
-
+    
         $params = @{
             "UriFragment" = "products/$ProductId"
             "Method" = "Get"
@@ -96,11 +98,11 @@ function Get-Products
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::AppId = $AppId
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
-
+    
         $description = "Getting information for all products"
-
-        $uriFragment = 'products?'
 
         $getParams = @()
 
@@ -128,7 +130,7 @@ function Get-Products
             "NoStatus" = $NoStatus
         }
 
-        return Invoke-SBRestMethodMultipleResult2 @params
+        return Invoke-SBRestMethodMultipleResult @params
     }
     catch [System.InvalidOperationException]
     {
@@ -142,6 +144,7 @@ function New-Product
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
     param(
         [Parameter(Mandatory)]
+        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -174,6 +177,8 @@ function New-Product
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
         [StoreBrokerTelemetryProperty]::Name = $Name
         [StoreBrokerTelemetryProperty]::Type = $Type
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
     $params = @{
@@ -196,6 +201,7 @@ function Remove-Product
 {
     [CmdletBinding(SupportsShouldProcess)]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
+    [Alias("Delete-Product")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]
@@ -214,6 +220,8 @@ function Remove-Product
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
     $params = @{
@@ -254,8 +262,10 @@ function Get-ProductPackageIdentity
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::AppId = $AppId
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
-
+    
         $params = @{
             "UriFragment" = "products/$ProductId/packageIdentity"
             "Method" = "Get"
@@ -299,8 +309,10 @@ function Get-ProductStoreLink
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::AppId = $AppId
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
-
+    
         $params = @{
             "UriFragment" = "products/$ProductId/storelink"
             "Method" = "Get"
@@ -349,8 +361,10 @@ function Get-ProductRelated
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::AppId = $AppId
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
-
+    
         $params = @{
             "UriFragment" = "products/$ProductId/related"
             "Description" = "Getting related products for product: $ProductId"
@@ -363,7 +377,7 @@ function Get-ProductRelated
             "NoStatus" = $NoStatus
         }
 
-        return Invoke-SBRestMethodMultipleResult2 @params
+        return Invoke-SBRestMethodMultipleResult @params
     }
     catch [System.InvalidOperationException]
     {
