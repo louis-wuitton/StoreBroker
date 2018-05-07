@@ -21,7 +21,11 @@
         'StoreIngestionFlightingApi.ps1',
 
         'StoreIngestionFeatureGroupApi.ps1',
+        'StoreIngestionPackageApi.ps1',
         'StoreIngestionProductApi.ps1',
+        'StoreIngestionProductAvailabilityApi.ps1',
+        'StoreIngestionPropertyApi.ps1',
+        'StoreIngestionRolloutApi.ps1',
         'StoreIngestionSubmissionApi.ps1',
 
 
@@ -56,8 +60,24 @@
         'Publish-Submission',
         'Push-Submission',
         
+        'Get-SubmissionRollout',
+        'Set-SubmissionRollout',
         
+        'Get-ProductPackages',
+        'Remove-ProductPackage',
+        'Get-ProductPackage',
+        'New-ProductPackage',
+        'Set-ProductPackage',
+
+        'Get-ProductProperties',
+        'Get-ProductProperty',
+        'New-ProductProperty',
+        'Set-ProductProperty',
         
+        'Get-ProductAvailabilities',
+        'Get-ProductAvailability',
+        'New-ProductAvailability',
+        'Set-ProductAvailability',
 
 
         'Clear-StoreBrokerAuthentication',
@@ -135,6 +155,7 @@
         'Commit-Submission',
         'Complete-Submission',
         'Promote-Submission',
+        'Delete-ProductPackage',
 
 
         'Commit-ApplicationFlightSubmission',

@@ -221,6 +221,7 @@ function New-Submission
     }
 
     $body = $hashBody | ConvertTo-Json
+    Write-Log -Message "Body: $body" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -529,6 +530,7 @@ function Set-SubmissionDetail
         [Parameter(Mandatory)]
         [string] $SubmissionId,
 
+        # $null means leave as-is, empty string means clear it out.
         [string] $CertificationNotes = $null,
 
         [DateTime] $ReleaseDate,
@@ -548,10 +550,16 @@ function Set-SubmissionDetail
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::UpdateCertificationNotes = ($null -ne $CertificationNotes)
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
     # Convert the input into a Json body.
     $hashBody = @{}
-    $hashBody['isManualPublish'] = $ManualPublish
-    $hashBody['isAutoPromote'] = $AutoPromote
 
     if ($null -ne $ReleaseDate)
     {
@@ -566,22 +574,33 @@ function Set-SubmissionDetail
         $hashBody['certificationNotes'] = $CertificationNotes
     }
 
-    $body = $hashBody | ConvertTo-Json
-
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::IsAutoPromote = $AutoPromote
-        [StoreBrokerTelemetryProperty]::IsManualPublish = $ManualPublish
-        [StoreBrokerTelemetryProperty]::IsAutoPromote = $AutoPromote
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    # We only set the value if the user explicitly provided a value for this parameter
+    # (so for $false, they'd have to pass in -ManualPublish:$false).
+    # Otherwise, there'd be no way to know when the user wants to simply keep the
+    # existing value.
+    if ($null -ne $PSBoundParameters['ManualPublish'])
+    {
+        $hashBody['isManualPublish'] = $ManualPublish
+        $telemetryProperties[[StoreBrokerTelemetryProperty]::IsManualPublish] = $ManualPublish
     }
+
+    # We only set the value if the user explicitly provided a value for this parameter
+    # (so for $false, they'd have to pass in -AutoPromote:$false).
+    # Otherwise, there'd be no way to know when the user wants to simply keep the
+    # existing value.
+    if ($null -ne $PSBoundParameters['AutoPromote'])
+    {
+        $hashBody['isAutoPromote'] = $AutoPromote
+        $telemetryProperties[[StoreBrokerTelemetryProperty]::IsAutoPromote] = $AutoPromote
+    }
+
+    $body = $hashBody | ConvertTo-Json
+    Write-Log -Message "Body: $body" -Level Verbose
 
     $params = @{
         "UriFragment" = "products/$ProductId/submissions/$SubmissionId/detail"
         "Method" = 'Post'
-        "Description" = "Updating detail for submission: $ProductId"
+        "Description" = "Updating detail for submission: $SubmissionId"
         "Body" = $body
         "ClientRequestId" = $ClientRequestId
         "CorrelationId" = $CorrelationId

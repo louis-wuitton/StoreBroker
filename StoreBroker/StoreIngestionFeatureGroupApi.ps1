@@ -33,7 +33,7 @@ function Get-FeatureGroups
     
         $params = @{
             "UriFragment" = "products/$ProductId/featureGroups?submissionId=$SubmissionId"
-            "Description" = "Getting feature groups for product: $ProductId submissionId: $submissionId"
+            "Description" = "Getting feature groups for product: $ProductId submissionId: $SubmissionId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
