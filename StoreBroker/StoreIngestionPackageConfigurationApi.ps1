@@ -16,7 +16,7 @@ function Get-ProductPackageConfigurations
 
         [string] $AccessToken,
 
-        [switch] $GetAll,
+        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -53,7 +53,7 @@ function Get-ProductPackageConfigurations
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Get-ProductPackageConfigurations"
             "TelemetryProperties" = $telemetryProperties
-            "GetAll" = $GetAll
+            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
@@ -86,8 +86,6 @@ function New-ProductPackageConfiguration
         [string] $CorrelationId,
 
         [string] $AccessToken,
-
-        [switch] $GetAll,
 
         [switch] $NoStatus
     )
@@ -133,7 +131,7 @@ function New-ProductPackageConfiguration
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
-        
+
 
         $params = @{
             "UriFragment" = "products/$ProductId/packageConfigurations?" + ($getParams -join '&')
@@ -226,7 +224,7 @@ function Set-ProductPackageConfiguration
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
-        
+
 
         $params = @{
             "UriFragment" = "products/$ProductId/packageConfigurations/$PackageConfigurationId?" + ($getParams -join '&')

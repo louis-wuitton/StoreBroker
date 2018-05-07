@@ -15,7 +15,7 @@ function Get-FeatureGroups
 
         [string] $AccessToken,
 
-        [switch] $GetAll,
+        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -30,7 +30,7 @@ function Get-FeatureGroups
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
-    
+
         $params = @{
             "UriFragment" = "products/$ProductId/featureGroups?submissionId=$SubmissionId"
             "Description" = "Getting feature groups for product: $ProductId submissionId: $SubmissionId"
@@ -39,7 +39,7 @@ function Get-FeatureGroups
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Get-FeatureGroups"
             "TelemetryProperties" = $telemetryProperties
-            "GetAll" = $GetAll
+            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
@@ -71,8 +71,6 @@ function Get-FeatureGroup
 
         [string] $AccessToken,
 
-        [switch] $GetAll,
-
         [switch] $NoStatus
     )
 
@@ -87,7 +85,7 @@ function Get-FeatureGroup
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
-    
+
         $params = @{
             "UriFragment" = "products/$ProductId/featureGroups/$FeatureGroupId?submissionId=$SubmissionId"
             "Method" = 'Get'

@@ -25,7 +25,7 @@ function Get-Product
 
         [string] $AccessToken,
 
-        [switch] $GetAll,
+        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -39,7 +39,7 @@ function Get-Product
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
-    
+
         $params = @{
             "UriFragment" = "products/$ProductId"
             "Method" = "Get"
@@ -62,11 +62,11 @@ function Get-Product
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "GetAll" = $GetAll
+            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
-     
-        return Get-Products @params    
+
+        return Get-Products @params
     }
 }
 
@@ -87,7 +87,7 @@ function Get-Products
 
         [string] $AccessToken,
 
-        [switch] $GetAll,
+        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -101,7 +101,7 @@ function Get-Products
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
-    
+
         $description = "Getting information for all products"
 
         $getParams = @()
@@ -126,7 +126,7 @@ function Get-Products
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Get-Products"
             "TelemetryProperties" = $telemetryProperties
-            "GetAll" = $GetAll
+            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
@@ -265,7 +265,7 @@ function Get-ProductPackageIdentity
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
-    
+
         $params = @{
             "UriFragment" = "products/$ProductId/packageIdentity"
             "Method" = "Get"
@@ -312,7 +312,7 @@ function Get-ProductStoreLink
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
-    
+
         $params = @{
             "UriFragment" = "products/$ProductId/storelink"
             "Method" = "Get"
@@ -350,7 +350,7 @@ function Get-ProductRelated
 
         [string] $AccessToken,
 
-        [switch] $GetAll,
+        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -364,7 +364,7 @@ function Get-ProductRelated
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
-    
+
         $params = @{
             "UriFragment" = "products/$ProductId/related"
             "Description" = "Getting related products for product: $ProductId"
@@ -373,7 +373,7 @@ function Get-ProductRelated
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Get-ProductRelated"
             "TelemetryProperties" = $telemetryProperties
-            "GetAll" = $GetAll
+            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 

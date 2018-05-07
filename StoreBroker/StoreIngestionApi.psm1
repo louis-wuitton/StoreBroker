@@ -1983,7 +1983,7 @@ function Invoke-SBRestMethod
                 $localTelemetryProperties[$script:headerMSCorrelationId] = $returnedCorrelationId
                 Write-Log -Message "$($script:headerMSCorrelationId) : $returnedCorrelationId" -Level Verbose
             }
-            
+
             # Record the telemetry for this event.
             $stopwatch.Stop()
             if (-not [String]::IsNullOrEmpty($TelemetryEventName))
@@ -2384,7 +2384,7 @@ function Invoke-SBRestMethodMultipleResult
 
         [string] $TelemetryExceptionBucket = $null,
 
-        [switch] $GetAll,
+        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -2419,12 +2419,12 @@ function Invoke-SBRestMethodMultipleResult
                 "TelemetryExceptionBucket" = $errorBucket
                 "NoStatus" = $NoStatus
             }
-        
+
             $result = Invoke-SBRestMethod @params
             $finalResult += $result.value
             $nextLink = $result.nextLink
         }
-        until ((-not $GetAll) -or ([String]::IsNullOrWhiteSpace($nextLink)))
+        until ($SinglePage -or ([String]::IsNullOrWhiteSpace($nextLink)))
 
         # Record the telemetry for this event.
         $stopwatch.Stop()

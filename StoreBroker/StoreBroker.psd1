@@ -21,6 +21,7 @@
         'StoreIngestionFlightingApi.ps1',
 
         'StoreIngestionFeatureGroupApi.ps1',
+        'StoreIngestionListingApi.ps1',
         'StoreIngestionPackageApi.ps1',
         'StoreIngestionPackageConfigurationApi.ps1',
         'StoreIngestionProductApi.ps1',
@@ -36,6 +37,13 @@
     PowerShellVersion = '4.0'
 
     FunctionsToExport = @(
+        'Get-Listings',
+        'New-Listing',
+        'Delete-Listing',
+        'Get-Listing',
+        'Set-Listing',
+
+
         'Get-Products',
         'Get-Product',
         'New-Product',
@@ -60,10 +68,10 @@
         'Submit-Submission',
         'Publish-Submission',
         'Push-Submission',
-        
+
         'Get-SubmissionRollout',
         'Set-SubmissionRollout',
-        
+
         'Get-ProductPackages',
         'Remove-ProductPackage',
         'Get-ProductPackage',
@@ -79,7 +87,7 @@
         'Get-ProductProperty',
         'New-ProductProperty',
         'Set-ProductProperty',
-        
+
         'Get-ProductAvailabilities',
         'Get-ProductAvailability',
         'New-ProductAvailability',
@@ -162,6 +170,7 @@
         'Complete-Submission',
         'Promote-Submission',
         'Delete-ProductPackage',
+        'Delete-Listing',
 
 
         'Commit-ApplicationFlightSubmission',

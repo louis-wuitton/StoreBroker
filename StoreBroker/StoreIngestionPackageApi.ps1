@@ -16,7 +16,7 @@ function Get-ProductPackages
 
         [string] $AccessToken,
 
-        [switch] $GetAll,
+        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -53,7 +53,7 @@ function Get-ProductPackages
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Get-ProductPackages"
             "TelemetryProperties" = $telemetryProperties
-            "GetAll" = $GetAll
+            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
@@ -91,8 +91,6 @@ function New-ProductPackage
         [string] $CorrelationId,
 
         [string] $AccessToken,
-
-        [switch] $GetAll,
 
         [switch] $NoStatus
     )
@@ -133,7 +131,7 @@ function New-ProductPackage
         {
             $hashBody['version'] = $Version
         }
-        
+
         if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
         {
             $hashBody['revisionToken'] = $RevisionToken
@@ -146,7 +144,7 @@ function New-ProductPackage
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
-        
+
 
         $params = @{
             "UriFragment" = "products/$ProductId/packages?" + ($getParams -join '&')
@@ -243,7 +241,7 @@ function Set-ProductPackage
         {
             $hashBody['version'] = $Version
         }
-        
+
         if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
         {
             $hashBody['revisionToken'] = $RevisionToken
@@ -256,7 +254,7 @@ function Set-ProductPackage
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
-        
+
 
         $params = @{
             "UriFragment" = "products/$ProductId/packages/$PackageId?" + ($getParams -join '&')

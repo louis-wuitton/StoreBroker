@@ -22,7 +22,7 @@ function Get-Submissions
 
         [string] $AccessToken,
 
-        [switch] $GetAll,
+        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -71,7 +71,7 @@ function Get-Submissions
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Get-Submissions"
             "TelemetryProperties" = $telemetryProperties
-            "GetAll" = $GetAll
+            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
@@ -192,7 +192,7 @@ function New-Submission
         $message = "-Force is not implemented yet"
         Write-Log -Message $message -Level Error
         throw $message
-        
+
     }
 
     if ([System.String]::IsNullOrEmpty($AccessToken))
@@ -214,7 +214,7 @@ function New-Submission
     {
         $hashBody['flightId'] = $FlightId
     }
-    
+
     if (-not [String]::IsNullOrWhiteSpace($SandboxId))
     {
         $hashBody['sandboxId'] = $SandboxId
@@ -565,7 +565,7 @@ function Set-SubmissionDetail
     {
         $hashBody['releaseTimeInUtc'] = $ReleaseDate.ToUniversalTime().ToString('o')
     }
-    
+
     # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace here, because
     # we need a way to be able to clear these notes out.  So, a $null means do nothing,
     # while empty string / whitespace means clear out the notes.
@@ -721,7 +721,7 @@ function Get-SubmissionReports
 
         [string] $AccessToken,
 
-        [switch] $GetAll,
+        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -745,7 +745,7 @@ function Get-SubmissionReports
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Get-SubmissionReports"
             "TelemetryProperties" = $telemetryProperties
-            "GetAll" = $GetAll
+            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 

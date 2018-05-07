@@ -14,7 +14,7 @@ function Get-ProductProperties
 
         [string] $AccessToken,
 
-        [switch] $GetAll,
+        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -45,7 +45,7 @@ function Get-ProductProperties
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Get-ProductProperties"
             "TelemetryProperties" = $telemetryProperties
-            "GetAll" = $GetAll
+            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
@@ -77,8 +77,6 @@ function New-ProductProperty
 
         [string] $AccessToken,
 
-        [switch] $GetAll,
-
         [switch] $NoStatus
     )
 
@@ -104,7 +102,7 @@ function New-ProductProperty
 
         # Convert the input into a Json body.
         $hashBody = @{}
-        
+
         if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
         {
             $hashBody['revisionToken'] = $RevisionToken
@@ -117,7 +115,7 @@ function New-ProductProperty
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
-        
+
 
         $params = @{
             "UriFragment" = "products/$ProductId/properties?" + ($getParams -join '&')
@@ -189,7 +187,7 @@ function Set-ProductProperty
 
         # Convert the input into a Json body.
         $hashBody = @{}
-        
+
         if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
         {
             $hashBody['revisionToken'] = $RevisionToken
@@ -202,7 +200,7 @@ function Set-ProductProperty
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
-        
+
 
         $params = @{
             "UriFragment" = "products/$ProductId/properties/$PropertyId?" + ($getParams -join '&')
@@ -255,7 +253,6 @@ function Get-ProductProperty
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::PropertyId = $PropertyId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }

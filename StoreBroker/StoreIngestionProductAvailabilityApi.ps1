@@ -14,7 +14,7 @@ function Get-ProductAvailabilities
 
         [string] $AccessToken,
 
-        [switch] $GetAll,
+        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -45,7 +45,7 @@ function Get-ProductAvailabilities
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Get-ProductAvailabilities"
             "TelemetryProperties" = $telemetryProperties
-            "GetAll" = $GetAll
+            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
@@ -80,7 +80,7 @@ function New-ProductAvailability
 
         [string] $AccessToken,
 
-        [switch] $GetAll,
+        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -108,7 +108,7 @@ function New-ProductAvailability
 
         # Convert the input into a Json body.
         $hashBody = @{}
-        
+
         if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
         {
             $hashBody['revisionToken'] = $RevisionToken
@@ -121,12 +121,12 @@ function New-ProductAvailability
 
         if ($null -ne $Audience)
         {
-            $hashBody['audience'] = ((, $Audience) | ConvertTo-Json)
+            $hashBody['audience'] = ConvertTo-Json -InputObject @($Audience)
         }
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
-        
+
 
         $params = @{
             "UriFragment" = "products/$ProductId/productAvailabilities?" + ($getParams -join '&')
@@ -184,7 +184,7 @@ function Set-ProductAvailability
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::ProductAvailabilityId = $PropertyId
+            [StoreBrokerTelemetryProperty]::ProductAvailabilityId = $ProductAvailabilityId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::HasAudience = ($null -ne $Audience)
@@ -202,7 +202,7 @@ function Set-ProductAvailability
 
         # Convert the input into a Json body.
         $hashBody = @{}
-        
+
         if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
         {
             $hashBody['revisionToken'] = $RevisionToken
@@ -215,15 +215,15 @@ function Set-ProductAvailability
 
         if ($null -ne $Audience)
         {
-            $hashBody['audience'] = ((, $Audience) | ConvertTo-Json)
+            $hashBody['audience'] = ConvertTo-Json -InputObject @($Audience)
         }
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
-        
+
 
         $params = @{
-            "UriFragment" = "products/$ProductId/productAvailabilities/$ProductAvailabilityId" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/productAvailabilities/$ProductAvailabilityId?" + ($getParams -join '&')
             "Method" = 'Post'
             "Description" = "Updating product availability $ProductAvailabilityId for $ProductId"
             "Body" = $body
@@ -273,7 +273,6 @@ function Get-ProductAvailability
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::ProductAvailability = $ProductAvailability
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -319,7 +318,7 @@ function New-Audience
 
     $audience = @{
         'type' = $Type
-        'values' = (, $Value)
+        'values' = @($Value)
     }
 
     return $audience
