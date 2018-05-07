@@ -33,6 +33,7 @@ Add-Type -TypeDefinition @"
       Name,
       NumRetries,
       PackageId,
+      PackageConfigurationId,
       PackagePath,
       PackageRolloutPercentage,
       Percentage,

@@ -1,4 +1,4 @@
-function Get-ProductPackages
+function Get-ProductPackageConfigurations
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -46,12 +46,12 @@ function Get-ProductPackages
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packages?" + ($getParams -join '&')
-            "Description" = "Getting packages for $ProductId"
+            "UriFragment" = "products/$ProductId/packageConfigurations?" + ($getParams -join '&')
+            "Description" = "Getting package configurations for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ProductPackages"
+            "TelemetryEventName" = "Get-ProductPackageConfigurations"
             "TelemetryProperties" = $telemetryProperties
             "GetAll" = $GetAll
             "NoStatus" = $NoStatus
@@ -65,7 +65,7 @@ function Get-ProductPackages
     }
 }
 
-function New-ProductPackage
+function New-ProductPackageConfiguration
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -76,11 +76,6 @@ function New-ProductPackage
         [string] $SubmissionId,
 
         [string] $FeatureGroupId,
-
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
-        [string] $State = 'PendingUpload',
-
-        [string] $Version,
 
         [string] $RevisionToken,
 
@@ -105,8 +100,6 @@ function New-ProductPackage
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-            [StoreBrokerTelemetryProperty]::State = $State
-            [StoreBrokerTelemetryProperty]::Version = $Version
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
@@ -127,13 +120,7 @@ function New-ProductPackage
 
         # Convert the input into a Json body.
         $hashBody = @{}
-        $hashBody['state'] = $State
 
-        if (-not [String]::IsNullOrWhiteSpace($Version))
-        {
-            $hashBody['version'] = $Version
-        }
-        
         if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
         {
             $hashBody['revisionToken'] = $RevisionToken
@@ -149,14 +136,14 @@ function New-ProductPackage
         
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packages?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/packageConfigurations?" + ($getParams -join '&')
             "Method" = 'Post'
-            "Description" = "Creating new package for $ProductId"
+            "Description" = "Creating new package configuration for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "New-ProductPackage"
+            "TelemetryEventName" = "New-ProductPackageConfiguration"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
@@ -169,7 +156,7 @@ function New-ProductPackage
     }
 }
 
-function Set-ProductPackage
+function Set-ProductPackageConfiguration
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -178,16 +165,11 @@ function Set-ProductPackage
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [string] $PackageId,
+        [string] $PackageConfigurationId,
 
         [string] $SubmissionId,
 
         [string] $FeatureGroupId,
-
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed', 'NoChange')]
-        [string] $State = 'PendingUpload',
-
-        [string] $Version,
 
         [string] $RevisionToken,
 
@@ -208,11 +190,9 @@ function Set-ProductPackage
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::PackageId = $PackageId
+            [StoreBrokerTelemetryProperty]::PackageConfigurationId = $PackageConfigurationId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-            [StoreBrokerTelemetryProperty]::State = $State
-            [StoreBrokerTelemetryProperty]::Version = $Version
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
@@ -234,16 +214,6 @@ function Set-ProductPackage
         # Convert the input into a Json body.
         $hashBody = @{}
 
-        if ('NoChange' -ne $State)
-        {
-            $hashBody['state'] = $State
-        }
-
-        if (-not [String]::IsNullOrWhiteSpace($Version))
-        {
-            $hashBody['version'] = $Version
-        }
-        
         if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
         {
             $hashBody['revisionToken'] = $RevisionToken
@@ -259,14 +229,14 @@ function Set-ProductPackage
         
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packages/$PackageId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/packageConfigurations/$PackageConfigurationId?" + ($getParams -join '&')
             "Method" = 'Post'
-            "Description" = "Updating package $PackageId for $ProductId"
+            "Description" = "Updating package configuration $PackageConfigurationId for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Set-ProductPackage"
+            "TelemetryEventName" = "Set-ProductPackageConfiguration"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
@@ -279,9 +249,8 @@ function Set-ProductPackage
     }
 }
 
-function Remove-ProductPackage
+function Get-ProductPackageConfiguration
 {
-    [Alias('Delete-ProductPackage')]
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
@@ -289,7 +258,7 @@ function Remove-ProductPackage
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [string] $PackageId,
+        [string] $PackageConfigurationId,
 
         [string] $SubmissionId,
 
@@ -310,7 +279,7 @@ function Remove-ProductPackage
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::PackageId = $PackageId
+            [StoreBrokerTelemetryProperty]::PackageConfigurationId = $PackageConfigurationId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
@@ -330,82 +299,13 @@ function Remove-ProductPackage
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packages/$PackageId?" + ($getParams -join '&')
-            "Method" = 'Delete'
-            "Description" = "Removing package $PackageId for $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Remove-ProductPackage"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        $null = Invoke-SBRestMethod @params
-    }
-    catch [System.InvalidOperationException]
-    {
-        throw
-    }
-}
-
-function Get-ProductPackage
-{
-    [CmdletBinding(SupportsShouldProcess)]
-    param(
-        [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
-        [string] $ProductId,
-
-        [Parameter(Mandatory)]
-        [string] $PackageId,
-
-        [string] $SubmissionId,
-
-        [string] $FeatureGroupId,
-
-        [string] $ClientRequestId,
-
-        [string] $CorrelationId,
-
-        [string] $AccessToken,
-
-        [switch] $NoStatus
-    )
-
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
-
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::PackageId = $PackageId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $getParams = @()
-
-        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
-        {
-            $getParams += "submissionId=$SubmissionId"
-        }
-
-        if (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
-        {
-            $getParams += "featureGroupId=$FeatureGroupId"
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/packages/$PackageId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/packageConfigurations/$PackageConfigurationId?" + ($getParams -join '&')
             "Method" = 'Get'
-            "Description" = "Getting package $PackageId for $ProductId"
+            "Description" = "Getting package configuration $PackageConfigurationId for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ProductPackage"
+            "TelemetryEventName" = "Get-ProductPackageConfiguration"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }

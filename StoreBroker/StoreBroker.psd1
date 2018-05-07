@@ -22,6 +22,7 @@
 
         'StoreIngestionFeatureGroupApi.ps1',
         'StoreIngestionPackageApi.ps1',
+        'StoreIngestionPackageConfigurationApi.ps1',
         'StoreIngestionProductApi.ps1',
         'StoreIngestionProductAvailabilityApi.ps1',
         'StoreIngestionPropertyApi.ps1',
@@ -68,6 +69,11 @@
         'Get-ProductPackage',
         'New-ProductPackage',
         'Set-ProductPackage',
+
+        'Get-ProductPackageConfigurations',
+        'Get-ProductPackageConfiguration',
+        'New-ProductPackageConfiguration',
+        'Set-ProductPackageConfiguration',
 
         'Get-ProductProperties',
         'Get-ProductProperty',
