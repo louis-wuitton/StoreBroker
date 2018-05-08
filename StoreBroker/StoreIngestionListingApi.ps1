@@ -133,9 +133,6 @@ function New-Listing
         [string] $ShortDescription,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $RevisionToken,
-
-        [Parameter(ParameterSetName="Individual")]
         [string] $Type,
 
         [string] $ClientRequestId,
@@ -156,7 +153,6 @@ function New-Listing
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -253,11 +249,6 @@ function New-Listing
             if (-not [String]::IsNullOrWhiteSpace($ShortDescription))
             {
                 $hashBody['shortDescription'] = $ShortDescription
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
-            {
-                $hashBody['revisionToken'] = $RevisionToken
             }
 
             if (-not [String]::IsNullOrWhiteSpace($Type))
@@ -421,7 +412,9 @@ function Set-Listing
         [Parameter(ParameterSetName="Individual")]
         [string] $ShortDescription,
 
-        [Parameter(ParameterSetName="Individual")]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $RevisionToken,
 
         [Parameter(ParameterSetName="Individual")]
@@ -463,6 +456,7 @@ function Set-Listing
             # Convert the input into a Json body.
             $hashBody = @{}
             $hashBody['languageCode'] = $LanguageCode
+            $hashBody['revisionToken'] = $RevisionToken
 
             # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace for any
             # of these checks, because we need a way to be able to clear these notes out.
@@ -540,11 +534,6 @@ function Set-Listing
             if ($null -ne $ShortDescription)
             {
                 $hashBody['shortDescription'] = $ShortDescription
-            }
-
-            if ($null -ne $RevisionToken)
-            {
-                $hashBody['revisionToken'] = $RevisionToken
             }
 
             if ($null -ne $Type)

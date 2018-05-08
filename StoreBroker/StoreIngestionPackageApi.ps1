@@ -82,8 +82,6 @@ function New-ProductPackage
 
         [string] $Version,
 
-        [string] $RevisionToken,
-
         [string] $Type,
 
         [string] $ClientRequestId,
@@ -105,7 +103,6 @@ function New-ProductPackage
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::State = $State
             [StoreBrokerTelemetryProperty]::Version = $Version
-            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -130,11 +127,6 @@ function New-ProductPackage
         if (-not [String]::IsNullOrWhiteSpace($Version))
         {
             $hashBody['version'] = $Version
-        }
-
-        if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
-        {
-            $hashBody['revisionToken'] = $RevisionToken
         }
 
         if (-not [String]::IsNullOrWhiteSpace($Type))
@@ -187,6 +179,7 @@ function Set-ProductPackage
 
         [string] $Version,
 
+        [Parameter(Mandatory)]
         [string] $RevisionToken,
 
         [string] $Type,
@@ -218,6 +211,7 @@ function Set-ProductPackage
         }
 
         $getParams = @()
+        $hashBody['revisionToken'] = $RevisionToken
 
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
@@ -240,11 +234,6 @@ function Set-ProductPackage
         if (-not [String]::IsNullOrWhiteSpace($Version))
         {
             $hashBody['version'] = $Version
-        }
-
-        if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
-        {
-            $hashBody['revisionToken'] = $RevisionToken
         }
 
         if (-not [String]::IsNullOrWhiteSpace($Type))

@@ -103,9 +103,6 @@ function New-ListingImage
         [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
         [string] $State,
 
-        [Parameter(ParameterSetName="Individual")]
-        [string] $RevisionToken,
-
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -125,7 +122,6 @@ function New-ListingImage
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
             [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::State = $State
-            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -156,11 +152,6 @@ function New-ListingImage
             if (-not [String]::IsNullOrWhiteSpace($State))
             {
                 $hashBody['state'] = $State
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
-            {
-                $hashBody['revisionToken'] = $RevisionToken
             }
         }
 
@@ -298,7 +289,9 @@ function Set-ListingImage
         [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
         [string] $State,
 
-        [Parameter(ParameterSetName="Individual")]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $RevisionToken,
 
         [string] $ClientRequestId,
@@ -337,6 +330,7 @@ function Set-ListingImage
         {
             # Convert the input into a Json body.
             $hashBody = @{}
+            $hashBody['revisionToken'] = $RevisionToken
 
             # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace for any
             # of these checks, because we need a way to be able to clear these notes out.
@@ -354,11 +348,6 @@ function Set-ListingImage
             if ($null -ne $State)
             {
                 $hashBody['state'] = $State
-            }
-
-            if ($null -ne $RevisionToken)
-            {
-                $hashBody['revisionToken'] = $RevisionToken
             }
         }
 

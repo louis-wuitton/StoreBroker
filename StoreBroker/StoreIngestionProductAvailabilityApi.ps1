@@ -67,8 +67,6 @@ function New-ProductAvailability
 
         [string] $SubmissionId,
 
-        [string] $RevisionToken,
-
         [object] $Audience,
 
         [ValidateSet('Public', 'Private', 'StopSelling', 'NoChange')]
@@ -92,7 +90,6 @@ function New-ProductAvailability
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::HasAudience = ($null -ne $Audience)
             [StoreBrokerTelemetryProperty]::Visiblity = $Visibility
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
@@ -108,11 +105,6 @@ function New-ProductAvailability
 
         # Convert the input into a Json body.
         $hashBody = @{}
-
-        if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
-        {
-            $hashBody['revisionToken'] = $RevisionToken
-        }
 
         if ('NoChange' -ne $Visibility)
         {
@@ -162,6 +154,7 @@ function Set-ProductAvailability
 
         [string] $SubmissionId,
 
+        [Parameter(Mandatory)]
         [string] $RevisionToken,
 
         [object] $Audience,
@@ -202,11 +195,7 @@ function Set-ProductAvailability
 
         # Convert the input into a Json body.
         $hashBody = @{}
-
-        if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
-        {
-            $hashBody['revisionToken'] = $RevisionToken
-        }
+        $hashBody['revisionToken'] = $RevisionToken
 
         if ('NoChange' -ne $Visibility)
         {

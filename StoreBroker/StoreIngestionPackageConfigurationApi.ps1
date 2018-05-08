@@ -77,8 +77,6 @@ function New-ProductPackageConfiguration
 
         [string] $FeatureGroupId,
 
-        [string] $RevisionToken,
-
         [string] $Type,
 
         [string] $ClientRequestId,
@@ -98,7 +96,6 @@ function New-ProductPackageConfiguration
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -118,11 +115,6 @@ function New-ProductPackageConfiguration
 
         # Convert the input into a Json body.
         $hashBody = @{}
-
-        if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
-        {
-            $hashBody['revisionToken'] = $RevisionToken
-        }
 
         if (-not [String]::IsNullOrWhiteSpace($Type))
         {
@@ -169,6 +161,7 @@ function Set-ProductPackageConfiguration
 
         [string] $FeatureGroupId,
 
+        [Parameter(Mandatory)]
         [string] $RevisionToken,
 
         [string] $Type,
@@ -211,11 +204,7 @@ function Set-ProductPackageConfiguration
 
         # Convert the input into a Json body.
         $hashBody = @{}
-
-        if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
-        {
-            $hashBody['revisionToken'] = $RevisionToken
-        }
+        $hashBody['revisionToken'] = $RevisionToken
 
         if (-not [String]::IsNullOrWhiteSpace($Type))
         {

@@ -89,9 +89,6 @@ function New-ListingVideo
         [string] $FileName,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $StreamingUri,
-
-        [Parameter(ParameterSetName="Individual")]
         [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
         [string] $State,
 
@@ -107,9 +104,6 @@ function New-ListingVideo
         [Parameter(ParameterSetName="Individual")]
         [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
         [string] $ThumbnailState,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $RevisionToken,
 
         [string] $ClientRequestId,
 
@@ -130,7 +124,6 @@ function New-ListingVideo
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
             [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::State = $State
-            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -153,69 +146,36 @@ function New-ListingVideo
                 $hashBody['fileName'] = $FileName
             }
 
-            if (-not [String]::IsNullOrWhiteSpace($Type))
-            {
-                $hashBody['type'] = $Type
-            }
-
             if (-not [String]::IsNullOrWhiteSpace($State))
             {
                 $hashBody['state'] = $State
             }
 
-            if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
-            {
-                $hashBody['revisionToken'] = $RevisionToken
-            }
-        }
-
-        if ($null -eq $body)
-        {
-            # Convert the input into a Json body.
-            $hashBody = @{}
-
-            if (-not [String]::IsNullOrWhiteSpace($FileName))
-            {
-                $hashBody['fileName'] = $FileName
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($State))
-            {
-                $hashBody['state'] = $State
-            }
-
-            if ($null -ne $StreamingUri)
-            {
-                $hashBody['streamingUri'] = $StreamingUri
-            }
-
-            if (($null -ne $ThumbnailFileName) -or ($null -ne $ThumbnailTitle) -or ($null -ne $ThumbnailDescription) -or ($null -ne $ThumbnailState))
+            if ((-not [String]::IsNullOrWhiteSpace($ThumbnailFileName)) -or
+                (-not [String]::IsNullOrWhiteSpace($ThumbnailTitle)) -or
+                (-not [String]::IsNullOrWhiteSpace($ThumbnailDescription)) -or
+                (-not [String]::IsNullOrWhiteSpace($ThumbnailState)))
             {
                 $hashBody['thumbnail'] = @{}
-                if ($null -ne $ThumbnailFileName)
+                if (-not [String]::IsNullOrWhiteSpace($ThumbnailFileName)
                 {
                     $hashBody['thumbnail']['fileName'] = $ThumbnailFileName
                 }
 
-                if ($null -ne $ThumbnailTitle)
+                if (-not [String]::IsNullOrWhiteSpace($ThumbnailTitle)
                 {
                     $hashBody['thumbnail']['title'] = $ThumbnailTitle
                 }
 
-                if ($null -ne $ThumbnailDescription)
+                if (-not [String]::IsNullOrWhiteSpace($ThumbnailDescription)
                 {
                     $hashBody['thumbnail']['description'] = $ThumbnailDescription
                 }
 
-                if ($null -ne $ThumbnailState)
+                if (-not [String]::IsNullOrWhiteSpace($ThumbnailState)
                 {
                     $hashBody['thumbnail']['state'] = $ThumbnailState
                 }
-            }
-
-            if ($null -ne $RevisionToken)
-            {
-                $hashBody['revisionToken'] = $RevisionToken
             }
         }
 
@@ -341,9 +301,6 @@ function Set-ListingVideo
         [string] $FileName,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $StreamingUri,
-
-        [Parameter(ParameterSetName="Individual")]
         [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
         [string] $State,
 
@@ -360,7 +317,9 @@ function Set-ListingVideo
         [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
         [string] $ThumbnailState,
 
-        [Parameter(ParameterSetName="Individual")]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $RevisionToken,
 
         [string] $ClientRequestId,
@@ -398,6 +357,7 @@ function Set-ListingVideo
         {
             # Convert the input into a Json body.
             $hashBody = @{}
+            $hashBody['revisionToken'] = $RevisionToken
 
             # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace for any
             # of these checks, because we need a way to be able to clear these notes out.
@@ -410,11 +370,6 @@ function Set-ListingVideo
             if ($null -ne $State)
             {
                 $hashBody['state'] = $State
-            }
-
-            if ($null -ne $StreamingUri)
-            {
-                $hashBody['streamingUri'] = $StreamingUri
             }
 
             if (($null -ne $ThumbnailFileName) -or ($null -ne $ThumbnailTitle) -or ($null -ne $ThumbnailDescription) -or ($null -ne $ThumbnailState))
@@ -439,11 +394,6 @@ function Set-ListingVideo
                 {
                     $hashBody['thumbnail']['state'] = $ThumbnailState
                 }
-            }
-
-            if ($null -ne $RevisionToken)
-            {
-                $hashBody['revisionToken'] = $RevisionToken
             }
         }
 

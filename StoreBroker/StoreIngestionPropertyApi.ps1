@@ -67,8 +67,6 @@ function New-ProductProperty
 
         [string] $SubmissionId,
 
-        [string] $RevisionToken,
-
         [string] $Type,
 
         [string] $ClientRequestId,
@@ -87,7 +85,6 @@ function New-ProductProperty
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -102,11 +99,6 @@ function New-ProductProperty
 
         # Convert the input into a Json body.
         $hashBody = @{}
-
-        if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
-        {
-            $hashBody['revisionToken'] = $RevisionToken
-        }
 
         if (-not [String]::IsNullOrWhiteSpace($Type))
         {
@@ -151,6 +143,7 @@ function Set-ProductProperty
 
         [string] $SubmissionId,
 
+        [Parameter(Mandatory)]
         [string] $RevisionToken,
 
         [string] $Type,
@@ -187,11 +180,7 @@ function Set-ProductProperty
 
         # Convert the input into a Json body.
         $hashBody = @{}
-
-        if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
-        {
-            $hashBody['revisionToken'] = $RevisionToken
-        }
+        $hashBody['revisionToken'] = $RevisionToken
 
         if (-not [String]::IsNullOrWhiteSpace($Type))
         {
