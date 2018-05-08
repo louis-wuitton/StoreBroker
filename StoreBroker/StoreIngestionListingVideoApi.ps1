@@ -157,22 +157,22 @@ function New-ListingVideo
                 (-not [String]::IsNullOrWhiteSpace($ThumbnailState)))
             {
                 $hashBody['thumbnail'] = @{}
-                if (-not [String]::IsNullOrWhiteSpace($ThumbnailFileName)
+                if (-not [String]::IsNullOrWhiteSpace($ThumbnailFileName))
                 {
                     $hashBody['thumbnail']['fileName'] = $ThumbnailFileName
                 }
 
-                if (-not [String]::IsNullOrWhiteSpace($ThumbnailTitle)
+                if (-not [String]::IsNullOrWhiteSpace($ThumbnailTitle))
                 {
                     $hashBody['thumbnail']['title'] = $ThumbnailTitle
                 }
 
-                if (-not [String]::IsNullOrWhiteSpace($ThumbnailDescription)
+                if (-not [String]::IsNullOrWhiteSpace($ThumbnailDescription))
                 {
                     $hashBody['thumbnail']['description'] = $ThumbnailDescription
                 }
 
-                if (-not [String]::IsNullOrWhiteSpace($ThumbnailState)
+                if (-not [String]::IsNullOrWhiteSpace($ThumbnailState))
                 {
                     $hashBody['thumbnail']['state'] = $ThumbnailState
                 }
