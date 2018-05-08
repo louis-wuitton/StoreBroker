@@ -22,6 +22,8 @@
 
         'StoreIngestionFeatureGroupApi.ps1',
         'StoreIngestionListingApi.ps1',
+        'StoreIngestionListingImageApi.ps1',
+        'StoreIngestionListingVideoApi.ps1',
         'StoreIngestionPackageApi.ps1',
         'StoreIngestionPackageConfigurationApi.ps1',
         'StoreIngestionProductApi.ps1',
@@ -43,6 +45,17 @@
         'Get-Listing',
         'Set-Listing',
 
+        'Get-ListingImages',
+        'New-ListingImage',
+        'Delete-ListingImage',
+        'Get-ListingImage',
+        'Set-ListingImage',
+
+        'Get-ListingVideos',
+        'New-ListingVideo',
+        'Delete-ListingVideo',
+        'Get-ListingVideo',
+        'Set-ListingVideo',
 
         'Get-Products',
         'Get-Product',
@@ -171,6 +184,8 @@
         'Promote-Submission',
         'Delete-ProductPackage',
         'Delete-Listing',
+        'Delete-ListingImage',
+        'Delete-ListingVideo',
 
 
         'Commit-ApplicationFlightSubmission',

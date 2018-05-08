@@ -1,4 +1,4 @@
-function Get-Listings
+function Get-ListingImages
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -9,7 +9,9 @@ function Get-Listings
         [Parameter(Mandatory)]
         [string] $SubmissionId,
 
-        [string] $FeatureGroupId,
+        [Parameter(Mandatory)]
+        [Alias('LangCode')]
+        [string] $LanguageCode,
 
         [string] $ClientRequestId,
 
@@ -29,7 +31,7 @@ function Get-Listings
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -41,18 +43,13 @@ function Get-Listings
             $getParams += "submissionId=$SubmissionId"
         }
 
-        if (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
-        {
-            $getParams += "featureGroupId=$FeatureGroupId"
-        }
-
         $params = @{
-            "UriFragment" = "products/$ProductId/listings?" + ($getParams -join '&')
-            "Description" = "Getting listings for $ProductId"
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode/images?" + ($getParams -join '&')
+            "Description" = "Getting listing images for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-Listings"
+            "TelemetryEventName" = "Get-ListingImages"
             "TelemetryProperties" = $telemetryProperties
             "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
@@ -66,7 +63,7 @@ function Get-Listings
     }
 }
 
-function New-Listing
+function New-ListingImage
 {
     [CmdletBinding(
         SupportsShouldProcess,
@@ -83,60 +80,31 @@ function New-Listing
         [Alias('LangCode')]
         [string] $LanguageCode,
 
-        [string] $FeatureGroupId,
-
         [Parameter(
             Mandatory,
             ParameterSetName="Object")]
-        [PSCustomObject] $ListingObject,
+        [PSCustomObject[]] $ListingObject,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $Title,
+        [string] $FileName,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $ShortTitle,
+        [ValidateSet(
+            'HeroImage414x180', 'HeroImage846x468', 'HeroImage558x756', 'HeroImage414x468', 'HeroImage558x558', 'HeroImage2400x1200',
+            'Screenshot', 'ScreenshotWXGA', 'ScreenshotHD720', 'ScreenshotWVGA',
+            'SmallMobileTile', 'SmallXboxLiveTile', 'LargeMobileTile', 'LargeXboxLiveTile', 'Tile',
+            'DesktopIcon', 'Icon', 'AchievementIcon', 'ChallengePromoIcon', 'RewardDisplayIcon', 'Icon150X150', 'Icon71X71',
+            'Doublewide', 'Panoramic', 'Square', 'MobileScreenshot', 'XboxScreenshot', 'PpiScreenshot', 'AnalogScreenshot',
+            'BoxArt', 'BrandedKeyArt', 'PosterArt', 'FeaturedPromotionalArt', 'SquareHeroArt', 'TitledHeroArt')]
+        [string] $Type,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $VoiceTitle,
 
-        [Parameter(ParameterSetName="Individual")]
-        [string] $ReleaseNotes,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string[]] $Keywords,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $Trademark,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $LicenseTerm,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string[]] $Features,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string[]] $MinimumHardware,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string[]] $RecommendedHardware,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $DevStudio,
-
-        [Parameter(ParameterSetName="Individual")]
-        [switch] $ShouldOverridePackageLogos,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $Description,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $ShortDescription,
+        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
+        [string] $State,
 
         [Parameter(ParameterSetName="Individual")]
         [string] $RevisionToken,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $Type,
 
         [string] $ClientRequestId,
 
@@ -155,7 +123,8 @@ function New-Listing
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::Type = $Type
+            [StoreBrokerTelemetryProperty]::State = $State
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -168,115 +137,52 @@ function New-Listing
             $getParams += "submissionId=$SubmissionId"
         }
 
-        if (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
-        {
-            $getParams += "featureGroupId=$FeatureGroupId"
-        }
-
         $body = $ListingObject
         if ($null -eq $body)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody['languageCode'] = $LanguageCode
 
-            if (-not [String]::IsNullOrWhiteSpace($Title))
+            if (-not [String]::IsNullOrWhiteSpace($FileName))
             {
-                $hashBody['title'] = $Title
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($ShortTitle))
-            {
-                $hashBody['shortTitle'] = $ShortTitle
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($VoiceTitle))
-            {
-                $hashBody['voiceTitle'] = $VoiceTitle
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($ReleaseNotes))
-            {
-                $hashBody['releaseNotes'] = $ReleaseNotes
-            }
-
-            if ($null -ne $Keywords)
-            {
-                $hashBody['keywords'] = @($Keywords)
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($Trademark))
-            {
-                $hashBody['trademark'] = $Trademark
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($LicenseTerm))
-            {
-                $hashBody['licenseTerm'] = $LicenseTerm
-            }
-
-            if ($null -ne $Features)
-            {
-                $hashBody['features'] = @($Features)
-            }
-
-            if ($null -ne $MinimumHardware)
-            {
-                $hashBody['minimumHardware'] = @($MinimumHardware)
-            }
-
-            if ($null -ne $RecommendedHardware)
-            {
-                $hashBody['recommendedHardware'] = @($RecommendedHardware)
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($DevStudio))
-            {
-                $hashBody['devStudio'] = $DevStudio
-            }
-
-            # We only set the value if the user explicitly provided a value for this parameter
-            # (so for $false, they'd have to pass in -ShouldOverridePackageLogos:$false).
-            # Otherwise, there'd be no way to know when the user wants to simply keep the
-            # existing value.
-            if ($null -ne $PSBoundParameters['ShouldOverridePackageLogos'])
-            {
-                $hashBody['shouldOverridePackageLogos'] = $ShouldOverridePackageLogos
-                $telemetryProperties[[StoreBrokerTelemetryProperty]::ShouldOverridePackageLogos] = $ShouldOverridePackageLogos
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($Description))
-            {
-                $hashBody['description'] = $Description
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($ShortDescription))
-            {
-                $hashBody['shortDescription'] = $ShortDescription
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
-            {
-                $hashBody['revisionToken'] = $RevisionToken
+                $hashBody['fileName'] = $FileName
             }
 
             if (-not [String]::IsNullOrWhiteSpace($Type))
             {
                 $hashBody['type'] = $Type
             }
+
+            if (-not [String]::IsNullOrWhiteSpace($State))
+            {
+                $hashBody['state'] = $State
+            }
+
+            if (-not [String]::IsNullOrWhiteSpace($RevisionToken))
+            {
+                $hashBody['revisionToken'] = $RevisionToken
+            }
         }
 
         $body = $hashBody | ConvertTo-Json
 
+        $uriFragment = "products/$ProductId/listings/$LanguageCode/images?" + ($getParams -join '&')
+        $description = "Creating new $LanguageCode listing image for $ProductId"
+        if ($ListingObject.Count -gt 1)
+        {
+            $uriFragment = "products/$ProductId/listings/$LanguageCode/images/bulk?" + ($getParams -join '&')
+            $description = "Bulk creating $LanguageCode listing images for $ProductId"
+        }
+
         $params = @{
-            "UriFragment" = "products/$ProductId/listings?" + ($getParams -join '&')
+            "UriFragment" = $uriFragment
             "Method" = 'Post'
-            "Description" = "Creating new $LanguageCode listing for $ProductId"
+            "Description" = $description
             "Body" = $body
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "New-Listing"
+            "TelemetryEventName" = "New-ListingImage"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
@@ -288,8 +194,7 @@ function New-Listing
         throw
     }
 }
-
-function Remove-Listing
+function Remove-ListingImage
 {
     [CmdletBinding(SupportsShouldProcess)]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
@@ -306,7 +211,8 @@ function Remove-Listing
         [Alias('LangCode')]
         [string] $LanguageCode,
 
-        [string] $FeatureGroupId,
+        [Parameter(Mandatory)]
+        [string] $ImageId,
 
         [string] $ClientRequestId,
 
@@ -323,7 +229,7 @@ function Remove-Listing
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
         [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
         [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-        [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+        [StoreBrokerTelemetryProperty]::ImageId = $ImageId
         [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
@@ -335,19 +241,14 @@ function Remove-Listing
         $getParams += "submissionId=$SubmissionId"
     }
 
-    if (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
-    {
-        $getParams += "featureGroupId=$FeatureGroupId"
-    }
-
     $params = @{
-        "UriFragment" = "products/$ProductId/listings/$LanguageCode" + ($getParams -join '&')
+        "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId?" + ($getParams -join '&')
         "Method" = "Delete"
-        "Description" = "Deleting the $LanguageCode listing for $ProductId"
+        "Description" = "Deleting image $ImageId from the $LanguageCode listing for $ProductId"
         "ClientRequestId" = $ClientRequestId
         "CorrelationId" = $CorrelationId
         "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Remove-Listing"
+        "TelemetryEventName" = "Remove-ListingImage"
         "TelemetryProperties" = $telemetryProperties
         "NoStatus" = $NoStatus
     }
@@ -355,7 +256,7 @@ function Remove-Listing
     $null = Invoke-SBRestMethod @params
 }
 
-function Set-Listing
+function Set-ListingImage
 {
     [CmdletBinding(
         SupportsShouldProcess,
@@ -366,13 +267,14 @@ function Set-Listing
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [string] $SubmissionId,
-
-        [Parameter(Mandatory)]
         [Alias('LangCode')]
         [string] $LanguageCode,
 
-        [string] $FeatureGroupId,
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [Parameter(Mandatory)]
+        [string] $ImageId,
 
         [Parameter(
             Mandatory,
@@ -380,52 +282,24 @@ function Set-Listing
         [PSCustomObject] $ListingObject,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $Title,
+        [string] $FileName,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $ShortTitle,
+        [ValidateSet(
+            'HeroImage414x180', 'HeroImage846x468', 'HeroImage558x756', 'HeroImage414x468', 'HeroImage558x558', 'HeroImage2400x1200',
+            'Screenshot', 'ScreenshotWXGA', 'ScreenshotHD720', 'ScreenshotWVGA',
+            'SmallMobileTile', 'SmallXboxLiveTile', 'LargeMobileTile', 'LargeXboxLiveTile', 'Tile',
+            'DesktopIcon', 'Icon', 'AchievementIcon', 'ChallengePromoIcon', 'RewardDisplayIcon', 'Icon150X150', 'Icon71X71',
+            'Doublewide', 'Panoramic', 'Square', 'MobileScreenshot', 'XboxScreenshot', 'PpiScreenshot', 'AnalogScreenshot',
+            'BoxArt', 'BrandedKeyArt', 'PosterArt', 'FeaturedPromotionalArt', 'SquareHeroArt', 'TitledHeroArt')]
+        [string] $Type,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $VoiceTitle,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $ReleaseNotes,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string[]] $Keywords,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $Trademark,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $LicenseTerm,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string[]] $Features,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string[]] $MinimumHardware,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string[]] $RecommendedHardware,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $DevStudio,
-
-        [Parameter(ParameterSetName="Individual")]
-        [switch] $ShouldOverridePackageLogos,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $Description,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $ShortDescription,
+        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
+        [string] $State,
 
         [Parameter(ParameterSetName="Individual")]
         [string] $RevisionToken,
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $Type,
 
         [string] $ClientRequestId,
 
@@ -444,7 +318,8 @@ function Set-Listing
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::Type = $Type
+            [StoreBrokerTelemetryProperty]::State = $State
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -462,108 +337,42 @@ function Set-Listing
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody['languageCode'] = $LanguageCode
 
             # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace for any
             # of these checks, because we need a way to be able to clear these notes out.
             #So, a $null means do nothing, while empty string / whitespace means clear out the value.
-            if ($null -ne $Title)
+            if ($null -ne $FileName)
             {
-                $hashBody['title'] = $Title
-            }
-
-            if ($null -ne $ShortTitle)
-            {
-                $hashBody['shortTitle'] = $ShortTitle
-            }
-
-            if ($null -ne $VoiceTitle)
-            {
-                $hashBody['voiceTitle'] = $VoiceTitle
-            }
-
-            if ($null -ne $ReleaseNotes)
-            {
-                $hashBody['releaseNotes'] = $ReleaseNotes
-            }
-
-            if ($null -ne $Keywords)
-            {
-                $hashBody['keywords'] = @($Keywords)
-            }
-
-            if ($null -ne $Trademark)
-            {
-                $hashBody['trademark'] = $Trademark
-            }
-
-            if ($null -ne $LicenseTerm)
-            {
-                $hashBody['licenseTerm'] = $LicenseTerm
-            }
-
-            if ($null -ne $Features)
-            {
-                $hashBody['features'] = @($Features)
-            }
-
-            if ($null -ne $MinimumHardware)
-            {
-                $hashBody['minimumHardware'] = @($MinimumHardware)
-            }
-
-            if ($null -ne $RecommendedHardware)
-            {
-                $hashBody['recommendedHardware'] = @($RecommendedHardware)
-            }
-
-            if ($null -ne $DevStudio)
-            {
-                $hashBody['devStudio'] = $DevStudio
-            }
-
-            # We only set the value if the user explicitly provided a value for this parameter
-            # (so for $false, they'd have to pass in -ShouldOverridePackageLogos:$false).
-            # Otherwise, there'd be no way to know when the user wants to simply keep the
-            # existing value.
-            if ($null -ne $PSBoundParameters['ShouldOverridePackageLogos'])
-            {
-                $hashBody['shouldOverridePackageLogos'] = $ShouldOverridePackageLogos
-                $telemetryProperties[[StoreBrokerTelemetryProperty]::ShouldOverridePackageLogos] = $ShouldOverridePackageLogos
-            }
-
-            if ($null -ne $Description)
-            {
-                $hashBody['description'] = $Description
-            }
-
-            if ($null -ne $ShortDescription)
-            {
-                $hashBody['shortDescription'] = $ShortDescription
-            }
-
-            if ($null -ne $RevisionToken)
-            {
-                $hashBody['revisionToken'] = $RevisionToken
+                $hashBody['fileName'] = $FileName
             }
 
             if ($null -ne $Type)
             {
                 $hashBody['type'] = $Type
             }
+
+            if ($null -ne $State)
+            {
+                $hashBody['state'] = $State
+            }
+
+            if ($null -ne $RevisionToken)
+            {
+                $hashBody['revisionToken'] = $RevisionToken
+            }
         }
 
         $body = $hashBody | ConvertTo-Json
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId?" + ($getParams -join '&')
             "Method" = 'Post'
-            "Description" = "Updating $LanguageCode listing for $ProductId"
+            "Description" = "Updating listing image $ImageId for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Set-Listing"
+            "TelemetryEventName" = "Set-ListingImage"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
@@ -576,7 +385,7 @@ function Set-Listing
     }
 }
 
-function Get-Listing
+function Get-ListingImage
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -591,7 +400,8 @@ function Get-Listing
         [Alias('LangCode')]
         [string] $LanguageCode,
 
-        [string] $FeatureGroupId,
+        [Parameter(Mandatory)]
+        [string] $ImageId,
 
         [string] $ClientRequestId,
 
@@ -610,7 +420,7 @@ function Get-Listing
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::ImageId = $ImageId
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -622,19 +432,14 @@ function Get-Listing
             $getParams += "submissionId=$SubmissionId"
         }
 
-        if (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
-        {
-            $getParams += "featureGroupId=$FeatureGroupId"
-        }
-
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId?" + ($getParams -join '&')
             "Method" = 'Get'
-            "Description" = "Getting $LanguageCode listing for $ProductId"
+            "Description" = "Getting listing image $ImageId for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-Listing"
+            "TelemetryEventName" = "Get-ListingImage"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
