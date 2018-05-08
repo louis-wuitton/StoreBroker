@@ -1,17 +1,10 @@
-function Get-ListingVideos
+function Get-Flights
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
         [string] $ProductId,
-
-        [Parameter(Mandatory)]
-        [string] $SubmissionId,
-
-        [Parameter(Mandatory)]
-        [Alias('LangCode')]
-        [string] $LanguageCode,
 
         [string] $ClientRequestId,
 
@@ -30,26 +23,17 @@ function Get-ListingVideos
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        $getParams = @()
-
-        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
-        {
-            $getParams += "submissionId=$SubmissionId"
-        }
-
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/videos?" + ($getParams -join '&')
-            "Description" = "Getting listing videos for $ProductId"
+            "UriFragment" = "products/$ProductId/flights"
+            "Description" = "Getting flights for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ListingVideos"
+            "TelemetryEventName" = "Get-Flights"
             "TelemetryProperties" = $telemetryProperties
             "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
@@ -63,7 +47,7 @@ function Get-ListingVideos
     }
 }
 
-function New-ListingVideo
+function New-Flight
 {
     [CmdletBinding(
         SupportsShouldProcess,
@@ -73,37 +57,55 @@ function New-ListingVideo
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
         [string] $ProductId,
 
-        [Parameter(Mandatory)]
-        [string] $SubmissionId,
-
-        [Parameter(Mandatory)]
-        [Alias('LangCode')]
-        [string] $LanguageCode,
-
         [Parameter(
             Mandatory,
             ParameterSetName="Object")]
-        [PSCustomObject[]] $ListingObject,
+        [PSCustomObject] $FlightObject,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $FileName,
+        [string] $Name,
 
         [Parameter(ParameterSetName="Individual")]
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
-        [string] $State,
+        [string] $Type,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $ThumbnailFileName,
+        [int] $RelativeRank = -1,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $ThumbnailTitle,
+        [string] $ReleaseNotes,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $ThumbnailDescription,
+        [string[]] $Keywords,
 
         [Parameter(ParameterSetName="Individual")]
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
-        [string] $ThumbnailState,
+        [string] $Trademark,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string] $LicenseTerm,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string[]] $Features,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string[]] $MinimumHardware,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string[]] $RecommendedHardware,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string] $DevStudio,
+
+        [Parameter(ParameterSetName="Individual")]
+        [switch] $ShouldOverridePackageLogos,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string] $Description,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string] $ShortDescription,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string] $Type,
 
         [string] $ClientRequestId,
 
@@ -122,8 +124,7 @@ function New-ListingVideo
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-            [StoreBrokerTelemetryProperty]::Type = $Type
-            [StoreBrokerTelemetryProperty]::State = $State
+            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -135,128 +136,134 @@ function New-ListingVideo
             $getParams += "submissionId=$SubmissionId"
         }
 
+        if (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
+        {
+            $getParams += "featureGroupId=$FeatureGroupId"
+        }
+
         $body = $ListingObject
         if ($null -eq $body)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
+            $hashBody['languageCode'] = $LanguageCode
 
-            if (-not [String]::IsNullOrWhiteSpace($FileName))
+            if (-not [String]::IsNullOrWhiteSpace($Title))
             {
-                $hashBody['fileName'] = $FileName
+                $hashBody['title'] = $Title
             }
 
-            if (-not [String]::IsNullOrWhiteSpace($State))
+            if (-not [String]::IsNullOrWhiteSpace($ShortTitle))
             {
-                $hashBody['state'] = $State
+                $hashBody['shortTitle'] = $ShortTitle
             }
 
-            if ((-not [String]::IsNullOrWhiteSpace($ThumbnailFileName)) -or
-                (-not [String]::IsNullOrWhiteSpace($ThumbnailTitle)) -or
-                (-not [String]::IsNullOrWhiteSpace($ThumbnailDescription)) -or
-                (-not [String]::IsNullOrWhiteSpace($ThumbnailState)))
+            if (-not [String]::IsNullOrWhiteSpace($VoiceTitle))
             {
-                $hashBody['thumbnail'] = @{}
-                if (-not [String]::IsNullOrWhiteSpace($ThumbnailFileName))
-                {
-                    $hashBody['thumbnail']['fileName'] = $ThumbnailFileName
-                }
+                $hashBody['voiceTitle'] = $VoiceTitle
+            }
 
-                if (-not [String]::IsNullOrWhiteSpace($ThumbnailTitle))
-                {
-                    $hashBody['thumbnail']['title'] = $ThumbnailTitle
-                }
+            if (-not [String]::IsNullOrWhiteSpace($ReleaseNotes))
+            {
+                $hashBody['releaseNotes'] = $ReleaseNotes
+            }
 
-                if (-not [String]::IsNullOrWhiteSpace($ThumbnailDescription))
-                {
-                    $hashBody['thumbnail']['description'] = $ThumbnailDescription
-                }
+            if ($null -ne $Keywords)
+            {
+                $hashBody['keywords'] = @($Keywords)
+            }
 
-                if (-not [String]::IsNullOrWhiteSpace($ThumbnailState))
-                {
-                    $hashBody['thumbnail']['state'] = $ThumbnailState
-                }
+            if (-not [String]::IsNullOrWhiteSpace($Trademark))
+            {
+                $hashBody['trademark'] = $Trademark
+            }
+
+            if (-not [String]::IsNullOrWhiteSpace($LicenseTerm))
+            {
+                $hashBody['licenseTerm'] = $LicenseTerm
+            }
+
+            if ($null -ne $Features)
+            {
+                $hashBody['features'] = @($Features)
+            }
+
+            if ($null -ne $MinimumHardware)
+            {
+                $hashBody['minimumHardware'] = @($MinimumHardware)
+            }
+
+            if ($null -ne $RecommendedHardware)
+            {
+                $hashBody['recommendedHardware'] = @($RecommendedHardware)
+            }
+
+            if (-not [String]::IsNullOrWhiteSpace($DevStudio))
+            {
+                $hashBody['devStudio'] = $DevStudio
+            }
+
+            # We only set the value if the user explicitly provided a value for this parameter
+            # (so for $false, they'd have to pass in -ShouldOverridePackageLogos:$false).
+            # Otherwise, there'd be no way to know when the user wants to simply keep the
+            # existing value.
+            if ($null -ne $PSBoundParameters['ShouldOverridePackageLogos'])
+            {
+                $hashBody['shouldOverridePackageLogos'] = $ShouldOverridePackageLogos
+                $telemetryProperties[[StoreBrokerTelemetryProperty]::ShouldOverridePackageLogos] = $ShouldOverridePackageLogos
+            }
+
+            if (-not [String]::IsNullOrWhiteSpace($Description))
+            {
+                $hashBody['description'] = $Description
+            }
+
+            if (-not [String]::IsNullOrWhiteSpace($ShortDescription))
+            {
+                $hashBody['shortDescription'] = $ShortDescription
+            }
+
+            if (-not [String]::IsNullOrWhiteSpace($Type))
+            {
+                $hashBody['type'] = $Type
             }
         }
-
 
         $body = $hashBody | ConvertTo-Json
 
-        $uriFragment = "products/$ProductId/listings/$LanguageCode/videos?" + ($getParams -join '&')
-        $description = "Creating new $LanguageCode listing videos for $ProductId"
-        $isbulkOperation = $ListingObject.Count -gt 1
-        if ($isbulkOperation)
-        {
-            $uriFragment = "products/$ProductId/listings/$LanguageCode/videos/bulk?" + ($getParams -join '&')
-            $description = "Bulk creating $LanguageCode listing videos for $ProductId"
-        }
-
         $params = @{
-            "UriFragment" = $uriFragment
+            "UriFragment" = "products/$ProductId/listings?" + ($getParams -join '&')
             "Method" = 'Post'
-            "Description" = $description
+            "Description" = "Creating new $LanguageCode listing for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "New-ListingVideo"
+            "TelemetryEventName" = "New-Flight"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
 
-        $result = Invoke-SBRestMethod @params
-        if ($isbulkOperation)
-        {
-            $finalResult = @()
-            $finalResult += $result.value
-
-            if ($null -ne $result.nextLink)
-            {
-                $params = @{
-                    "UriFragment" = $result.nextLink
-                    "Description" = "Getting remaining results"
-                    "ClientRequestId" = $ClientRequestId
-                    "CorrelationId" = $CorrelationId
-                    "AccessToken" = $AccessToken
-                    "TelemetryEventName" = "New-ListingVideo"
-                    "TelemetryProperties" = $telemetryProperties
-                    "NoStatus" = $NoStatus
-                }
-    
-                $finalResult += Invoke-SBRestMethodMultipleResult @params
-            }
-
-            return $finalResult
-        }
-        else
-        {
-            return $result
-        }
+        return Invoke-SBRestMethod @params
     }
     catch [System.InvalidOperationException]
     {
         throw
     }
 }
-function Remove-ListingVideo
+
+function Remove-Flight
 {
     [CmdletBinding(SupportsShouldProcess)]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
-    [Alias("Delete-ListingVideo")]
+    [Alias("Delete-Flight")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [string] $SubmissionId,
-
-        [Parameter(Mandatory)]
-        [Alias('LangCode')]
-        [string] $LanguageCode,
-
-        [Parameter(Mandatory)]
-        [string] $VideoId,
+        [string] $FlightId,
 
         [string] $ClientRequestId,
 
@@ -271,28 +278,19 @@ function Remove-ListingVideo
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-        [StoreBrokerTelemetryProperty]::VideoId = $VideoId
+        [StoreBrokerTelemetryProperty]::FlightId = $FlightId
         [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
-    $getParams = @()
-
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
-    {
-        $getParams += "submissionId=$SubmissionId"
-    }
-
     $params = @{
-        "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId?" + ($getParams -join '&')
+        "UriFragment" = "products/$ProductId/flights/$FlightId"
         "Method" = "Delete"
-        "Description" = "Deleting image $ImageId from the $LanguageCode listing for $ProductId"
+        "Description" = "Deleting flight $FlightId for $ProductId"
         "ClientRequestId" = $ClientRequestId
         "CorrelationId" = $CorrelationId
         "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Remove-ListingImage"
+        "TelemetryEventName" = "Remove-Flight"
         "TelemetryProperties" = $telemetryProperties
         "NoStatus" = $NoStatus
     }
@@ -300,7 +298,7 @@ function Remove-ListingVideo
     $null = Invoke-SBRestMethod @params
 }
 
-function Set-ListingVideo
+function Set-Flight
 {
     [CmdletBinding(
         SupportsShouldProcess,
@@ -311,14 +309,13 @@ function Set-ListingVideo
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [Alias('LangCode')]
-        [string] $LanguageCode,
-
-        [Parameter(Mandatory)]
         [string] $SubmissionId,
 
         [Parameter(Mandatory)]
-        [string] $ImageId,
+        [Alias('LangCode')]
+        [string] $LanguageCode,
+
+        [string] $FeatureGroupId,
 
         [Parameter(
             Mandatory,
@@ -326,29 +323,54 @@ function Set-ListingVideo
         [PSCustomObject] $ListingObject,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $FileName,
+        [string] $Title,
 
         [Parameter(ParameterSetName="Individual")]
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
-        [string] $State,
+        [string] $ShortTitle,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $ThumbnailFileName,
+        [string] $VoiceTitle,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $ThumbnailTitle,
+        [string] $ReleaseNotes,
 
         [Parameter(ParameterSetName="Individual")]
-        [string] $ThumbnailDescription,
+        [string[]] $Keywords,
 
         [Parameter(ParameterSetName="Individual")]
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
-        [string] $ThumbnailState,
+        [string] $Trademark,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string] $LicenseTerm,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string[]] $Features,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string[]] $MinimumHardware,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string[]] $RecommendedHardware,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string] $DevStudio,
+
+        [Parameter(ParameterSetName="Individual")]
+        [switch] $ShouldOverridePackageLogos,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string] $Description,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string] $ShortDescription,
 
         [Parameter(
             Mandatory,
             ParameterSetName="Individual")]
         [string] $RevisionToken,
+
+        [Parameter(ParameterSetName="Individual")]
+        [string] $Type,
 
         [string] $ClientRequestId,
 
@@ -367,7 +389,7 @@ function Set-ListingVideo
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-            [StoreBrokerTelemetryProperty]::State = $State
+            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -385,57 +407,104 @@ function Set-ListingVideo
         {
             # Convert the input into a Json body.
             $hashBody = @{}
+            $hashBody['languageCode'] = $LanguageCode
             $hashBody['revisionToken'] = $RevisionToken
 
             # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace for any
             # of these checks, because we need a way to be able to clear these notes out.
             #So, a $null means do nothing, while empty string / whitespace means clear out the value.
-            if ($null -ne $FileName)
+            if ($null -ne $Title)
             {
-                $hashBody['fileName'] = $FileName
+                $hashBody['title'] = $Title
             }
 
-            if ($null -ne $State)
+            if ($null -ne $ShortTitle)
             {
-                $hashBody['state'] = $State
+                $hashBody['shortTitle'] = $ShortTitle
             }
 
-            if (($null -ne $ThumbnailFileName) -or ($null -ne $ThumbnailTitle) -or ($null -ne $ThumbnailDescription) -or ($null -ne $ThumbnailState))
+            if ($null -ne $VoiceTitle)
             {
-                $hashBody['thumbnail'] = @{}
-                if ($null -ne $ThumbnailFileName)
-                {
-                    $hashBody['thumbnail']['fileName'] = $ThumbnailFileName
-                }
+                $hashBody['voiceTitle'] = $VoiceTitle
+            }
 
-                if ($null -ne $ThumbnailTitle)
-                {
-                    $hashBody['thumbnail']['title'] = $ThumbnailTitle
-                }
+            if ($null -ne $ReleaseNotes)
+            {
+                $hashBody['releaseNotes'] = $ReleaseNotes
+            }
 
-                if ($null -ne $ThumbnailDescription)
-                {
-                    $hashBody['thumbnail']['description'] = $ThumbnailDescription
-                }
+            if ($null -ne $Keywords)
+            {
+                $hashBody['keywords'] = @($Keywords)
+            }
 
-                if ($null -ne $ThumbnailState)
-                {
-                    $hashBody['thumbnail']['state'] = $ThumbnailState
-                }
+            if ($null -ne $Trademark)
+            {
+                $hashBody['trademark'] = $Trademark
+            }
+
+            if ($null -ne $LicenseTerm)
+            {
+                $hashBody['licenseTerm'] = $LicenseTerm
+            }
+
+            if ($null -ne $Features)
+            {
+                $hashBody['features'] = @($Features)
+            }
+
+            if ($null -ne $MinimumHardware)
+            {
+                $hashBody['minimumHardware'] = @($MinimumHardware)
+            }
+
+            if ($null -ne $RecommendedHardware)
+            {
+                $hashBody['recommendedHardware'] = @($RecommendedHardware)
+            }
+
+            if ($null -ne $DevStudio)
+            {
+                $hashBody['devStudio'] = $DevStudio
+            }
+
+            # We only set the value if the user explicitly provided a value for this parameter
+            # (so for $false, they'd have to pass in -ShouldOverridePackageLogos:$false).
+            # Otherwise, there'd be no way to know when the user wants to simply keep the
+            # existing value.
+            if ($null -ne $PSBoundParameters['ShouldOverridePackageLogos'])
+            {
+                $hashBody['shouldOverridePackageLogos'] = $ShouldOverridePackageLogos
+                $telemetryProperties[[StoreBrokerTelemetryProperty]::ShouldOverridePackageLogos] = $ShouldOverridePackageLogos
+            }
+
+            if ($null -ne $Description)
+            {
+                $hashBody['description'] = $Description
+            }
+
+            if ($null -ne $ShortDescription)
+            {
+                $hashBody['shortDescription'] = $ShortDescription
+            }
+
+            if ($null -ne $Type)
+            {
+                $hashBody['type'] = $Type
             }
         }
 
         $body = $hashBody | ConvertTo-Json
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/Videos/$VideoId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode?" + ($getParams -join '&')
             "Method" = 'Post'
-            "Description" = "Updating listing video $VideoId for $ProductId"
+            "Description" = "Updating $LanguageCode listing for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Set-ListingVideo"
+            "TelemetryEventName" = "Set-Flight"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
@@ -448,7 +517,7 @@ function Set-ListingVideo
     }
 }
 
-function Get-ListingVideo
+function Get-Flight
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -457,14 +526,7 @@ function Get-ListingVideo
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [string] $SubmissionId,
-
-        [Parameter(Mandatory)]
-        [Alias('LangCode')]
-        [string] $LanguageCode,
-
-        [Parameter(Mandatory)]
-        [string] $VideoId,
+        [string] $FlightId,
 
         [string] $ClientRequestId,
 
@@ -481,28 +543,20 @@ function Get-ListingVideo
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-            [StoreBrokerTelemetryProperty]::VideoId = $VideoId
+            [StoreBrokerTelemetryProperty]::FlightId = $FlightId
+            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        $getParams = @()
-
-        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
-        {
-            $getParams += "submissionId=$SubmissionId"
-        }
-
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/videos/$VideoId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/flights/$FlightId"
             "Method" = 'Get'
-            "Description" = "Getting listing video $VideoId for $ProductId"
+            "Description" = "Getting flight $FlightId for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ListingVideo"
+            "TelemetryEventName" = "Get-Flight"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }

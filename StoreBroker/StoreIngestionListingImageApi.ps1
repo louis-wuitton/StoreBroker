@@ -159,7 +159,8 @@ function New-ListingImage
 
         $uriFragment = "products/$ProductId/listings/$LanguageCode/images?" + ($getParams -join '&')
         $description = "Creating new $LanguageCode listing image for $ProductId"
-        if ($ListingObject.Count -gt 1)
+        $isbulkOperation = $ListingObject.Count -gt 1
+        if ($isbulkOperation)
         {
             $uriFragment = "products/$ProductId/listings/$LanguageCode/images/bulk?" + ($getParams -join '&')
             $description = "Bulk creating $LanguageCode listing images for $ProductId"
@@ -178,7 +179,34 @@ function New-ListingImage
             "NoStatus" = $NoStatus
         }
 
-        return Invoke-SBRestMethod @params
+        $result = Invoke-SBRestMethod @params
+        if ($isbulkOperation)
+        {
+            $finalResult = @()
+            $finalResult += $result.value
+
+            if ($null -ne $result.nextLink)
+            {
+                $params = @{
+                    "UriFragment" = $result.nextLink
+                    "Description" = "Getting remaining results"
+                    "ClientRequestId" = $ClientRequestId
+                    "CorrelationId" = $CorrelationId
+                    "AccessToken" = $AccessToken
+                    "TelemetryEventName" = "New-ListingImage"
+                    "TelemetryProperties" = $telemetryProperties
+                    "NoStatus" = $NoStatus
+                }
+    
+                $finalResult += Invoke-SBRestMethodMultipleResult @params
+            }
+
+            return $finalResult
+        }
+        else
+        {
+            return $result
+        }
     }
     catch [System.InvalidOperationException]
     {
@@ -189,7 +217,7 @@ function Remove-ListingImage
 {
     [CmdletBinding(SupportsShouldProcess)]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
-    [Alias("Delete-Listing")]
+    [Alias("Delete-ListingImage")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]

@@ -21,6 +21,7 @@
         'StoreIngestionFlightingApi.ps1',
 
         'StoreIngestionFeatureGroupApi.ps1',
+        'StoreIngestionFlightApi.ps1',
         'StoreIngestionListingApi.ps1',
         'StoreIngestionListingImageApi.ps1',
         'StoreIngestionListingVideoApi.ps1',
@@ -39,6 +40,12 @@
     PowerShellVersion = '4.0'
 
     FunctionsToExport = @(
+        'Get-Flight',
+        'New-Flight',
+        'Delete-Flight',
+        'Get-Flight',
+        'Set-Flight',
+
         'Get-Listings',
         'New-Listing',
         'Delete-Listing',
@@ -186,7 +193,7 @@
         'Delete-Listing',
         'Delete-ListingImage',
         'Delete-ListingVideo',
-
+        'Delete-Flight',
 
         'Commit-ApplicationFlightSubmission',
         'Commit-ApplicationSubmission',

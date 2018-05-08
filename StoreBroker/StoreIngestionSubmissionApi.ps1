@@ -138,7 +138,7 @@ function New-Submission
         [Parameter(
             ParameterSetName = 'Sandbox',
             Position = 4)]
-        [int] $WaitSeconds,
+        [int] $WaitSeconds = -2, # -1 is special and means no wait.  Server-side default is 60 seconds.
 
         [Parameter(
             ParameterSetName = 'Retail',
@@ -201,7 +201,7 @@ function New-Submission
     }
 
     $getParams = @()
-    if ($WaitSeconds -gt 0)
+    if ($WaitSeconds -gt -2)
     {
         $getParams += "waitSeconds=$WaitSeconds"
     }
