@@ -64,7 +64,7 @@ function Get-Submissions
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/submissions?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/submissions`?" + ($getParams -join '&')
             "Description" = "Getting submissions for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
@@ -234,7 +234,7 @@ function New-Submission
     }
 
     $params = @{
-        "UriFragment" = "products/$ProductId/submissions?" + ($getParams -join '&')
+        "UriFragment" = "products/$ProductId/submissions`?" + ($getParams -join '&')
         "Method" = 'Post'
         "Description" = "Creating a new submision for product: $ProductId"
         "Body" = $body
@@ -755,7 +755,7 @@ function Submit-Submission
     }
 
     $params = @{
-        "UriFragment" = "products/$ProductId/submissions/$SubmissionId/submit?" + ($getParams -join '&')
+        "UriFragment" = "products/$ProductId/submissions/$SubmissionId/submit`?" + ($getParams -join '&')
         "Method" = 'Post'
         "Description" = "Submitting submission $SubmissionId"
         "ClientRequestId" = $ClientRequestId

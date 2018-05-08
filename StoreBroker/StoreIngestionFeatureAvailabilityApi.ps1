@@ -1,4 +1,6 @@
-function Get-ProductAvailabilities
+$script:FlightObjectType = 'PackageFlight'
+
+function Get-FeatureAvailabilities
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -6,7 +8,16 @@ function Get-ProductAvailabilities
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
         [string] $ProductId,
 
+        [Parameter(Mandatory)]
         [string] $SubmissionId,
+
+        [string] $FeatureGroupId,
+
+        [switch] $IncludeMarketStates,
+
+        [switch] $IncludeTrial,
+
+        [switch] $IncludePricing,
 
         [string] $ClientRequestId,
 
@@ -26,24 +37,35 @@ function Get-ProductAvailabilities
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
+            [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
+            [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
         $getParams = @()
+        $getParams += "marketStates=$IncludeMarketStates"
+        $getParams += "trial=$IncludeTrial"
+        $getParams += "pricing=$IncludePricing"
 
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
         }
 
+        if (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
+        {
+            $getParams += "featureGroupId=$FeatureGroupId"
+        }
+        
         $params = @{
-            "UriFragment" = "products/$ProductId/productAvailabilities`?" + ($getParams -join '&')
-            "Description" = "Getting product availabilities for $ProductId"
+            "UriFragment" = "products/$ProductId/featureAvailabilities`?" + ($getParams -join '&')
+            "Description" = "Getting feature availability for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ProductAvailabilities"
+            "TelemetryEventName" = "Get-FeatureAvailabilities"
             "TelemetryProperties" = $telemetryProperties
             "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
@@ -57,28 +79,41 @@ function Get-ProductAvailabilities
     }
 }
 
-function New-ProductAvailability
+function New-FeatureAvailability
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
         [string] $ProductId,
 
-        [string] $SubmissionId,
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Object")]
+        [PSCustomObject] $FlightObject,
 
-        [object] $Audience,
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [string] $Name,
 
-        [ValidateSet('Public', 'Private', 'StopSelling', 'NoChange')]
-        [string] $Visibility,
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [string[]] $GroupId,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [int] $RelativeRank,
 
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
 
         [string] $AccessToken,
-
-        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -89,46 +124,41 @@ function New-ProductAvailability
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::HasAudience = ($null -ne $Audience)
-            [StoreBrokerTelemetryProperty]::Visiblity = $Visibility
+            [StoreBrokerTelemetryProperty]::RelativeRank = $RelativeRank
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        $getParams = @()
-
-        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        $localFlightObject = DeepCopy-Object -Object $ListingObject
+        if ($localFlightObject.type -ne $objectType)
         {
-            $getParams += "submissionId=$SubmissionId"
+            $localFlightObject |
+                Add-Member -Type NoteProperty -Name 'type' -Value $script:FlightObjectType
         }
 
-        # Convert the input into a Json body.
-        $hashBody = @{}
-
-        if ('NoChange' -ne $Visibility)
+        $body = $localFlightObject
+        if ($null -eq $body)
         {
-            $hashBody['visibility'] = $Visibility
-        }
-
-        if ($null -ne $Audience)
-        {
-            $hashBody['audience'] = ConvertTo-Json -InputObject @($Audience)
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody['type'] = $script:FlightObjectType
+            $hashBody['name'] = $Name
+            $hashBody['groupIds'] = @($GroupId)
+            $hashBody['relativeRank'] = $RelativeRank
         }
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
 
-
         $params = @{
-            "UriFragment" = "products/$ProductId/productAvailabilities`?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/flights"
             "Method" = 'Post'
-            "Description" = "Creating new product availability for $ProductId"
+            "Description" = "Creating new flight for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "New-ProductAvailability"
+            "TelemetryEventName" = "New-Flight"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
@@ -141,27 +171,44 @@ function New-ProductAvailability
     }
 }
 
-function Set-ProductAvailability
+function Set-FeatureAvailability
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [string] $ProductAvailabilityId,
+        [string] $FlightId,
 
-        [string] $SubmissionId,
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Object")]
+        [PSCustomObject] $FlightObject,
 
-        [Parameter(Mandatory)]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [string] $Name,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [string[]] $GroupId,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [int] $RelativeRank,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $RevisionToken,
 
-        [object] $Audience,
-
-        [ValidateSet('Public', 'Private', 'StopSelling', 'NoChange')]
-        [string] $Visibility,
-
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -177,49 +224,43 @@ function Set-ProductAvailability
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::ProductAvailabilityId = $ProductAvailabilityId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::FlightId = $FlightId
+            [StoreBrokerTelemetryProperty]::RelativeRank = $RelativeRank
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
-            [StoreBrokerTelemetryProperty]::HasAudience = ($null -ne $Audience)
-            [StoreBrokerTelemetryProperty]::Visiblity = $Visibility
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        $getParams = @()
-
-        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        $localFlightObject = DeepCopy-Object -Object $ListingObject
+        if ($localFlightObject.type -ne $objectType)
         {
-            $getParams += "submissionId=$SubmissionId"
+            $localFlightObject |
+                Add-Member -Type NoteProperty -Name 'type' -Value $script:FlightObjectType
         }
 
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody['revisionToken'] = $RevisionToken
-
-        if ('NoChange' -ne $Visibility)
+        $body = $localFlightObject
+        if ($null -eq $body)
         {
-            $hashBody['visibility'] = $Visibility
-        }
-
-        if ($null -ne $Audience)
-        {
-            $hashBody['audience'] = ConvertTo-Json -InputObject @($Audience)
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody['type'] = $script:FlightObjectType
+            $hashBody['name'] = $Name
+            $hashBody['groupIds'] = @($GroupId)
+            $hashBody['relativeRank'] = $RelativeRank
+            $hashBody['revisionToken'] = $RevisionToken
         }
 
         $body = $hashBody | ConvertTo-Json
-        Write-Log -Message "Body: $body" -Level Verbose
-
 
         $params = @{
-            "UriFragment" = "products/$ProductId/productAvailabilities/$ProductAvailabilityId`?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/flights/$FlightId"
             "Method" = 'Put'
-            "Description" = "Updating product availability $ProductAvailabilityId for $ProductId"
+            "Description" = "Updating flight $FlightId for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Set-ProductAvailability"
+            "TelemetryEventName" = "Set-Flight"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
@@ -232,7 +273,7 @@ function Set-ProductAvailability
     }
 }
 
-function Get-ProductAvailability
+function Get-FeatureAvailability
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -241,9 +282,18 @@ function Get-ProductAvailability
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [string] $ProductAvailability,
-
         [string] $SubmissionId,
+
+        [Parameter(Mandatory)]
+        [string] $FeatureAvailabilityId,
+
+        [string] $FeatureGroupId,
+
+        [switch] $IncludeMarketStates,
+
+        [switch] $IncludeTrial,
+
+        [switch] $IncludePricing,
 
         [string] $ClientRequestId,
 
@@ -260,27 +310,39 @@ function Get-ProductAvailability
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::ProductAvailability = $ProductAvailability
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::FeatureAvailabilityId = $FeatureAvailabilityId
+            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
+            [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
+            [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
         $getParams = @()
+        $getParams += "marketStates=$IncludeMarketStates"
+        $getParams += "trial=$IncludeTrial"
+        $getParams += "pricing=$IncludePricing"
 
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
         }
 
+        if (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
+        {
+            $getParams += "featureGroupId=$FeatureGroupId"
+        }
+
         $params = @{
-            "UriFragment" = "products/$ProductId/ProductAvailability/$ProductAvailability`?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/featureavailabilities/$FeatureAvailabilityId`?" + ($getParams -join '&')
             "Method" = 'Get'
-            "Description" = "Getting product availability $ProductAvailabilityId for $ProductId"
+            "Description" = "Getting feature availability $FeatureAvailabilityId for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ProductAvailability"
+            "TelemetryEventName" = "Get-FeatureAvailability"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
@@ -291,24 +353,4 @@ function Get-ProductAvailability
     {
         throw
     }
-}
-
-function New-Audience
-{
-    [CmdletBinding(SupportsShouldProcess)]
-    param(
-        [Parameter(Mandatory)]
-        [ValidateSet('GroupId', 'PreviewSubscriptionsGroup', 'PrivateMarketplaceGroup')]
-        [string] $Type,
-
-        [Parameter(Mandatory)]
-        [string[]] $Value
-    )
-
-    $audience = @{
-        'type' = $Type
-        'values' = @($Value)
-    }
-
-    return $audience
 }

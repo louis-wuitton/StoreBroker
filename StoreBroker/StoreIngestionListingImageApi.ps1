@@ -44,7 +44,7 @@ function Get-ListingImages
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/images?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode/images`?" + ($getParams -join '&')
             "Description" = "Getting listing images for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
@@ -157,12 +157,12 @@ function New-ListingImage
 
         $body = $hashBody | ConvertTo-Json
 
-        $uriFragment = "products/$ProductId/listings/$LanguageCode/images?" + ($getParams -join '&')
+        $uriFragment = "products/$ProductId/listings/$LanguageCode/images`?" + ($getParams -join '&')
         $description = "Creating new $LanguageCode listing image for $ProductId"
         $isbulkOperation = $ListingObject.Count -gt 1
         if ($isbulkOperation)
         {
-            $uriFragment = "products/$ProductId/listings/$LanguageCode/images/bulk?" + ($getParams -join '&')
+            $uriFragment = "products/$ProductId/listings/$LanguageCode/images/bulk`?" + ($getParams -join '&')
             $description = "Bulk creating $LanguageCode listing images for $ProductId"
         }
 
@@ -261,7 +261,7 @@ function Remove-ListingImage
     }
 
     $params = @{
-        "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId?" + ($getParams -join '&')
+        "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId`?" + ($getParams -join '&')
         "Method" = "Delete"
         "Description" = "Deleting image $ImageId from the $LanguageCode listing for $ProductId"
         "ClientRequestId" = $ClientRequestId
@@ -382,7 +382,7 @@ function Set-ListingImage
         $body = $hashBody | ConvertTo-Json
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId`?" + ($getParams -join '&')
             "Method" = 'Put'
             "Description" = "Updating listing image $ImageId for $ProductId"
             "Body" = $body
@@ -450,7 +450,7 @@ function Get-ListingImage
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId`?" + ($getParams -join '&')
             "Method" = 'Get'
             "Description" = "Getting listing image $ImageId for $ProductId"
             "ClientRequestId" = $ClientRequestId

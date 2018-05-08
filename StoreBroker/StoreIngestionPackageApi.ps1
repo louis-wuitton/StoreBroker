@@ -46,7 +46,7 @@ function Get-ProductPackages
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packages?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/packages`?" + ($getParams -join '&')
             "Description" = "Getting packages for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
@@ -139,7 +139,7 @@ function New-ProductPackage
 
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packages?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/packages`?" + ($getParams -join '&')
             "Method" = 'Post'
             "Description" = "Creating new package for $ProductId"
             "Body" = $body
@@ -246,7 +246,7 @@ function Set-ProductPackage
 
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packages/$PackageId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/packages/$PackageId`?" + ($getParams -join '&')
             "Method" = 'Put'
             "Description" = "Updating package $PackageId for $ProductId"
             "Body" = $body
@@ -317,7 +317,7 @@ function Remove-ProductPackage
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packages/$PackageId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/packages/$PackageId`?" + ($getParams -join '&')
             "Method" = 'Delete'
             "Description" = "Removing package $PackageId for $ProductId"
             "ClientRequestId" = $ClientRequestId
@@ -386,7 +386,7 @@ function Get-ProductPackage
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packages/$PackageId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/packages/$PackageId`?" + ($getParams -join '&')
             "Method" = 'Get'
             "Description" = "Getting package $PackageId for $ProductId"
             "ClientRequestId" = $ClientRequestId

@@ -38,7 +38,7 @@ function Get-ProductProperties
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/properties?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/properties`?" + ($getParams -join '&')
             "Description" = "Getting properties for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
@@ -110,7 +110,7 @@ function New-ProductProperty
 
 
         $params = @{
-            "UriFragment" = "products/$ProductId/properties?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/properties`?" + ($getParams -join '&')
             "Method" = 'Post'
             "Description" = "Creating new property for $ProductId"
             "Body" = $body
@@ -192,7 +192,7 @@ function Set-ProductProperty
 
 
         $params = @{
-            "UriFragment" = "products/$ProductId/properties/$PropertyId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/properties/$PropertyId`?" + ($getParams -join '&')
             "Method" = 'Put'
             "Description" = "Updating property $PropertyId for $ProductId"
             "Body" = $body
@@ -254,7 +254,7 @@ function Get-ProductProperty
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/properties/$PropertyId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/properties/$PropertyId`?" + ($getParams -join '&')
             "Method" = 'Get'
             "Description" = "Getting property $PropertyId for $ProductId"
             "ClientRequestId" = $ClientRequestId

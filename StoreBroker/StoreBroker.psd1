@@ -20,6 +20,7 @@
         'StoreIngestionIapApi.ps1',
         'StoreIngestionFlightingApi.ps1',
 
+        'StoreIngestionFeatureAvailabilityApi.ps1',
         'StoreIngestionFeatureGroupApi.ps1',
         'StoreIngestionFlightApi.ps1',
         'StoreIngestionListingApi.ps1',
@@ -40,6 +41,13 @@
     PowerShellVersion = '4.0'
 
     FunctionsToExport = @(
+
+        'Get-FeatureAvailabilities',
+        'Get-FeatureAvailability',
+
+        'Get-FeatureGroups',
+        'Get-FeatureGroup',
+
         'Get-Flight',
         'New-Flight',
         'Delete-Flight',
@@ -71,9 +79,6 @@
         'Get-ProductPackageIdentity',
         'Get-ProductRelated',
         'Get-ProductStoreLink',
-
-        'Get-FeatureGroups',
-        'Get-FeatureGroup',
 
         'Get-Submissions',
         'Get-Submission',

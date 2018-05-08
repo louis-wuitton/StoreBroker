@@ -47,7 +47,7 @@ function Get-Listings
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/listings`?" + ($getParams -join '&')
             "Description" = "Getting listings for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
@@ -260,7 +260,7 @@ function New-Listing
         $body = $hashBody | ConvertTo-Json
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/listings`?" + ($getParams -join '&')
             "Method" = 'Post'
             "Description" = "Creating new $LanguageCode listing for $ProductId"
             "Body" = $body
@@ -545,7 +545,7 @@ function Set-Listing
         $body = $hashBody | ConvertTo-Json
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode`?" + ($getParams -join '&')
             "Method" = 'Put'
             "Description" = "Updating $LanguageCode listing for $ProductId"
             "Body" = $body
@@ -617,7 +617,7 @@ function Get-Listing
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode`?" + ($getParams -join '&')
             "Method" = 'Get'
             "Description" = "Getting $LanguageCode listing for $ProductId"
             "ClientRequestId" = $ClientRequestId

@@ -46,7 +46,7 @@ function Get-ProductPackageConfigurations
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packageConfigurations?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/packageConfigurations`?" + ($getParams -join '&')
             "Description" = "Getting package configurations for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
@@ -126,7 +126,7 @@ function New-ProductPackageConfiguration
 
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packageConfigurations?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/packageConfigurations`?" + ($getParams -join '&')
             "Method" = 'Post'
             "Description" = "Creating new package configuration for $ProductId"
             "Body" = $body
@@ -216,7 +216,7 @@ function Set-ProductPackageConfiguration
 
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packageConfigurations/$PackageConfigurationId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/packageConfigurations/$PackageConfigurationId`?" + ($getParams -join '&')
             "Method" = 'Put'
             "Description" = "Updating package configuration $PackageConfigurationId for $ProductId"
             "Body" = $body
@@ -286,7 +286,7 @@ function Get-ProductPackageConfiguration
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packageConfigurations/$PackageConfigurationId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/packageConfigurations/$PackageConfigurationId`?" + ($getParams -join '&')
             "Method" = 'Get'
             "Description" = "Getting package configuration $PackageConfigurationId for $ProductId"
             "ClientRequestId" = $ClientRequestId

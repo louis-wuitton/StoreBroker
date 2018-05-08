@@ -44,7 +44,7 @@ function Get-ListingVideos
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/videos?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode/videos`?" + ($getParams -join '&')
             "Description" = "Getting listing videos for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
@@ -182,12 +182,12 @@ function New-ListingVideo
 
         $body = $hashBody | ConvertTo-Json
 
-        $uriFragment = "products/$ProductId/listings/$LanguageCode/videos?" + ($getParams -join '&')
+        $uriFragment = "products/$ProductId/listings/$LanguageCode/videos`?" + ($getParams -join '&')
         $description = "Creating new $LanguageCode listing videos for $ProductId"
         $isbulkOperation = $ListingObject.Count -gt 1
         if ($isbulkOperation)
         {
-            $uriFragment = "products/$ProductId/listings/$LanguageCode/videos/bulk?" + ($getParams -join '&')
+            $uriFragment = "products/$ProductId/listings/$LanguageCode/videos/bulk`?" + ($getParams -join '&')
             $description = "Bulk creating $LanguageCode listing videos for $ProductId"
         }
 
@@ -286,7 +286,7 @@ function Remove-ListingVideo
     }
 
     $params = @{
-        "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId?" + ($getParams -join '&')
+        "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId`?" + ($getParams -join '&')
         "Method" = "Delete"
         "Description" = "Deleting image $ImageId from the $LanguageCode listing for $ProductId"
         "ClientRequestId" = $ClientRequestId
@@ -428,7 +428,7 @@ function Set-ListingVideo
         $body = $hashBody | ConvertTo-Json
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/Videos/$VideoId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode/Videos/$VideoId`?" + ($getParams -join '&')
             "Method" = 'Put'
             "Description" = "Updating listing video $VideoId for $ProductId"
             "Body" = $body
@@ -496,7 +496,7 @@ function Get-ListingVideo
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/videos/$VideoId?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode/videos/$VideoId`?" + ($getParams -join '&')
             "Method" = 'Get'
             "Description" = "Getting listing video $VideoId for $ProductId"
             "ClientRequestId" = $ClientRequestId
