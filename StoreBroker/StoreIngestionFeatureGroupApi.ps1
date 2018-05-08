@@ -1,3 +1,11 @@
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerFeatureGroupProperty
+   {
+       resourceType,
+       revisionToken
+   }
+"@
+
 function Get-FeatureGroups
 {
     [CmdletBinding(SupportsShouldProcess)]

@@ -1,4 +1,13 @@
-$script:FlightObjectType = 'PackageFlight'
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerFlightProperty
+   {
+       name,
+       groupIds,
+       relativeRank,
+       resourceType,
+       revisionToken
+   }
+"@
 
 function Get-Flights
 {
@@ -99,22 +108,17 @@ function New-Flight
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        $localObject = DeepCopy-Object -Object $Object
-        if ($localObject.type -ne $script:FlightObjectType)
-        {
-            $localObject |
-                Add-Member -Type NoteProperty -Name 'resourceType' -Value $script:FlightObjectType
-        }
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::PackageFlight
 
-        $body = $localObject
-        if ($null -eq $body)
+        $hashBody = $Object
+        if ($null -eq $hashBody)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody['resourceType'] = $script:FlightObjectType
-            $hashBody['name'] = $Name
-            $hashBody['groupIds'] = @($GroupId)
-            $hashBody['relativeRank'] = $RelativeRank
+            $hashBody[[StoreBrokerFlightProperty]::resourceType] = [StoreBrokerResourceType]::PackageFlight
+            $hashBody[[StoreBrokerFlightProperty]::name] = $Name
+            $hashBody[[StoreBrokerFlightProperty]::groupIds] = @($GroupId)
+            $hashBody[[StoreBrokerFlightProperty]::relativeRank] = $RelativeRank
         }
 
         $body = $hashBody | ConvertTo-Json
@@ -247,23 +251,18 @@ function Set-Flight
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        $localObject = DeepCopy-Object -Object $Object
-        if ($localObject.type -ne $script:FlightObjectType)
-        {
-            $localObject |
-                Add-Member -Type NoteProperty -Name 'resourceType' -Value $script:FlightObjectType
-        }
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::PackageFlight
 
-        $body = $localObject
-        if ($null -eq $body)
+        $hashBody = $Object
+        if ($null -eq $hashBody)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody['resourceType'] = $script:FlightObjectType
-            $hashBody['name'] = $Name
-            $hashBody['groupIds'] = @($GroupId)
-            $hashBody['relativeRank'] = $RelativeRank
-            $hashBody['revisionToken'] = $RevisionToken
+            $hashBody[[StoreBrokerFlightProperty]::resourceType] = [StoreBrokerResourceType]::PackageFlight
+            $hashBody[[StoreBrokerFlightProperty]::name] = $Name
+            $hashBody[[StoreBrokerFlightProperty]::groupIds] = @($GroupId)
+            $hashBody[[StoreBrokerFlightProperty]::relativeRank] = $RelativeRank
+            $hashBody[[StoreBrokerFlightProperty]::revisionToken] = $RevisionToken
         }
 
         $body = $hashBody | ConvertTo-Json

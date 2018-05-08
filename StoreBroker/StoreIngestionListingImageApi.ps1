@@ -1,3 +1,13 @@
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerListingImageProperty
+   {
+       fileName,
+       resourceType,
+       revisionToken,
+       state
+   }
+"@
+
 function Get-ListingImages
 {
     [CmdletBinding(SupportsShouldProcess)]
@@ -37,7 +47,6 @@ function Get-ListingImages
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -83,7 +92,7 @@ function New-ListingImage
         [Parameter(
             Mandatory,
             ParameterSetName="Object")]
-        [PSCustomObject[]] $ListingObject,
+        [PSCustomObject[]] $Object,
 
         [Parameter(ParameterSetName="Individual")]
         [string] $FileName,
@@ -127,31 +136,28 @@ function New-ListingImage
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
         }
 
-        $body = $ListingObject
-        if ($null -eq $body)
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ListingImage
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
+            $hashBody[[StoreBrokerListingImageProperty]::resourceType] = [StoreBrokerResourceType]::ListingImage
 
             if (-not [String]::IsNullOrWhiteSpace($FileName))
             {
-                $hashBody['fileName'] = $FileName
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($Type))
-            {
-                $hashBody['type'] = $Type
+                $hashBody[[StoreBrokerListingImageProperty]::fileName] = $FileName
             }
 
             if (-not [String]::IsNullOrWhiteSpace($State))
             {
-                $hashBody['state'] = $State
+                $hashBody[[StoreBrokerListingImageProperty]::state] = $State
             }
         }
 
@@ -197,7 +203,7 @@ function New-ListingImage
                     "TelemetryProperties" = $telemetryProperties
                     "NoStatus" = $NoStatus
                 }
-    
+
                 $finalResult += Invoke-SBRestMethodMultipleResult @params
             }
 
@@ -254,7 +260,6 @@ function Remove-ListingImage
     }
 
     $getParams = @()
-
     if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
     {
         $getParams += "submissionId=$SubmissionId"
@@ -298,7 +303,7 @@ function Set-ListingImage
         [Parameter(
             Mandatory,
             ParameterSetName="Object")]
-        [PSCustomObject] $ListingObject,
+        [PSCustomObject] $Object,
 
         [Parameter(ParameterSetName="Individual")]
         [string] $FileName,
@@ -347,35 +352,32 @@ function Set-ListingImage
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
         }
 
-        $body = $ListingObject
-        if ($null -eq $body)
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ListingImage
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody['revisionToken'] = $RevisionToken
+            $hashBody[[StoreBrokerListingImageProperty]::revisionToken] = $RevisionToken
+            $hashBody[[StoreBrokerListingImageProperty]::resourceType] = [StoreBrokerResourceType]::ListingImage
 
             # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace for any
             # of these checks, because we need a way to be able to clear these notes out.
             #So, a $null means do nothing, while empty string / whitespace means clear out the value.
             if ($null -ne $FileName)
             {
-                $hashBody['fileName'] = $FileName
-            }
-
-            if ($null -ne $Type)
-            {
-                $hashBody['type'] = $Type
+                $hashBody[[StoreBrokerListingImageProperty]::fileName] = $FileName
             }
 
             if ($null -ne $State)
             {
-                $hashBody['state'] = $State
+                $hashBody[[StoreBrokerListingImageProperty]::state] = $State
             }
         }
 
@@ -443,7 +445,6 @@ function Get-ListingImage
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"

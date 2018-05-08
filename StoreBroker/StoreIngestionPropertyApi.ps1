@@ -31,7 +31,6 @@ function Get-ProductProperties
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -91,7 +90,6 @@ function New-ProductProperty
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -100,9 +98,10 @@ function New-ProductProperty
         # Convert the input into a Json body.
         $hashBody = @{}
 
+        # TODO: Not sure what I should really be doing here.
         if (-not [String]::IsNullOrWhiteSpace($Type))
         {
-            $hashBody['type'] = $Type
+            $hashBody['resourceType'] = $Type
         }
 
         $body = $hashBody | ConvertTo-Json
@@ -172,7 +171,6 @@ function Set-ProductProperty
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -184,7 +182,8 @@ function Set-ProductProperty
 
         if (-not [String]::IsNullOrWhiteSpace($Type))
         {
-            $hashBody['type'] = $Type
+            # TODO: Not sure what I should really be doing here.
+            $hashBody['resourceType'] = $Type
         }
 
         $body = $hashBody | ConvertTo-Json
@@ -247,7 +246,6 @@ function Get-ProductProperty
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"

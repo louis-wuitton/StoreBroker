@@ -49,6 +49,7 @@ Add-Type -TypeDefinition @"
       PropertyId,
       ReplacePackages,
       RequestId,
+      ResourceType,
       RetryStatusCode,
       RevisionToken,
       SandboxId,

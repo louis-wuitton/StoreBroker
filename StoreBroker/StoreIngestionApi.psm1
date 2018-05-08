@@ -62,6 +62,19 @@ when calling {0}, or by specifying the
 -TargetPublishMode $script:keywordManual parameter when calling {0}.
 "@
 
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerResourceType
+   {
+       FeatureAvailability,
+       Listing,
+       ListingImage,
+       ListingVideo,
+       Package,
+       PackageConfiguration,
+       PackageFlight,
+   }
+"@
+
 function Initialize-StoreIngestionApiGlobalVariables
 {
 <#
@@ -2403,6 +2416,7 @@ function Invoke-SBRestMethodMultipleResult
 
     $finalResult = @()
 
+    $currentDescription = $Description
     $nextLink = $UriFragment
 
     try
@@ -2411,7 +2425,7 @@ function Invoke-SBRestMethodMultipleResult
             $params = @{
                 "UriFragment" = $nextLink
                 "Method" = 'Get'
-                "Description" = $Description
+                "Description" = $currentDescription
                 "ClientRequestId" = $ClientRequestId
                 "CorrelationId" = $CorrelationId
                 "AccessToken" = $AccessToken
@@ -2423,6 +2437,7 @@ function Invoke-SBRestMethodMultipleResult
             $result = Invoke-SBRestMethod @params
             $finalResult += $result.value
             $nextLink = $result.nextLink
+            $currentDescription = "$Description (getting additional results)"
         }
         until ($SinglePage -or ([String]::IsNullOrWhiteSpace($nextLink)))
 
@@ -2434,7 +2449,7 @@ function Invoke-SBRestMethodMultipleResult
             Set-TelemetryEvent -EventName $TelemetryEventName -Properties $TelemetryProperties -Metrics $telemetryMetrics
         }
 
-        return $finalResult
+        return @($finalResult)
     }
     catch
     {
@@ -2490,5 +2505,22 @@ function Remove-UnofficialSubmissionProperties
         ) | ForEach-Object {
             $package.PSObject.Properties.Remove($_)
         }
+    }
+}
+
+function Test-ResourceType
+{
+    [CmdletBinding()]
+    param(
+        [PSCustomObject] $Object,
+
+        [string] $ResourceType
+    )
+
+    if (($null -ne $Object) -and ($Object.resourceType -ne $ResourceType))
+    {
+        $message = "Expected an object with a resourceType of [$ResourceType], got [$($Object.resourceType)]."
+        Write-Log -Message $message -Level Error
+        throw $message
     }
 }

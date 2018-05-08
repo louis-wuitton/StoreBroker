@@ -34,7 +34,6 @@ function Get-ProductPackages
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -67,7 +66,9 @@ function Get-ProductPackages
 
 function New-ProductPackage
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
@@ -77,12 +78,17 @@ function New-ProductPackage
 
         [string] $FeatureGroupId,
 
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Object")]
+        [PSCustomObject] $Object,
+
+        [Parameter(ParameterSetName="Individual")]
         [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
         [string] $State = 'PendingUpload',
 
+        [Parameter(ParameterSetName="Individual")]
         [string] $Version,
-
-        [string] $Type,
 
         [string] $ClientRequestId,
 
@@ -103,13 +109,11 @@ function New-ProductPackage
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::State = $State
             [StoreBrokerTelemetryProperty]::Version = $Version
-            [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -120,18 +124,20 @@ function New-ProductPackage
             $getParams += "featureGroupId=$FeatureGroupId"
         }
 
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody['state'] = $State
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::Package
 
-        if (-not [String]::IsNullOrWhiteSpace($Version))
+        $hashBody = $Object
+        if ($null -eq $hashBody)
         {
-            $hashBody['version'] = $Version
-        }
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody['resourceType'] = [StoreBrokerResourceType]::Package
+            $hashBody['state'] = $State
 
-        if (-not [String]::IsNullOrWhiteSpace($Type))
-        {
-            $hashBody['type'] = $Type
+            if (-not [String]::IsNullOrWhiteSpace($Version))
+            {
+                $hashBody['version'] = $Version
+            }
         }
 
         $body = $hashBody | ConvertTo-Json
@@ -161,7 +167,9 @@ function New-ProductPackage
 
 function Set-ProductPackage
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
@@ -174,15 +182,22 @@ function Set-ProductPackage
 
         [string] $FeatureGroupId,
 
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Object")]
+        [PSCustomObject] $Object,
+
+        [Parameter(ParameterSetName="Individual")]
         [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed', 'NoChange')]
         [string] $State = 'PendingUpload',
 
+        [Parameter(ParameterSetName="Individual")]
         [string] $Version,
 
-        [Parameter(Mandatory)]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $RevisionToken,
-
-        [string] $Type,
 
         [string] $ClientRequestId,
 
@@ -205,14 +220,11 @@ function Set-ProductPackage
             [StoreBrokerTelemetryProperty]::State = $State
             [StoreBrokerTelemetryProperty]::Version = $Version
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
-            [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
         $getParams = @()
-        $hashBody['revisionToken'] = $RevisionToken
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -223,25 +235,29 @@ function Set-ProductPackage
             $getParams += "featureGroupId=$FeatureGroupId"
         }
 
-        # Convert the input into a Json body.
-        $hashBody = @{}
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::Package
 
-        if ('NoChange' -ne $State)
+        $hashBody = $Object
+        if ($null -eq $hashBody)
         {
-            $hashBody['state'] = $State
-        }
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody['resourceType'] = [StoreBrokerResourceType]::Package
+            $hashBody['revisionToken'] = $RevisionToken
 
-        if (-not [String]::IsNullOrWhiteSpace($Version))
-        {
-            $hashBody['version'] = $Version
-        }
+            if ('NoChange' -ne $State)
+            {
+                $hashBody['state'] = $State
+            }
 
-        if (-not [String]::IsNullOrWhiteSpace($Type))
-        {
-            $hashBody['type'] = $Type
+            if (-not [String]::IsNullOrWhiteSpace($Version))
+            {
+                $hashBody['version'] = $Version
+            }
         }
 
         $body = $hashBody | ConvertTo-Json
+
         Write-Log -Message "Body: $body" -Level Verbose
 
 
@@ -305,7 +321,6 @@ function Remove-ProductPackage
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -374,7 +389,6 @@ function Get-ProductPackage
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"

@@ -42,7 +42,6 @@ function Get-Submissions
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($FlightId))
         {
             $getParams += "flightId=$FlightId"
@@ -748,7 +747,6 @@ function Submit-Submission
     }
 
     $getParams = @()
-
     if ($Auto)
     {
         $getParams += "auto=$Auto"

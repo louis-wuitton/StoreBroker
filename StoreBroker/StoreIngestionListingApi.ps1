@@ -1,3 +1,26 @@
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerListingProperty
+   {
+       description,
+       devStudio,
+       features,
+       keywords,
+       languageCode,
+       licenseTerm,
+       minimumHardware,
+       recommendedHardware,
+       releaseNotes,
+       resourceType,
+       revisionToken,
+       shortDescription,
+       shortTitle,
+       shouldOverridePackageLogos,
+       title,
+       trademark,
+       voiceTitle
+   }
+"@
+
 function Get-Listings
 {
     [CmdletBinding(SupportsShouldProcess)]
@@ -35,7 +58,6 @@ function Get-Listings
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -132,9 +154,6 @@ function New-Listing
         [Parameter(ParameterSetName="Individual")]
         [string] $ShortDescription,
 
-        [Parameter(ParameterSetName="Individual")]
-        [string] $Type,
-
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -158,7 +177,6 @@ function New-Listing
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -169,66 +187,69 @@ function New-Listing
             $getParams += "featureGroupId=$FeatureGroupId"
         }
 
-        $body = $Object
-        if ($null -eq $body)
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::Listing
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody['languageCode'] = $LanguageCode
+            $hashBody[[StoreBrokerListingProperty]::resourceType] = [StoreBrokerResourceType]::Listing
+            $hashBody[[StoreBrokerListingProperty]::languageCode] = $LanguageCode
 
             if (-not [String]::IsNullOrWhiteSpace($Title))
             {
-                $hashBody['title'] = $Title
+                $hashBody[[StoreBrokerListingProperty]::title] = $Title
             }
 
             if (-not [String]::IsNullOrWhiteSpace($ShortTitle))
             {
-                $hashBody['shortTitle'] = $ShortTitle
+                $hashBody[[StoreBrokerListingProperty]::shortTitle] = $ShortTitle
             }
 
             if (-not [String]::IsNullOrWhiteSpace($VoiceTitle))
             {
-                $hashBody['voiceTitle'] = $VoiceTitle
+                $hashBody[[StoreBrokerListingProperty]::voiceTitle] = $VoiceTitle
             }
 
             if (-not [String]::IsNullOrWhiteSpace($ReleaseNotes))
             {
-                $hashBody['releaseNotes'] = $ReleaseNotes
+                $hashBody[[StoreBrokerListingProperty]::releaseNotes] = $ReleaseNotes
             }
 
             if ($null -ne $Keywords)
             {
-                $hashBody['keywords'] = @($Keywords)
+                $hashBody[[StoreBrokerListingProperty]::keywords] = @($Keywords)
             }
 
             if (-not [String]::IsNullOrWhiteSpace($Trademark))
             {
-                $hashBody['trademark'] = $Trademark
+                $hashBody[[StoreBrokerListingProperty]::trademark] = $Trademark
             }
 
             if (-not [String]::IsNullOrWhiteSpace($LicenseTerm))
             {
-                $hashBody['licenseTerm'] = $LicenseTerm
+                $hashBody[[StoreBrokerListingProperty]::licenseTerm] = $LicenseTerm
             }
 
             if ($null -ne $Features)
             {
-                $hashBody['features'] = @($Features)
+                $hashBody[[StoreBrokerListingProperty]::features] = @($Features)
             }
 
             if ($null -ne $MinimumHardware)
             {
-                $hashBody['minimumHardware'] = @($MinimumHardware)
+                $hashBody[[StoreBrokerListingProperty]::minimumHardware] = @($MinimumHardware)
             }
 
             if ($null -ne $RecommendedHardware)
             {
-                $hashBody['recommendedHardware'] = @($RecommendedHardware)
+                $hashBody[[StoreBrokerListingProperty]::recommendedHardware] = @($RecommendedHardware)
             }
 
             if (-not [String]::IsNullOrWhiteSpace($DevStudio))
             {
-                $hashBody['devStudio'] = $DevStudio
+                $hashBody[[StoreBrokerListingProperty]::devStudio] = $DevStudio
             }
 
             # We only set the value if the user explicitly provided a value for this parameter
@@ -237,23 +258,18 @@ function New-Listing
             # existing value.
             if ($null -ne $PSBoundParameters['ShouldOverridePackageLogos'])
             {
-                $hashBody['shouldOverridePackageLogos'] = $ShouldOverridePackageLogos
+                $hashBody[[StoreBrokerListingProperty]::shouldOverridePackageLogos] = $ShouldOverridePackageLogos
                 $telemetryProperties[[StoreBrokerTelemetryProperty]::ShouldOverridePackageLogos] = $ShouldOverridePackageLogos
             }
 
             if (-not [String]::IsNullOrWhiteSpace($Description))
             {
-                $hashBody['description'] = $Description
+                $hashBody[[StoreBrokerListingProperty]::description] = $Description
             }
 
             if (-not [String]::IsNullOrWhiteSpace($ShortDescription))
             {
-                $hashBody['shortDescription'] = $ShortDescription
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($Type))
-            {
-                $hashBody['type'] = $Type
+                $hashBody[[StoreBrokerListingProperty]::shortDescription] = $ShortDescription
             }
         }
 
@@ -320,7 +336,6 @@ function Remove-Listing
     }
 
     $getParams = @()
-
     if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
     {
         $getParams += "submissionId=$SubmissionId"
@@ -417,9 +432,6 @@ function Set-Listing
             ParameterSetName="Individual")]
         [string] $RevisionToken,
 
-        [Parameter(ParameterSetName="Individual")]
-        [string] $Type,
-
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -444,76 +456,78 @@ function Set-Listing
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
         }
 
-        $body = $Object
-        if ($null -eq $body)
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::Listing
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody['languageCode'] = $LanguageCode
-            $hashBody['revisionToken'] = $RevisionToken
+            $hashBody[[StoreBrokerListingProperty]::languageCode] = $LanguageCode
+            $hashBody[[StoreBrokerListingProperty]::resourceType] = [StoreBrokerResourceType]::Listing
+            $hashBody[[StoreBrokerListingProperty]::revisionToken] = $RevisionToken
 
             # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace for any
             # of these checks, because we need a way to be able to clear these notes out.
             #So, a $null means do nothing, while empty string / whitespace means clear out the value.
             if ($null -ne $Title)
             {
-                $hashBody['title'] = $Title
+                $hashBody[[StoreBrokerListingProperty]::title] = $Title
             }
 
             if ($null -ne $ShortTitle)
             {
-                $hashBody['shortTitle'] = $ShortTitle
+                $hashBody[[StoreBrokerListingProperty]::shortTitle] = $ShortTitle
             }
 
             if ($null -ne $VoiceTitle)
             {
-                $hashBody['voiceTitle'] = $VoiceTitle
+                $hashBody[[StoreBrokerListingProperty]::voiceTitle] = $VoiceTitle
             }
 
             if ($null -ne $ReleaseNotes)
             {
-                $hashBody['releaseNotes'] = $ReleaseNotes
+                $hashBody[[StoreBrokerListingProperty]::releaseNotes] = $ReleaseNotes
             }
 
             if ($null -ne $Keywords)
             {
-                $hashBody['keywords'] = @($Keywords)
+                $hashBody[[StoreBrokerListingProperty]::keywords] = @($Keywords)
             }
 
             if ($null -ne $Trademark)
             {
-                $hashBody['trademark'] = $Trademark
+                $hashBody[[StoreBrokerListingProperty]::trademark] = $Trademark
             }
 
             if ($null -ne $LicenseTerm)
             {
-                $hashBody['licenseTerm'] = $LicenseTerm
+                $hashBody[[StoreBrokerListingProperty]::licenseTerm] = $LicenseTerm
             }
 
             if ($null -ne $Features)
             {
-                $hashBody['features'] = @($Features)
+                $hashBody[[StoreBrokerListingProperty]::features] = @($Features)
             }
 
             if ($null -ne $MinimumHardware)
             {
-                $hashBody['minimumHardware'] = @($MinimumHardware)
+                $hashBody[[StoreBrokerListingProperty]::minimumHardware] = @($MinimumHardware)
             }
 
             if ($null -ne $RecommendedHardware)
             {
-                $hashBody['recommendedHardware'] = @($RecommendedHardware)
+                $hashBody[[StoreBrokerListingProperty]::recommendedHardware] = @($RecommendedHardware)
             }
 
             if ($null -ne $DevStudio)
             {
-                $hashBody['devStudio'] = $DevStudio
+                $hashBody[[StoreBrokerListingProperty]::devStudio] = $DevStudio
             }
 
             # We only set the value if the user explicitly provided a value for this parameter
@@ -522,23 +536,18 @@ function Set-Listing
             # existing value.
             if ($null -ne $PSBoundParameters['ShouldOverridePackageLogos'])
             {
-                $hashBody['shouldOverridePackageLogos'] = $ShouldOverridePackageLogos
+                $hashBody[[StoreBrokerListingProperty]::shouldOverridePackageLogos] = $ShouldOverridePackageLogos
                 $telemetryProperties[[StoreBrokerTelemetryProperty]::ShouldOverridePackageLogos] = $ShouldOverridePackageLogos
             }
 
             if ($null -ne $Description)
             {
-                $hashBody['description'] = $Description
+                $hashBody[[StoreBrokerListingProperty]::description] = $Description
             }
 
             if ($null -ne $ShortDescription)
             {
-                $hashBody['shortDescription'] = $ShortDescription
-            }
-
-            if ($null -ne $Type)
-            {
-                $hashBody['type'] = $Type
+                $hashBody[[StoreBrokerListingProperty]::shortDescription] = $ShortDescription
             }
         }
 
@@ -605,7 +614,6 @@ function Get-Listing
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"

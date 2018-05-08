@@ -1,4 +1,10 @@
-$script:FeatureAvailabilityObjectType = 'FeatureAvailability'
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerFeatureAvailabilityProperty
+   {
+       resourceType,
+       revisionToken
+   }
+"@
 
 function Get-FeatureAvailabilities
 {
@@ -130,15 +136,9 @@ function New-FeatureAvailability
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        $localObject = DeepCopy-Object -Object $Object
-        if ($localObject.type -ne $script:FeatureAvailabilityObjectType)
-        {
-            $localObject |
-                Add-Member -Type NoteProperty -Name 'resourceType' -Value $script:FeatureAvailabilityObjectType
-        }
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::FeatureAvailability
 
-        $body = $localObject
-        $body = $hashBody | ConvertTo-Json -Depth $script:jsonConversionDepth
+        $body = $Object| ConvertTo-Json -Depth $script:jsonConversionDepth
 
         $params = @{
             "UriFragment" = "products/$ProductId/featureavailabilities"
@@ -212,15 +212,9 @@ function Set-FeatureAvailability
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        $localObject = DeepCopy-Object -Object $Object
-        if ($localObject.type -ne $script:FeatureAvailabilityObjectType)
-        {
-            $localObject |
-                Add-Member -Type NoteProperty -Name 'resourceType' -Value $script:FeatureAvailabilityObjectType
-        }
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::FeatureAvailability
 
-        $body = $localObject
-        $body = $hashBody | ConvertTo-Json -Depth $script:jsonConversionDepth
+        $body = $Object | ConvertTo-Json -Depth $script:jsonConversionDepth
 
         $params = @{
             "UriFragment" = "products/$ProductId/featureavailabilities/$FeatureAvailabilityId`?" + ($getParams -join '&')

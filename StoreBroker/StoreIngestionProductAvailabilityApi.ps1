@@ -31,7 +31,6 @@ function Get-ProductAvailabilities
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -97,7 +96,6 @@ function New-ProductAvailability
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -187,7 +185,6 @@ function Set-ProductAvailability
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -267,7 +264,6 @@ function Get-ProductAvailability
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -298,15 +294,11 @@ function New-Audience
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('GroupId', 'PreviewSubscriptionsGroup', 'PrivateMarketplaceGroup')]
-        [string] $Type,
-
-        [Parameter(Mandatory)]
         [string[]] $Value
     )
 
     $audience = @{
-        'type' = $Type
+        'type' = 'GroupId'
         'values' = @($Value)
     }
 

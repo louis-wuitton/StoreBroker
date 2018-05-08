@@ -105,7 +105,6 @@ function Get-Products
         $description = "Getting information for all products"
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($AppId))
         {
             $getParams += "externalId=$AppId"
@@ -140,7 +139,9 @@ function Get-Products
 
 function New-Product
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Object")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
     param(
         [Parameter(Mandatory)]
@@ -150,7 +151,14 @@ function New-Product
         [Parameter(Mandatory)]
         [string] $Name,
 
-        [Parameter(Mandatory)]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Object")]
+        [PSCustomObject[]] $Object,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [ValidateSet('Application', 'AvatarItem', 'Bundle', 'Consumable', 'ManagedConsumable', 'Durable', 'DurableWithBits', 'Subscription', 'SeasonPass', 'InternetOfThings')]
         [string] $Type,
 
@@ -158,7 +166,7 @@ function New-Product
 
         [string] $CorrelationId,
 
-        [string] $AccessToken = "",
+        [string] $AccessToken,
 
         [switch] $NoStatus
     )
@@ -167,16 +175,16 @@ function New-Product
 
     # Convert the input into a Json body.
     $hashBody = @{}
-    $hashBody["id"] = $ProductId
-    $hashBody["type"] = $Type
-    $hashBody["name"] = $Name
+    $hashBody[[StoreBrokerPropertyNames]::id] = $ProductId
+    $hashBody[[StoreBrokerPropertyNames]::resourceType] = $Type
+    $hashBody[[StoreBrokerPropertyNames]::name] = $Name
 
     $body = $hashBody | ConvertTo-Json
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
         [StoreBrokerTelemetryProperty]::Name = $Name
-        [StoreBrokerTelemetryProperty]::Type = $Type
+        [StoreBrokerTelemetryProperty]::ResourceType = $Type
         [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }

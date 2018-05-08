@@ -34,7 +34,6 @@ function Get-ProductPackageConfigurations
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -77,8 +76,6 @@ function New-ProductPackageConfiguration
 
         [string] $FeatureGroupId,
 
-        [string] $Type,
-
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -96,13 +93,11 @@ function New-ProductPackageConfiguration
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-            [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -115,11 +110,7 @@ function New-ProductPackageConfiguration
 
         # Convert the input into a Json body.
         $hashBody = @{}
-
-        if (-not [String]::IsNullOrWhiteSpace($Type))
-        {
-            $hashBody['type'] = $Type
-        }
+        $hashBody[[StoreBrokerPackageConfigurationProperty]::resourceType] = [StoreBrokerResourceType]::PackageConfiguration
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
@@ -164,8 +155,6 @@ function Set-ProductPackageConfiguration
         [Parameter(Mandatory)]
         [string] $RevisionToken,
 
-        [string] $Type,
-
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -185,13 +174,11 @@ function Set-ProductPackageConfiguration
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
-            [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -204,12 +191,8 @@ function Set-ProductPackageConfiguration
 
         # Convert the input into a Json body.
         $hashBody = @{}
+        $hashBody[[StoreBrokerPackageConfigurationProperty]::resourceType] = [StoreBrokerResourceType]::PackageConfiguration
         $hashBody['revisionToken'] = $RevisionToken
-
-        if (-not [String]::IsNullOrWhiteSpace($Type))
-        {
-            $hashBody['type'] = $Type
-        }
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
@@ -274,7 +257,6 @@ function Get-ProductPackageConfiguration
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"

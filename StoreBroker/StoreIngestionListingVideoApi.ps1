@@ -1,3 +1,23 @@
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerListingVideoProperty
+   {
+       fileName,
+       resourceType,
+       revisionToken,
+       state,
+       thumbnail
+   }
+"@
+
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerListingVideoThumbnailProperty
+   {
+       fileName,
+       description,
+       state,
+       title
+   }
+"@
 function Get-ListingVideos
 {
     [CmdletBinding(SupportsShouldProcess)]
@@ -37,7 +57,6 @@ function Get-ListingVideos
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
@@ -83,7 +102,7 @@ function New-ListingVideo
         [Parameter(
             Mandatory,
             ParameterSetName="Object")]
-        [PSCustomObject[]] $ListingObject,
+        [PSCustomObject[]] $Object,
 
         [Parameter(ParameterSetName="Individual")]
         [string] $FileName,
@@ -122,33 +141,34 @@ function New-ListingVideo
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-            [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::State = $State
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
         }
 
-        $body = $ListingObject
-        if ($null -eq $body)
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ListingVideo
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
+            $hashBody[[StoreBrokerListingVideoProperty]::resourceType] = [StoreBrokerResourceType]::ListingVideo
 
             if (-not [String]::IsNullOrWhiteSpace($FileName))
             {
-                $hashBody['fileName'] = $FileName
+                $hashBody[[StoreBrokerListingVideoProperty]::fileName] = $FileName
             }
 
             if (-not [String]::IsNullOrWhiteSpace($State))
             {
-                $hashBody['state'] = $State
+                $hashBody[[StoreBrokerListingVideoProperty]::state] = $State
             }
 
             if ((-not [String]::IsNullOrWhiteSpace($ThumbnailFileName)) -or
@@ -156,29 +176,28 @@ function New-ListingVideo
                 (-not [String]::IsNullOrWhiteSpace($ThumbnailDescription)) -or
                 (-not [String]::IsNullOrWhiteSpace($ThumbnailState)))
             {
-                $hashBody['thumbnail'] = @{}
+                $hashBody[[StoreBrokerListingVideoProperty]::thumbnail] = @{}
                 if (-not [String]::IsNullOrWhiteSpace($ThumbnailFileName))
                 {
-                    $hashBody['thumbnail']['fileName'] = $ThumbnailFileName
+                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::fileName] = $ThumbnailFileName
                 }
 
                 if (-not [String]::IsNullOrWhiteSpace($ThumbnailTitle))
                 {
-                    $hashBody['thumbnail']['title'] = $ThumbnailTitle
+                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::title] = $ThumbnailTitle
                 }
 
                 if (-not [String]::IsNullOrWhiteSpace($ThumbnailDescription))
                 {
-                    $hashBody['thumbnail']['description'] = $ThumbnailDescription
+                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::description] = $ThumbnailDescription
                 }
 
                 if (-not [String]::IsNullOrWhiteSpace($ThumbnailState))
                 {
-                    $hashBody['thumbnail']['state'] = $ThumbnailState
+                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::state] = $ThumbnailState
                 }
             }
         }
-
 
         $body = $hashBody | ConvertTo-Json
 
@@ -222,7 +241,7 @@ function New-ListingVideo
                     "TelemetryProperties" = $telemetryProperties
                     "NoStatus" = $NoStatus
                 }
-    
+
                 $finalResult += Invoke-SBRestMethodMultipleResult @params
             }
 
@@ -279,7 +298,6 @@ function Remove-ListingVideo
     }
 
     $getParams = @()
-
     if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
     {
         $getParams += "submissionId=$SubmissionId"
@@ -323,7 +341,7 @@ function Set-ListingVideo
         [Parameter(
             Mandatory,
             ParameterSetName="Object")]
-        [PSCustomObject] $ListingObject,
+        [PSCustomObject] $Object,
 
         [Parameter(ParameterSetName="Individual")]
         [string] $FileName,
@@ -374,14 +392,15 @@ function Set-ListingVideo
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
         }
 
-        $body = $ListingObject
-        if ($null -eq $body)
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ListingVideo
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
@@ -489,7 +508,6 @@ function Get-ListingVideo
         }
 
         $getParams = @()
-
         if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         {
             $getParams += "submissionId=$SubmissionId"
