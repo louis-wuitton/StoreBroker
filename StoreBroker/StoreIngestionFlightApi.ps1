@@ -62,7 +62,7 @@ function New-Flight
         [Parameter(
             Mandatory,
             ParameterSetName="Object")]
-        [PSCustomObject] $FlightObject,
+        [PSCustomObject] $Object,
 
         [Parameter(
             Mandatory,
@@ -99,19 +99,19 @@ function New-Flight
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        $localFlightObject = DeepCopy-Object -Object $ListingObject
-        if ($localFlightObject.type -ne $objectType)
+        $localObject = DeepCopy-Object -Object $Object
+        if ($localObject.type -ne $script:FlightObjectType)
         {
-            $localFlightObject |
-                Add-Member -Type NoteProperty -Name 'type' -Value $script:FlightObjectType
+            $localObject |
+                Add-Member -Type NoteProperty -Name 'resourceType' -Value $script:FlightObjectType
         }
 
-        $body = $localFlightObject
+        $body = $localObject
         if ($null -eq $body)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody['type'] = $script:FlightObjectType
+            $hashBody['resourceType'] = $script:FlightObjectType
             $hashBody['name'] = $Name
             $hashBody['groupIds'] = @($GroupId)
             $hashBody['relativeRank'] = $RelativeRank
@@ -203,7 +203,7 @@ function Set-Flight
         [Parameter(
             Mandatory,
             ParameterSetName="Object")]
-        [PSCustomObject] $FlightObject,
+        [PSCustomObject] $Object,
 
         [Parameter(
             Mandatory,
@@ -247,19 +247,19 @@ function Set-Flight
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        $localFlightObject = DeepCopy-Object -Object $ListingObject
-        if ($localFlightObject.type -ne $objectType)
+        $localObject = DeepCopy-Object -Object $Object
+        if ($localObject.type -ne $script:FlightObjectType)
         {
-            $localFlightObject |
-                Add-Member -Type NoteProperty -Name 'type' -Value $script:FlightObjectType
+            $localObject |
+                Add-Member -Type NoteProperty -Name 'resourceType' -Value $script:FlightObjectType
         }
 
-        $body = $localFlightObject
+        $body = $localObject
         if ($null -eq $body)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody['type'] = $script:FlightObjectType
+            $hashBody['resourceType'] = $script:FlightObjectType
             $hashBody['name'] = $Name
             $hashBody['groupIds'] = @($GroupId)
             $hashBody['relativeRank'] = $RelativeRank
@@ -267,6 +267,7 @@ function Set-Flight
         }
 
         $body = $hashBody | ConvertTo-Json
+        Write-Log -Message "Body: $body" -Level Verbose
 
         $params = @{
             "UriFragment" = "products/$ProductId/flights/$FlightId"

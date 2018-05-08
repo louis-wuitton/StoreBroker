@@ -88,7 +88,7 @@ function New-Listing
         [Parameter(
             Mandatory,
             ParameterSetName="Object")]
-        [PSCustomObject] $ListingObject,
+        [PSCustomObject] $Object,
 
         [Parameter(ParameterSetName="Individual")]
         [string] $Title,
@@ -169,7 +169,7 @@ function New-Listing
             $getParams += "featureGroupId=$FeatureGroupId"
         }
 
-        $body = $ListingObject
+        $body = $Object
         if ($null -eq $body)
         {
             # Convert the input into a Json body.
@@ -368,7 +368,7 @@ function Set-Listing
         [Parameter(
             Mandatory,
             ParameterSetName="Object")]
-        [PSCustomObject] $ListingObject,
+        [PSCustomObject] $Object,
 
         [Parameter(ParameterSetName="Individual")]
         [string] $Title,
@@ -450,7 +450,7 @@ function Set-Listing
             $getParams += "submissionId=$SubmissionId"
         }
 
-        $body = $ListingObject
+        $body = $Object
         if ($null -eq $body)
         {
             # Convert the input into a Json body.

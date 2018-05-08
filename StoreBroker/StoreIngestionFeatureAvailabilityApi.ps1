@@ -1,4 +1,4 @@
-$script:FlightObjectType = 'PackageFlight'
+$script:FeatureAvailabilityObjectType = 'FeatureAvailability'
 
 function Get-FeatureAvailabilities
 {
@@ -37,6 +37,7 @@ function Get-FeatureAvailabilities
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
             [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
             [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
@@ -58,7 +59,7 @@ function Get-FeatureAvailabilities
         {
             $getParams += "featureGroupId=$FeatureGroupId"
         }
-        
+
         $params = @{
             "UriFragment" = "products/$ProductId/featureAvailabilities`?" + ($getParams -join '&')
             "Description" = "Getting feature availability for $ProductId"
@@ -89,25 +90,21 @@ function New-FeatureAvailability
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
         [string] $ProductId,
 
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [string] $FeatureGroupId,
+
+        [switch] $IncludeMarketStates,
+
+        [switch] $IncludeTrial,
+
+        [switch] $IncludePricing,
+
         [Parameter(
             Mandatory,
             ParameterSetName="Object")]
-        [PSCustomObject] $FlightObject,
-
-        [Parameter(
-            Mandatory,
-            ParameterSetName="Individual")]
-        [string] $Name,
-
-        [Parameter(
-            Mandatory,
-            ParameterSetName="Individual")]
-        [string[]] $GroupId,
-
-        [Parameter(
-            Mandatory,
-            ParameterSetName="Individual")]
-        [int] $RelativeRank,
+        [PSCustomObject] $Object,
 
         [string] $ClientRequestId,
 
@@ -124,41 +121,34 @@ function New-FeatureAvailability
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::RelativeRank = $RelativeRank
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
+            [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
+            [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        $localFlightObject = DeepCopy-Object -Object $ListingObject
-        if ($localFlightObject.type -ne $objectType)
+        $localObject = DeepCopy-Object -Object $Object
+        if ($localObject.type -ne $script:FeatureAvailabilityObjectType)
         {
-            $localFlightObject |
-                Add-Member -Type NoteProperty -Name 'type' -Value $script:FlightObjectType
+            $localObject |
+                Add-Member -Type NoteProperty -Name 'resourceType' -Value $script:FeatureAvailabilityObjectType
         }
 
-        $body = $localFlightObject
-        if ($null -eq $body)
-        {
-            # Convert the input into a Json body.
-            $hashBody = @{}
-            $hashBody['type'] = $script:FlightObjectType
-            $hashBody['name'] = $Name
-            $hashBody['groupIds'] = @($GroupId)
-            $hashBody['relativeRank'] = $RelativeRank
-        }
-
-        $body = $hashBody | ConvertTo-Json
-        Write-Log -Message "Body: $body" -Level Verbose
+        $body = $localObject
+        $body = $hashBody | ConvertTo-Json -Depth $script:jsonConversionDepth
 
         $params = @{
-            "UriFragment" = "products/$ProductId/flights"
+            "UriFragment" = "products/$ProductId/featureavailabilities"
             "Method" = 'Post'
-            "Description" = "Creating new flight for $ProductId"
+            "Description" = "Creating new feature availability for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "New-Flight"
+            "TelemetryEventName" = "New-FeatureAvailability"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
@@ -182,32 +172,20 @@ function Set-FeatureAvailability
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [string] $FlightId,
+        [string] $SubmissionId,
+
+        [string] $FeatureGroupId,
+
+        [switch] $IncludeMarketStates,
+
+        [switch] $IncludeTrial,
+
+        [switch] $IncludePricing,
 
         [Parameter(
             Mandatory,
             ParameterSetName="Object")]
-        [PSCustomObject] $FlightObject,
-
-        [Parameter(
-            Mandatory,
-            ParameterSetName="Individual")]
-        [string] $Name,
-
-        [Parameter(
-            Mandatory,
-            ParameterSetName="Individual")]
-        [string[]] $GroupId,
-
-        [Parameter(
-            Mandatory,
-            ParameterSetName="Individual")]
-        [int] $RelativeRank,
-
-        [Parameter(
-            Mandatory,
-            ParameterSetName="Individual")]
-        [string] $RevisionToken,
+        [PSCustomObject] $Object,
 
         [string] $ClientRequestId,
 
@@ -224,43 +202,35 @@ function Set-FeatureAvailability
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::FlightId = $FlightId
-            [StoreBrokerTelemetryProperty]::RelativeRank = $RelativeRank
-            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::FeatureAvailabilityId = $FeatureAvailabilityId
+            [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
+            [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
+            [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        $localFlightObject = DeepCopy-Object -Object $ListingObject
-        if ($localFlightObject.type -ne $objectType)
+        $localObject = DeepCopy-Object -Object $Object
+        if ($localObject.type -ne $script:FeatureAvailabilityObjectType)
         {
-            $localFlightObject |
-                Add-Member -Type NoteProperty -Name 'type' -Value $script:FlightObjectType
+            $localObject |
+                Add-Member -Type NoteProperty -Name 'resourceType' -Value $script:FeatureAvailabilityObjectType
         }
 
-        $body = $localFlightObject
-        if ($null -eq $body)
-        {
-            # Convert the input into a Json body.
-            $hashBody = @{}
-            $hashBody['type'] = $script:FlightObjectType
-            $hashBody['name'] = $Name
-            $hashBody['groupIds'] = @($GroupId)
-            $hashBody['relativeRank'] = $RelativeRank
-            $hashBody['revisionToken'] = $RevisionToken
-        }
-
-        $body = $hashBody | ConvertTo-Json
+        $body = $localObject
+        $body = $hashBody | ConvertTo-Json -Depth $script:jsonConversionDepth
 
         $params = @{
-            "UriFragment" = "products/$ProductId/flights/$FlightId"
+            "UriFragment" = "products/$ProductId/featureavailabilities/$FeatureAvailabilityId`?" + ($getParams -join '&')
             "Method" = 'Put'
-            "Description" = "Updating flight $FlightId for $ProductId"
+            "Description" = "Updating feature availability $FeatureAvailabilityId for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Set-Flight"
+            "TelemetryEventName" = "Set-FeatureAvailability"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
