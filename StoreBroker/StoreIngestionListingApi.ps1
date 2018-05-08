@@ -546,7 +546,7 @@ function Set-Listing
 
         $params = @{
             "UriFragment" = "products/$ProductId/listings/$LanguageCode?" + ($getParams -join '&')
-            "Method" = 'Post'
+            "Method" = 'Put'
             "Description" = "Updating $LanguageCode listing for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId

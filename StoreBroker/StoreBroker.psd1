@@ -83,7 +83,6 @@
         'Get-SubmissionValidation',
         'Remove-Submission',
         'New-Submission',
-        'Set-SubmissionAutoSubmit',
         'Stop-Submission',
         'Submit-Submission',
         'Publish-Submission',

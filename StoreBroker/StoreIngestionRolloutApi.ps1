@@ -136,7 +136,7 @@ function Set-SubmissionRollout
 
     $params = @{
         "UriFragment" = "products/$ProductId/submissions/$SubmissionId/rollout"
-        "Method" = 'Post'
+        "Method" = 'Put'
         "Description" = "Updating rollout details for submission: $SubmissionId"
         "Body" = $body
         "ClientRequestId" = $ClientRequestId

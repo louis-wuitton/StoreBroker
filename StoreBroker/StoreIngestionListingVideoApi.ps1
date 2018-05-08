@@ -429,7 +429,7 @@ function Set-ListingVideo
 
         $params = @{
             "UriFragment" = "products/$ProductId/listings/$LanguageCode/Videos/$VideoId?" + ($getParams -join '&')
-            "Method" = 'Post'
+            "Method" = 'Put'
             "Description" = "Updating listing video $VideoId for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId

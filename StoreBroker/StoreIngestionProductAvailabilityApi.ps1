@@ -213,7 +213,7 @@ function Set-ProductAvailability
 
         $params = @{
             "UriFragment" = "products/$ProductId/productAvailabilities/$ProductAvailabilityId?" + ($getParams -join '&')
-            "Method" = 'Post'
+            "Method" = 'Put'
             "Description" = "Updating product availability $ProductAvailabilityId for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId

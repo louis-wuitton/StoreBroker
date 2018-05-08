@@ -247,7 +247,7 @@ function Set-ProductPackage
 
         $params = @{
             "UriFragment" = "products/$ProductId/packages/$PackageId?" + ($getParams -join '&')
-            "Method" = 'Post'
+            "Method" = 'Put'
             "Description" = "Updating package $PackageId for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId

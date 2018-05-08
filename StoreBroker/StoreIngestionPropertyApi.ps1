@@ -193,7 +193,7 @@ function Set-ProductProperty
 
         $params = @{
             "UriFragment" = "products/$ProductId/properties/$PropertyId?" + ($getParams -join '&')
-            "Method" = 'Post'
+            "Method" = 'Put'
             "Description" = "Updating property $PropertyId for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId

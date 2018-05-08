@@ -376,51 +376,6 @@ function Get-Submission
     }
 }
 
-function Set-SubmissionAutoSubmit
-{
-    [CmdletBinding(SupportsShouldProcess)]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
-    param(
-        [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
-        [string] $ProductId,
-
-        [Parameter(Mandatory)]
-        [string] $SubmissionId,
-
-        [string] $ClientRequestId,
-
-        [string] $CorrelationId,
-
-        [string] $AccessToken,
-
-        [switch] $NoStatus
-    )
-
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
-
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $params = @{
-        "UriFragment" = "products/$ProductId/submissions/$SubmissionId/autosubmit"
-        "Method" = 'Post'
-        "Description" = "Configuring submission $SubmissionId to auto-submit"
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Set-SubmissionAutoSubmit"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
-
-    return (Invoke-SBRestMethod @params)
-}
-
 function Stop-Submission
 {
     [Alias('Cancel-Submission')]
@@ -599,7 +554,7 @@ function Set-SubmissionDetail
 
     $params = @{
         "UriFragment" = "products/$ProductId/submissions/$SubmissionId/detail"
-        "Method" = 'Post'
+        "Method" = 'Put'
         "Description" = "Updating detail for submission: $SubmissionId"
         "Body" = $body
         "ClientRequestId" = $ClientRequestId

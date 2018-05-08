@@ -383,7 +383,7 @@ function Set-ListingImage
 
         $params = @{
             "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId?" + ($getParams -join '&')
-            "Method" = 'Post'
+            "Method" = 'Put'
             "Description" = "Updating listing image $ImageId for $ProductId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId
