@@ -126,7 +126,7 @@ function New-Submission
             ParameterSetName = 'Sandbox',
             Position = 3)]
         [ValidateSet('Preview', 'Live')]
-        [string] $Scope = 'Live',
+        [int] $WaitSeconds = -2, # -1 is special and means no wait. 0 uses the server-side default of 60 seconds.
 
         [Parameter(
             ParameterSetName = 'Retail',
@@ -137,7 +137,7 @@ function New-Submission
         [Parameter(
             ParameterSetName = 'Sandbox',
             Position = 4)]
-        [int] $WaitSeconds = -2, # -1 is special and means no wait.  Server-side default is 60 seconds.
+        [string] $ClientRequestId,
 
         [Parameter(
             ParameterSetName = 'Retail',
@@ -148,7 +148,12 @@ function New-Submission
         [Parameter(
             ParameterSetName = 'Sandbox',
             Position = 5)]
-        [string] $ClientRequestId,
+        [string] $CorrelationId,
+
+        [Parameter(ParameterSetName = 'Retail')]
+        [Parameter(ParameterSetName = 'Flight')]
+        [Parameter(ParameterSetName = 'Sandbox')]
+        [switch] $Force,
 
         [Parameter(
             ParameterSetName = 'Retail',
@@ -159,22 +164,6 @@ function New-Submission
         [Parameter(
             ParameterSetName = 'Sandbox',
             Position = 6)]
-        [string] $CorrelationId,
-
-        [Parameter(ParameterSetName = 'Retail')]
-        [Parameter(ParameterSetName = 'Flight')]
-        [Parameter(ParameterSetName = 'Sandbox')]
-        [switch] $Force,
-
-        [Parameter(
-            ParameterSetName = 'Retail',
-            Position = 6)]
-        [Parameter(
-            ParameterSetName = 'Flight',
-            Position = 7)]
-        [Parameter(
-            ParameterSetName = 'Sandbox',
-            Position = 7)]
         [string] $AccessToken,
 
         [Parameter(ParameterSetName = 'Retail')]
@@ -185,13 +174,22 @@ function New-Submission
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::FlightId = $FlightId
+        [StoreBrokerTelemetryProperty]::SandboxId = $SandboxId
+        [StoreBrokerTelemetryProperty]::Scope = $Scope
+        [StoreBrokerTelemetryProperty]::WaitSeconds = $WaitSeconds
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
     # TODO: Get force working once flight is implemented
     if ($Force)
     {
         $message = "-Force is not implemented yet"
         Write-Log -Message $message -Level Error
         throw $message
-
     }
 
     if ([System.String]::IsNullOrEmpty($AccessToken))
@@ -207,7 +205,8 @@ function New-Submission
 
     # Convert the input into a Json body.
     $hashBody = @{}
-    $hashBody['scope'] = $Scope
+    $hashBody['resourceType'] = [StoreBrokerResourceType]::Submission
+    $hashBody['scope'] = 'Live' # Preview scope is limited to Azure/Service-ingestion
 
     if (-not [String]::IsNullOrWhiteSpace($FlightId))
     {
@@ -221,16 +220,6 @@ function New-Submission
 
     $body = $hashBody | ConvertTo-Json
     Write-Log -Message "Body: $body" -Level Verbose
-
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::FlightId = $FlightId
-        [StoreBrokerTelemetryProperty]::SandboxId = $SandboxId
-        [StoreBrokerTelemetryProperty]::Scope = $Scope
-        [StoreBrokerTelemetryProperty]::WaitSeconds = $WaitSeconds
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
 
     $params = @{
         "UriFragment" = "products/$ProductId/submissions`?" + ($getParams -join '&')
@@ -484,18 +473,27 @@ function Set-SubmissionDetail
         [Parameter(Mandatory)]
         [string] $SubmissionId,
 
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Object")]
+        [PSCustomObject] $Object,
+
         # $null means leave as-is, empty string means clear it out.
+        [Parameter(ParameterSetName="Individual")]
         [string] $CertificationNotes = $null,
 
+        [Parameter(ParameterSetName="Individual")]
         [DateTime] $ReleaseDate,
+
+        [Parameter(ParameterSetName="Individual")]
+        [switch] $ManualPublish,
+
+        [Parameter(ParameterSetName="Individual")]
+        [switch] $AutoPromote,
 
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
-
-        [switch] $ManualPublish,
-
-        [switch] $AutoPromote,
 
         [string] $AccessToken,
 
@@ -507,45 +505,53 @@ function Set-SubmissionDetail
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
         [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
         [StoreBrokerTelemetryProperty]::UpdateCertificationNotes = ($null -ne $CertificationNotes)
         [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
-    # Convert the input into a Json body.
-    $hashBody = @{}
+    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::PackageFlight
 
-    if ($null -ne $ReleaseDate)
+    $hashBody = $Object
+    if ($null -eq $hashBody)
     {
-        $hashBody['releaseTimeInUtc'] = $ReleaseDate.ToUniversalTime().ToString('o')
-    }
+        # Convert the input into a Json body.
+        $hashBody = @{}
+        $hashBody['resourceType'] = [StoreBrokerResourceType]::SubmissionDetail
 
-    # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace here, because
-    # we need a way to be able to clear these notes out.  So, a $null means do nothing,
-    # while empty string / whitespace means clear out the notes.
-    if ($null -ne $CertificationNotes)
-    {
-        $hashBody['certificationNotes'] = $CertificationNotes
-    }
+        if ($null -ne $ReleaseDate)
+        {
+            $hashBody['releaseTimeInUtc'] = $ReleaseDate.ToUniversalTime().ToString('o')
+        }
 
-    # We only set the value if the user explicitly provided a value for this parameter
-    # (so for $false, they'd have to pass in -ManualPublish:$false).
-    # Otherwise, there'd be no way to know when the user wants to simply keep the
-    # existing value.
-    if ($null -ne $PSBoundParameters['ManualPublish'])
-    {
-        $hashBody['isManualPublish'] = $ManualPublish
-        $telemetryProperties[[StoreBrokerTelemetryProperty]::IsManualPublish] = $ManualPublish
-    }
+        # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace here, because
+        # we need a way to be able to clear these notes out.  So, a $null means do nothing,
+        # while empty string / whitespace means clear out the notes.
+        if ($null -ne $CertificationNotes)
+        {
+            $hashBody['certificationNotes'] = $CertificationNotes
+        }
 
-    # We only set the value if the user explicitly provided a value for this parameter
-    # (so for $false, they'd have to pass in -AutoPromote:$false).
-    # Otherwise, there'd be no way to know when the user wants to simply keep the
-    # existing value.
-    if ($null -ne $PSBoundParameters['AutoPromote'])
-    {
-        $hashBody['isAutoPromote'] = $AutoPromote
-        $telemetryProperties[[StoreBrokerTelemetryProperty]::IsAutoPromote] = $AutoPromote
+        # We only set the value if the user explicitly provided a value for this parameter
+        # (so for $false, they'd have to pass in -ManualPublish:$false).
+        # Otherwise, there'd be no way to know when the user wants to simply keep the
+        # existing value.
+        if ($null -ne $PSBoundParameters['ManualPublish'])
+        {
+            $hashBody['isManualPublish'] = $ManualPublish
+            $telemetryProperties[[StoreBrokerTelemetryProperty]::IsManualPublish] = $ManualPublish
+        }
+
+        # We only set the value if the user explicitly provided a value for this parameter
+        # (so for $false, they'd have to pass in -AutoPromote:$false).
+        # Otherwise, there'd be no way to know when the user wants to simply keep the
+        # existing value.
+        if ($null -ne $PSBoundParameters['AutoPromote'])
+        {
+            $hashBody['isAutoPromote'] = $AutoPromote
+            $telemetryProperties[[StoreBrokerTelemetryProperty]::IsAutoPromote] = $AutoPromote
+        }
     }
 
     $body = $hashBody | ConvertTo-Json

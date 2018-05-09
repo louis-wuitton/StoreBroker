@@ -6,6 +6,7 @@ function Get-ProductAvailabilities
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
         [string] $ProductId,
 
+        [Parameter(Mandatory)]
         [string] $SubmissionId,
 
         [string] $ClientRequestId,
@@ -58,17 +59,29 @@ function Get-ProductAvailabilities
 
 function New-ProductAvailability
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
         [string] $ProductId,
 
+        [Parameter(Mandatory)]
         [string] $SubmissionId,
 
-        [object] $Audience,
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Object")]
+        [PSCustomObject] $Object,
 
-        [ValidateSet('Public', 'Private', 'StopSelling', 'NoChange')]
+        [Parameter(ParameterSetName="Individual")]
+        [PSCustomObject] $Audience,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [ValidateSet('Public', 'Private', 'StopSelling')]
         [string] $Visibility,
 
         [string] $ClientRequestId,
@@ -89,6 +102,7 @@ function New-ProductAvailability
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::HasAudience = ($null -ne $Audience)
             [StoreBrokerTelemetryProperty]::Visiblity = $Visibility
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
@@ -101,17 +115,20 @@ function New-ProductAvailability
             $getParams += "submissionId=$SubmissionId"
         }
 
-        # Convert the input into a Json body.
-        $hashBody = @{}
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ProductAvailability
 
-        if ('NoChange' -ne $Visibility)
+        $hashBody = $Object
+        if ($null -eq $hashBody)
         {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody['resourceType'] = [StoreBrokerResourceType]::ProductAvailability
             $hashBody['visibility'] = $Visibility
-        }
 
-        if ($null -ne $Audience)
-        {
-            $hashBody['audience'] = ConvertTo-Json -InputObject @($Audience)
+            if ($null -ne $Audience)
+            {
+                $hashBody['audience'] = ConvertTo-Json -InputObject @($Audience)
+            }
         }
 
         $body = $hashBody | ConvertTo-Json
@@ -141,24 +158,38 @@ function New-ProductAvailability
 
 function Set-ProductAvailability
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [string] $ProductAvailabilityId,
-
         [string] $SubmissionId,
 
         [Parameter(Mandatory)]
-        [string] $RevisionToken,
+        [string] $ProductAvailabilityId,
 
-        [object] $Audience,
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Object")]
+        [PSCustomObject] $Object,
 
-        [ValidateSet('Public', 'Private', 'StopSelling', 'NoChange')]
+        [Parameter(ParameterSetName="Individual")]
+        [PSCustomObject] $Audience,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [ValidateSet('Public', 'Private', 'StopSelling')]
         [string] $Visibility,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [string] $RevisionToken,
 
         [string] $ClientRequestId,
 
@@ -175,11 +206,12 @@ function Set-ProductAvailability
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::ProductAvailabilityId = $ProductAvailabilityId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
+            [StoreBrokerTelemetryProperty]::ProductAvailabilityId = $ProductAvailabilityId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::HasAudience = ($null -ne $Audience)
             [StoreBrokerTelemetryProperty]::Visiblity = $Visibility
+            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -190,18 +222,21 @@ function Set-ProductAvailability
             $getParams += "submissionId=$SubmissionId"
         }
 
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody['revisionToken'] = $RevisionToken
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ProductAvailability
 
-        if ('NoChange' -ne $Visibility)
+        $hashBody = $Object
+        if ($null -eq $hashBody)
         {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody['resourceType'] = [StoreBrokerResourceType]::ProductAvailability
             $hashBody['visibility'] = $Visibility
-        }
+            $hashBody['revisionToken'] = $RevisionToken
 
-        if ($null -ne $Audience)
-        {
-            $hashBody['audience'] = ConvertTo-Json -InputObject @($Audience)
+            if ($null -ne $Audience)
+            {
+                $hashBody['audience'] = ConvertTo-Json -InputObject @($Audience)
+            }
         }
 
         $body = $hashBody | ConvertTo-Json
@@ -238,9 +273,10 @@ function Get-ProductAvailability
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [string] $ProductAvailability,
-
         [string] $SubmissionId,
+
+        [Parameter(Mandatory)]
+        [string] $ProductAvailabilityId,
 
         [string] $ClientRequestId,
 
@@ -257,8 +293,8 @@ function Get-ProductAvailability
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::ProductAvailability = $ProductAvailability
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::ProductAvailabilityId = $ProductAvailabilityId
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -270,7 +306,7 @@ function Get-ProductAvailability
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/ProductAvailability/$ProductAvailability`?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/ProductAvailability/$ProductAvailabilityId`?" + ($getParams -join '&')
             "Method" = 'Get'
             "Description" = "Getting product availability $ProductAvailabilityId for $ProductId"
             "ClientRequestId" = $ClientRequestId

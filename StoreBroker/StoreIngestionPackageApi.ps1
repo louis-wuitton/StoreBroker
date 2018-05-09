@@ -84,11 +84,7 @@ function New-ProductPackage
         [PSCustomObject] $Object,
 
         [Parameter(ParameterSetName="Individual")]
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
-        [string] $State = 'PendingUpload',
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $Version,
+        [string] $FileName,
 
         [string] $ClientRequestId,
 
@@ -107,8 +103,7 @@ function New-ProductPackage
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-            [StoreBrokerTelemetryProperty]::State = $State
-            [StoreBrokerTelemetryProperty]::Version = $Version
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -132,17 +127,11 @@ function New-ProductPackage
             # Convert the input into a Json body.
             $hashBody = @{}
             $hashBody['resourceType'] = [StoreBrokerResourceType]::Package
-            $hashBody['state'] = $State
-
-            if (-not [String]::IsNullOrWhiteSpace($Version))
-            {
-                $hashBody['version'] = $Version
-            }
+            $hashBody['fileName'] = $FileName
         }
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
-
 
         $params = @{
             "UriFragment" = "products/$ProductId/packages`?" + ($getParams -join '&')
@@ -188,11 +177,8 @@ function Set-ProductPackage
         [PSCustomObject] $Object,
 
         [Parameter(ParameterSetName="Individual")]
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed', 'NoChange')]
+        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
         [string] $State = 'PendingUpload',
-
-        [Parameter(ParameterSetName="Individual")]
-        [string] $Version,
 
         [Parameter(
             Mandatory,
@@ -217,6 +203,7 @@ function Set-ProductPackage
             [StoreBrokerTelemetryProperty]::PackageId = $PackageId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::State = $State
             [StoreBrokerTelemetryProperty]::Version = $Version
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
@@ -244,22 +231,11 @@ function Set-ProductPackage
             $hashBody = @{}
             $hashBody['resourceType'] = [StoreBrokerResourceType]::Package
             $hashBody['revisionToken'] = $RevisionToken
-
-            if ('NoChange' -ne $State)
-            {
-                $hashBody['state'] = $State
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($Version))
-            {
-                $hashBody['version'] = $Version
-            }
+            $hashBody['state'] = $State
         }
 
         $body = $hashBody | ConvertTo-Json
-
         Write-Log -Message "Body: $body" -Level Verbose
-
 
         $params = @{
             "UriFragment" = "products/$ProductId/packages/$PackageId`?" + ($getParams -join '&')

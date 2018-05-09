@@ -203,7 +203,7 @@ function New-ListingVideo
 
         $uriFragment = "products/$ProductId/listings/$LanguageCode/videos`?" + ($getParams -join '&')
         $description = "Creating new $LanguageCode listing videos for $ProductId"
-        $isbulkOperation = $ListingObject.Count -gt 1
+        $isbulkOperation = $Object.Count -gt 1
         if ($isbulkOperation)
         {
             $uriFragment = "products/$ProductId/listings/$LanguageCode/videos/bulk`?" + ($getParams -join '&')
@@ -329,14 +329,14 @@ function Set-ListingVideo
         [string] $ProductId,
 
         [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [Parameter(Mandatory)]
         [Alias('LangCode')]
         [string] $LanguageCode,
 
         [Parameter(Mandatory)]
-        [string] $SubmissionId,
-
-        [Parameter(Mandatory)]
-        [string] $ImageId,
+        [string] $VideoId,
 
         [Parameter(
             Mandatory,
@@ -385,6 +385,8 @@ function Set-ListingVideo
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+            [StoreBrokerTelemetryProperty]::VideoId = $VideoId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::State = $State
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId

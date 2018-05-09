@@ -165,7 +165,7 @@ function New-ListingImage
 
         $uriFragment = "products/$ProductId/listings/$LanguageCode/images`?" + ($getParams -join '&')
         $description = "Creating new $LanguageCode listing image for $ProductId"
-        $isbulkOperation = $ListingObject.Count -gt 1
+        $isbulkOperation = $Object.Count -gt 1
         if ($isbulkOperation)
         {
             $uriFragment = "products/$ProductId/listings/$LanguageCode/images/bulk`?" + ($getParams -join '&')
@@ -291,11 +291,11 @@ function Set-ListingImage
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [Alias('LangCode')]
-        [string] $LanguageCode,
+        [string] $SubmissionId,
 
         [Parameter(Mandatory)]
-        [string] $SubmissionId,
+        [Alias('LangCode')]
+        [string] $LanguageCode,
 
         [Parameter(Mandatory)]
         [string] $ImageId,
@@ -344,6 +344,7 @@ function Set-ListingImage
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+            [StoreBrokerTelemetryProperty]::ImageId = $ImageId
             [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::State = $State
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken

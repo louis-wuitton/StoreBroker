@@ -132,6 +132,7 @@ function New-FeatureAvailability
             [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
             [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
             [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -208,6 +209,7 @@ function Set-FeatureAvailability
             [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
             [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
             [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }

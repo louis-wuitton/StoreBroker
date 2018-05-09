@@ -58,7 +58,9 @@ function Get-ProductProperties
 
 function New-ProductProperty
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
@@ -66,6 +68,13 @@ function New-ProductProperty
 
         [string] $SubmissionId,
 
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Object")]
+        [PSCustomObject] $Object,
+
+        [Parameter(ParameterSetName="Individual")]
+        [ValidateSet('ApplicationProperty', 'AddonProperty', 'BundleProperty', 'AvatarProperty', 'IoTProperty', 'AzureProperty')]
         [string] $Type,
 
         [string] $ClientRequestId,
@@ -84,7 +93,8 @@ function New-ProductProperty
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::Type = $Type
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+            [StoreBrokerTelemetryProperty]::ResourceType = $Type
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -95,18 +105,21 @@ function New-ProductProperty
             $getParams += "submissionId=$SubmissionId"
         }
 
-        # Convert the input into a Json body.
-        $hashBody = @{}
-
-        # TODO: Not sure what I should really be doing here.
-        if (-not [String]::IsNullOrWhiteSpace($Type))
+        $hashBody = $Object
+        if ($null -eq $hashBody)
         {
-            $hashBody['resourceType'] = $Type
+            # Convert the input into a Json body.
+            $hashBody = @{}
+
+            # TODO: Not sure what I should really be doing here.
+            if (-not [String]::IsNullOrWhiteSpace($Type))
+            {
+                $hashBody['resourceType'] = $Type
+            }
         }
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
-
 
         $params = @{
             "UriFragment" = "products/$ProductId/properties`?" + ($getParams -join '&')
@@ -131,7 +144,9 @@ function New-ProductProperty
 
 function Set-ProductProperty
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
@@ -142,10 +157,17 @@ function Set-ProductProperty
 
         [string] $SubmissionId,
 
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Object")]
+        [PSCustomObject] $Object,
+
+        [Parameter(ParameterSetName="Individual")]
+        [ValidateSet('ApplicationProperty', 'AddonProperty', 'BundleProperty', 'AvatarProperty', 'IoTProperty', 'AzureProperty')]
+        [string] $Type,
+
         [Parameter(Mandatory)]
         [string] $RevisionToken,
-
-        [string] $Type,
 
         [string] $ClientRequestId,
 
@@ -164,8 +186,9 @@ function Set-ProductProperty
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::PropertyId = $PropertyId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+            [StoreBrokerTelemetryProperty]::ResourceType = $Type
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
-            [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -176,19 +199,22 @@ function Set-ProductProperty
             $getParams += "submissionId=$SubmissionId"
         }
 
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody['revisionToken'] = $RevisionToken
-
-        if (-not [String]::IsNullOrWhiteSpace($Type))
+        $hashBody = $Object
+        if ($null -eq $hashBody)
         {
-            # TODO: Not sure what I should really be doing here.
-            $hashBody['resourceType'] = $Type
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody['revisionToken'] = $RevisionToken
+
+            if (-not [String]::IsNullOrWhiteSpace($Type))
+            {
+                # TODO: Not sure what I should really be doing here.
+                $hashBody['resourceType'] = $Type
+            }
         }
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
-
 
         $params = @{
             "UriFragment" = "products/$ProductId/properties/$PropertyId`?" + ($getParams -join '&')

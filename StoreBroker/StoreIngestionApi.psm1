@@ -66,12 +66,16 @@ Add-Type -TypeDefinition @"
    public enum StoreBrokerResourceType
    {
        FeatureAvailability,
+       FeatureGroup,
        Listing,
        ListingImage,
        ListingVideo,
        Package,
        PackageConfiguration,
        PackageFlight,
+       Rollout,
+       Submission,
+       SubmissionDetail
    }
 "@
 

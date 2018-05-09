@@ -154,12 +154,14 @@ function New-Product
         [Parameter(
             Mandatory,
             ParameterSetName="Object")]
-        [PSCustomObject[]] $Object,
+        [PSCustomObject] $Object,
 
         [Parameter(
             Mandatory,
             ParameterSetName="Individual")]
-        [ValidateSet('Application', 'AvatarItem', 'Bundle', 'Consumable', 'ManagedConsumable', 'Durable', 'DurableWithBits', 'Subscription', 'SeasonPass', 'InternetOfThings')]
+        # Intentionally leaving Application out of here, because while it's a valid resourceType,
+        # you can't create new ones via the API
+        [ValidateSet('AvatarItem', 'Bundle', 'Consumable', 'ManagedConsumable', 'Durable', 'DurableWithBits', 'Subscription', 'SeasonPass', 'InternetOfThings')]
         [string] $Type,
 
         [string] $ClientRequestId,
@@ -173,22 +175,27 @@ function New-Product
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    # Convert the input into a Json body.
-    $hashBody = @{}
-    $hashBody[[StoreBrokerPropertyNames]::id] = $ProductId
-    $hashBody[[StoreBrokerPropertyNames]::resourceType] = $Type
-    $hashBody[[StoreBrokerPropertyNames]::name] = $Name
-
-    $body = $hashBody | ConvertTo-Json
-
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
         [StoreBrokerTelemetryProperty]::Name = $Name
         [StoreBrokerTelemetryProperty]::ResourceType = $Type
         [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
+    $hashBody = $Object
+    if ($null -eq $hashBody)
+    {
+        # Convert the input into a Json body.
+        $hashBody = @{}
+        $hashBody[[StoreBrokerPropertyNames]::id] = $ProductId
+        $hashBody[[StoreBrokerPropertyNames]::resourceType] = $Type
+        $hashBody[[StoreBrokerPropertyNames]::name] = $Name
+    }
+
+    $body = $hashBody | ConvertTo-Json
+    
     $params = @{
         "UriFragment" = "products/"
         "Method" = "Post"

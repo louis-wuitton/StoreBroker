@@ -172,6 +172,7 @@ function New-Listing
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -450,6 +451,7 @@ function Set-Listing
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId

@@ -103,6 +103,7 @@ function New-Flight
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::RelativeRank = $RelativeRank
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -245,6 +246,7 @@ function Set-Flight
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::FlightId = $FlightId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::RelativeRank = $RelativeRank
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId

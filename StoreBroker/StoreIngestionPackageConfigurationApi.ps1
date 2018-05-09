@@ -66,7 +66,9 @@ function Get-ProductPackageConfigurations
 
 function New-ProductPackageConfiguration
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
@@ -75,6 +77,11 @@ function New-ProductPackageConfiguration
         [string] $SubmissionId,
 
         [string] $FeatureGroupId,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Object")]
+        [PSCustomObject] $Object,
 
         [string] $ClientRequestId,
 
@@ -93,6 +100,7 @@ function New-ProductPackageConfiguration
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -108,13 +116,18 @@ function New-ProductPackageConfiguration
             $getParams += "featureGroupId=$FeatureGroupId"
         }
 
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody[[StoreBrokerPackageConfigurationProperty]::resourceType] = [StoreBrokerResourceType]::PackageConfiguration
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::PackageConfiguration
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
+        {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody[[StoreBrokerPackageConfigurationProperty]::resourceType] = [StoreBrokerResourceType]::PackageConfiguration
+        }
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
-
 
         $params = @{
             "UriFragment" = "products/$ProductId/packageConfigurations`?" + ($getParams -join '&')
@@ -139,7 +152,9 @@ function New-ProductPackageConfiguration
 
 function Set-ProductPackageConfiguration
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
@@ -152,7 +167,14 @@ function Set-ProductPackageConfiguration
 
         [string] $FeatureGroupId,
 
-        [Parameter(Mandatory)]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Object")]
+        [PSCustomObject] $Object,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $RevisionToken,
 
         [string] $ClientRequestId,
@@ -173,6 +195,7 @@ function Set-ProductPackageConfiguration
             [StoreBrokerTelemetryProperty]::PackageConfigurationId = $PackageConfigurationId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -189,14 +212,19 @@ function Set-ProductPackageConfiguration
             $getParams += "featureGroupId=$FeatureGroupId"
         }
 
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody[[StoreBrokerPackageConfigurationProperty]::resourceType] = [StoreBrokerResourceType]::PackageConfiguration
-        $hashBody['revisionToken'] = $RevisionToken
+        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::PackageFlight
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
+        {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody[[StoreBrokerPackageConfigurationProperty]::resourceType] = [StoreBrokerResourceType]::PackageConfiguration
+            $hashBody['revisionToken'] = $RevisionToken
+        }
 
         $body = $hashBody | ConvertTo-Json
         Write-Log -Message "Body: $body" -Level Verbose
-
 
         $params = @{
             "UriFragment" = "products/$ProductId/packageConfigurations/$PackageConfigurationId`?" + ($getParams -join '&')

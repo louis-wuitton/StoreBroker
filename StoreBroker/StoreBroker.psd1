@@ -40,9 +40,14 @@
     FunctionsToExport = @(
 
         'Get-FeatureAvailabilities',
+        'New-FeatureAvailability',
+        'Set-FeatureAvailability',
         'Get-FeatureAvailability',
 
         'Get-FeatureGroups',
+        'Remove-FeatureGroup',
+        'New-FeatureGroup',
+        'Set-FeatureGroup',
         'Get-FeatureGroup',
 
         'Get-Flight',
@@ -143,6 +148,8 @@
         'Delete-ListingImage',
         'Delete-ListingVideo',
         'Delete-Flight',
+        'Delete-FeatureGroup',
+
 
         'New-PackageToolConfigFile',
         'New-StoreBrokerIapConfigFile',
