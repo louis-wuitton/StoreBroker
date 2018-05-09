@@ -239,8 +239,8 @@ function Set-ProductPackage
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody[StoreBrokerPackageProperty::resourceType] = [StoreBrokerResourceType]::Package
-            $hashBody[StoreBrokerPackageProperty::revisionToken] = $RevisionToken
+            $hashBody[[StoreBrokerPackageProperty]::resourceType] = [StoreBrokerResourceType]::Package
+            $hashBody[[StoreBrokerPackageProperty]::revisionToken] = $RevisionToken
             $hashBody[[StoreBrokerPackageProperty]::state] = $State
         }
 
