@@ -205,7 +205,7 @@ function New-Product
     }
 
     $body = $hashBody | ConvertTo-Json
-    
+
     $params = @{
         "UriFragment" = "products/"
         "Method" = "Post"
@@ -366,8 +366,9 @@ function Get-ProductRelated
         [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
+        [Parameter(Mandatory)]
         [ValidateSet('AddOnChild', 'AddOnParent', 'AvailableInBundle', 'SellableBy')]
-        [string] $RelationshipType,
+        [string] $Type,
 
         [string] $ClientRequestId,
 
@@ -390,8 +391,11 @@ function Get-ProductRelated
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
+        $getParams = @()
+        $getParams += "relationshipType=$Type"
+
         $params = @{
-            "UriFragment" = "products/$ProductId/related"
+            "UriFragment" = "products/$ProductId/related`?" + ($getParams -join '&')
             "Description" = "Getting related products for product: $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
