@@ -1,3 +1,11 @@
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerPackageConfigurationProperty
+   {
+       resourceType,
+       revisionToken
+   }
+"@
+
 function Get-ProductPackageConfigurations
 {
     [CmdletBinding(SupportsShouldProcess)]
@@ -6,6 +14,7 @@ function Get-ProductPackageConfigurations
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
         [string] $ProductId,
 
+        [Parameter(Mandatory)]
         [string] $SubmissionId,
 
         [string] $FeatureGroupId,
@@ -74,6 +83,7 @@ function New-ProductPackageConfiguration
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
         [string] $ProductId,
 
+        [Parameter(Mandatory)]
         [string] $SubmissionId,
 
         [string] $FeatureGroupId,
@@ -161,9 +171,10 @@ function Set-ProductPackageConfiguration
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [string] $PackageConfigurationId,
-
         [string] $SubmissionId,
+
+        [Parameter(Mandatory)]
+        [string] $PackageConfigurationId,
 
         [string] $FeatureGroupId,
 
@@ -192,8 +203,8 @@ function Set-ProductPackageConfiguration
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::PackageConfigurationId = $PackageConfigurationId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::PackageConfigurationId = $PackageConfigurationId
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
@@ -220,7 +231,7 @@ function Set-ProductPackageConfiguration
             # Convert the input into a Json body.
             $hashBody = @{}
             $hashBody[[StoreBrokerPackageConfigurationProperty]::resourceType] = [StoreBrokerResourceType]::PackageConfiguration
-            $hashBody['revisionToken'] = $RevisionToken
+            $hashBody[[StoreBrokerPackageConfigurationProperty]::revisionToken] = $RevisionToken
         }
 
         $body = $hashBody | ConvertTo-Json
@@ -255,10 +266,11 @@ function Get-ProductPackageConfiguration
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
         [string] $ProductId,
 
+         [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
         [Parameter(Mandatory)]
         [string] $PackageConfigurationId,
-
-        [string] $SubmissionId,
 
         [string] $FeatureGroupId,
 
@@ -277,8 +289,8 @@ function Get-ProductPackageConfiguration
     {
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::PackageConfigurationId = $PackageConfigurationId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::PackageConfigurationId = $PackageConfigurationId
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId

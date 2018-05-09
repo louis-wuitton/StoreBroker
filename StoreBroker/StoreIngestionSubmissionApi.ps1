@@ -1,3 +1,18 @@
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerSubmissionProperty
+   {
+       certificationNotes,
+       flightId,
+       isAutoPromote,
+       isManualPublish,
+       releaseTimeInUtc,
+       resourceType,
+       revisionToken,
+       sandboxId,
+       scope
+   }
+"@
+
 function Get-Submissions
 {
     [CmdletBinding(SupportsShouldProcess)]
@@ -12,9 +27,6 @@ function Get-Submissions
 
         [ValidateSet('InProgress', 'Published')]
         [string] $Type,
-
-        [ValidateSet('Preview', 'Live')]
-        [string] $Scope,
 
         [string] $ClientRequestId,
 
@@ -36,12 +48,13 @@ function Get-Submissions
             [StoreBrokerTelemetryProperty]::FlightId = $FlightId
             [StoreBrokerTelemetryProperty]::SandboxId = $SandboxId
             [StoreBrokerTelemetryProperty]::Type = $Type
-            [StoreBrokerTelemetryProperty]::Scope = $Scope
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
         $getParams = @()
+        $getParams += "scope=Live" # Preview is limited to Azure
+
         if (-not [String]::IsNullOrWhiteSpace($FlightId))
         {
             $getParams += "flightId=$FlightId"
@@ -55,11 +68,6 @@ function Get-Submissions
         if (-not [String]::IsNullOrWhiteSpace($Type))
         {
             $getParams += "type=$Type"
-        }
-
-        if (-not [String]::IsNullOrWhiteSpace($Scope))
-        {
-            $getParams += "scope=$Scope"
         }
 
         $params = @{
@@ -125,7 +133,6 @@ function New-Submission
         [Parameter(
             ParameterSetName = 'Sandbox',
             Position = 3)]
-        [ValidateSet('Preview', 'Live')]
         [int] $WaitSeconds = -2, # -1 is special and means no wait. 0 uses the server-side default of 60 seconds.
 
         [Parameter(
@@ -178,7 +185,6 @@ function New-Submission
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
         [StoreBrokerTelemetryProperty]::FlightId = $FlightId
         [StoreBrokerTelemetryProperty]::SandboxId = $SandboxId
-        [StoreBrokerTelemetryProperty]::Scope = $Scope
         [StoreBrokerTelemetryProperty]::WaitSeconds = $WaitSeconds
         [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -205,17 +211,17 @@ function New-Submission
 
     # Convert the input into a Json body.
     $hashBody = @{}
-    $hashBody['resourceType'] = [StoreBrokerResourceType]::Submission
-    $hashBody['scope'] = 'Live' # Preview scope is limited to Azure/Service-ingestion
+    $hashBody[[StoreBrokerSubmissionProperty]::resourceType] = [StoreBrokerResourceType]::Submission
+    $hashBody[[StoreBrokerSubmissionProperty]::scope] = 'Live' # Preview scope is limited to Azure/Service-ingestion
 
     if (-not [String]::IsNullOrWhiteSpace($FlightId))
     {
-        $hashBody['flightId'] = $FlightId
+        $hashBody[[StoreBrokerSubmissionProperty]::flightId] = $FlightId
     }
 
     if (-not [String]::IsNullOrWhiteSpace($SandboxId))
     {
-        $hashBody['sandboxId'] = $SandboxId
+        $hashBody[[StoreBrokerSubmissionProperty]::sandboxId] = $SandboxId
     }
 
     $body = $hashBody | ConvertTo-Json
@@ -518,11 +524,11 @@ function Set-SubmissionDetail
     {
         # Convert the input into a Json body.
         $hashBody = @{}
-        $hashBody['resourceType'] = [StoreBrokerResourceType]::SubmissionDetail
+        $hashBody[[StoreBrokerSubmissionProperty]::resourceType] = [StoreBrokerResourceType]::SubmissionDetail
 
         if ($null -ne $ReleaseDate)
         {
-            $hashBody['releaseTimeInUtc'] = $ReleaseDate.ToUniversalTime().ToString('o')
+            $hashBody[[StoreBrokerSubmissionProperty]::releaseTimeInUtc] = $ReleaseDate.ToUniversalTime().ToString('o')
         }
 
         # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace here, because
@@ -530,7 +536,7 @@ function Set-SubmissionDetail
         # while empty string / whitespace means clear out the notes.
         if ($null -ne $CertificationNotes)
         {
-            $hashBody['certificationNotes'] = $CertificationNotes
+            $hashBody[[StoreBrokerSubmissionProperty]::certificationNotes] = $CertificationNotes
         }
 
         # We only set the value if the user explicitly provided a value for this parameter
@@ -539,7 +545,7 @@ function Set-SubmissionDetail
         # existing value.
         if ($null -ne $PSBoundParameters['ManualPublish'])
         {
-            $hashBody['isManualPublish'] = $ManualPublish
+            $hashBody[[StoreBrokerSubmissionProperty]::isManualPublish] = $ManualPublish
             $telemetryProperties[[StoreBrokerTelemetryProperty]::IsManualPublish] = $ManualPublish
         }
 
@@ -549,7 +555,7 @@ function Set-SubmissionDetail
         # existing value.
         if ($null -ne $PSBoundParameters['AutoPromote'])
         {
-            $hashBody['isAutoPromote'] = $AutoPromote
+            $hashBody[[StoreBrokerSubmissionProperty]::isAutoPromote] = $AutoPromote
             $telemetryProperties[[StoreBrokerTelemetryProperty]::IsAutoPromote] = $AutoPromote
         }
     }

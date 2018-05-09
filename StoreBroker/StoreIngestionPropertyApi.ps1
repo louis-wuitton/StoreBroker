@@ -1,3 +1,11 @@
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerProductPropertyProperty
+   {
+       resourceType,
+       revisionToken
+   }
+"@
+
 function Get-ProductProperties
 {
     [CmdletBinding(SupportsShouldProcess)]
@@ -114,7 +122,7 @@ function New-ProductProperty
             # TODO: Not sure what I should really be doing here.
             if (-not [String]::IsNullOrWhiteSpace($Type))
             {
-                $hashBody['resourceType'] = $Type
+                $hashBody[[StoreBrokerProductPropertyProperty]::resourceType] = $Type
             }
         }
 
@@ -204,12 +212,12 @@ function Set-ProductProperty
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody['revisionToken'] = $RevisionToken
+            $hashBody[[StoreBrokerProductPropertyProperty]::revisionToken] = $RevisionToken
 
             if (-not [String]::IsNullOrWhiteSpace($Type))
             {
                 # TODO: Not sure what I should really be doing here.
-                $hashBody['resourceType'] = $Type
+                $hashBody[[StoreBrokerProductPropertyProperty]::resourceType] = $Type
             }
         }
 

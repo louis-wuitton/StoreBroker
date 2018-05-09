@@ -1,3 +1,13 @@
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerPackageProperty
+   {
+       fileName,
+       resourceType,
+       revisionToken,
+       state
+   }
+"@
+
 function Get-ProductPackages
 {
     [CmdletBinding(SupportsShouldProcess)]
@@ -126,8 +136,8 @@ function New-ProductPackage
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody['resourceType'] = [StoreBrokerResourceType]::Package
-            $hashBody['fileName'] = $FileName
+            $hashBody[[StoreBrokerPackageProperty]::resourceType] = [StoreBrokerResourceType]::Package
+            $hashBody[[StoreBrokerPackageProperty]::fileName] = $FileName
         }
 
         $body = $hashBody | ConvertTo-Json
@@ -229,9 +239,9 @@ function Set-ProductPackage
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody['resourceType'] = [StoreBrokerResourceType]::Package
-            $hashBody['revisionToken'] = $RevisionToken
-            $hashBody['state'] = $State
+            $hashBody[StoreBrokerPackageProperty::resourceType] = [StoreBrokerResourceType]::Package
+            $hashBody[StoreBrokerPackageProperty::revisionToken] = $RevisionToken
+            $hashBody[[StoreBrokerPackageProperty]::state] = $State
         }
 
         $body = $hashBody | ConvertTo-Json

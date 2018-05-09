@@ -1,3 +1,15 @@
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerRolloutProperty
+   {
+       isEnabled,
+       isSeekEnabled,
+       percentage,
+       resourceType,
+       revisionToken,
+       state
+   }
+"@
+
 function Get-SubmissionRollout
 {
     [CmdletBinding(SupportsShouldProcess)]
@@ -100,6 +112,7 @@ function Set-SubmissionRollout
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
         [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
         [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+        [StoreBrokerTelemetryProperty]::State = $State
         [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
@@ -111,13 +124,8 @@ function Set-SubmissionRollout
     {
         # Convert the input into a Json body.
         $hashBody = @{}
-        $hashBody['resourceType'] = [StoreBrokerResourceType]::Rollout
-
-        if ('NoChange' -ne $State)
-        {
-            $hashBody['state'] = $State
-            $telemetryProperties[[StoreBrokerTelemetryProperty]::State] = $State
-        }
+        $hashBody[[StoreBrokerRolloutProperty]::resourceType] = [StoreBrokerResourceType]::Rollout
+        $hashBody[[StoreBrokerRolloutProperty]::state] = $State
 
         # We only set the value if the user explicitly provided a value for this parameter
         # (so for $false, they'd have to pass in -Enabled:$false).
@@ -125,7 +133,7 @@ function Set-SubmissionRollout
         # existing value.
         if ($null -ne $PSBoundParameters['Enabled'])
         {
-            $hashBody['isEnabled'] = $Enabled
+            $hashBody[[StoreBrokerRolloutProperty]::isEnabled] = $Enabled
             $telemetryProperties[[StoreBrokerTelemetryProperty]::IsEnabled] = $Enabled
         }
 
@@ -135,7 +143,7 @@ function Set-SubmissionRollout
         # existing value.
         if ($null -ne $PSBoundParameters['SeekEnabled'])
         {
-            $hashBody['isSeekEnabled'] = $SeekEnabled
+            $hashBody[[StoreBrokerRolloutProperty]::isSeekEnabled] = $SeekEnabled
             $telemetryProperties[[StoreBrokerTelemetryProperty]::IsSeekEnabled] = $SeekEnabled
         }
 
@@ -145,7 +153,7 @@ function Set-SubmissionRollout
         # a value (and thus the percentage shouldn't be changed).
         if ($Percentage -ge 0)
         {
-            $hashBody['percentage'] = $Percentage
+            $hashBody[[StoreBrokerRolloutProperty]::percentage] = $Percentage
             $telemetryProperties[[StoreBrokerTelemetryProperty]::Percentage] = $Percentage
         }
     }

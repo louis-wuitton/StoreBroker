@@ -1,3 +1,12 @@
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerProductProperty
+   {
+       name,
+       resourceType,
+       revisionToken
+   }
+"@
+
 function Get-Product
 {
     [CmdletBinding(
@@ -148,13 +157,15 @@ function New-Product
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
         [string] $ProductId,
 
-        [Parameter(Mandatory)]
-        [string] $Name,
-
         [Parameter(
             Mandatory,
             ParameterSetName="Object")]
         [PSCustomObject] $Object,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [string] $Name,
 
         [Parameter(
             Mandatory,
@@ -189,9 +200,8 @@ function New-Product
     {
         # Convert the input into a Json body.
         $hashBody = @{}
-        $hashBody[[StoreBrokerPropertyNames]::id] = $ProductId
-        $hashBody[[StoreBrokerPropertyNames]::resourceType] = $Type
-        $hashBody[[StoreBrokerPropertyNames]::name] = $Name
+        $hashBody[[StoreBrokerProductProperty]::resourceType] = $Type
+        $hashBody[[StoreBrokerProductProperty]::name] = $Name
     }
 
     $body = $hashBody | ConvertTo-Json

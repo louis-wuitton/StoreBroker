@@ -1,3 +1,13 @@
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerProductAvailabilityProperty
+   {
+       audience,
+       resourceType,
+       revisionToken,
+       visibility
+   }
+"@
+
 function Get-ProductAvailabilities
 {
     [CmdletBinding(SupportsShouldProcess)]
@@ -122,12 +132,12 @@ function New-ProductAvailability
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody['resourceType'] = [StoreBrokerResourceType]::ProductAvailability
-            $hashBody['visibility'] = $Visibility
+            $hashBody[[StoreBrokerProductAvailabilityProperty]::resourceType] = [StoreBrokerResourceType]::ProductAvailability
+            $hashBody[[StoreBrokerProductAvailabilityProperty]::visibility] = $Visibility
 
             if ($null -ne $Audience)
             {
-                $hashBody['audience'] = ConvertTo-Json -InputObject @($Audience)
+                $hashBody[[StoreBrokerProductAvailabilityProperty]::audience] = ConvertTo-Json -InputObject @($Audience)
             }
         }
 
@@ -229,13 +239,13 @@ function Set-ProductAvailability
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody['resourceType'] = [StoreBrokerResourceType]::ProductAvailability
-            $hashBody['visibility'] = $Visibility
-            $hashBody['revisionToken'] = $RevisionToken
+            $hashBody[[StoreBrokerProductAvailabilityProperty]::resourceType] = [StoreBrokerResourceType]::ProductAvailability
+            $hashBody[[StoreBrokerProductAvailabilityProperty]::visibility] = $Visibility
+            $hashBody[[StoreBrokerProductAvailabilityProperty]::revisionToken] = $RevisionToken
 
             if ($null -ne $Audience)
             {
-                $hashBody['audience'] = ConvertTo-Json -InputObject @($Audience)
+                $hashBody[[StoreBrokerProductAvailabilityProperty]::audience] = ConvertTo-Json -InputObject @($Audience)
             }
         }
 

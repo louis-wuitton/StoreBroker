@@ -18,6 +18,7 @@ Add-Type -TypeDefinition @"
        title
    }
 "@
+
 function Get-ListingVideos
 {
     [CmdletBinding(SupportsShouldProcess)]
@@ -406,6 +407,7 @@ function Set-ListingVideo
         {
             # Convert the input into a Json body.
             $hashBody = @{}
+            $hashBody[[StoreBrokerListingVideoProperty]::resourceType] = [StoreBrokerResourceType]::ListingVideo
             $hashBody['revisionToken'] = $RevisionToken
 
             # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace for any
@@ -413,35 +415,35 @@ function Set-ListingVideo
             #So, a $null means do nothing, while empty string / whitespace means clear out the value.
             if ($null -ne $FileName)
             {
-                $hashBody['fileName'] = $FileName
+                $hashBody[[StoreBrokerListingVideoProperty]::fileName] = $FileName
             }
 
             if ($null -ne $State)
             {
-                $hashBody['state'] = $State
+                $hashBody[[StoreBrokerListingVideoProperty]::state] = $State
             }
 
             if (($null -ne $ThumbnailFileName) -or ($null -ne $ThumbnailTitle) -or ($null -ne $ThumbnailDescription) -or ($null -ne $ThumbnailState))
             {
-                $hashBody['thumbnail'] = @{}
+                $hashBody[[StoreBrokerListingVideoProperty]::thumbnail] = @{}
                 if ($null -ne $ThumbnailFileName)
                 {
-                    $hashBody['thumbnail']['fileName'] = $ThumbnailFileName
+                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::fileName] = $ThumbnailFileName
                 }
 
                 if ($null -ne $ThumbnailTitle)
                 {
-                    $hashBody['thumbnail']['title'] = $ThumbnailTitle
+                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::title] = $ThumbnailTitle
                 }
 
                 if ($null -ne $ThumbnailDescription)
                 {
-                    $hashBody['thumbnail']['description'] = $ThumbnailDescription
+                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::description] = $ThumbnailDescription
                 }
 
                 if ($null -ne $ThumbnailState)
                 {
-                    $hashBody['thumbnail']['state'] = $ThumbnailState
+                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::state] = $ThumbnailState
                 }
             }
         }

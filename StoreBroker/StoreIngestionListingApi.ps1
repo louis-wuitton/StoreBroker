@@ -470,9 +470,9 @@ function Set-Listing
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody[[StoreBrokerListingProperty]::languageCode] = $LanguageCode
             $hashBody[[StoreBrokerListingProperty]::resourceType] = [StoreBrokerResourceType]::Listing
             $hashBody[[StoreBrokerListingProperty]::revisionToken] = $RevisionToken
+            $hashBody[[StoreBrokerListingProperty]::languageCode] = $LanguageCode
 
             # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace for any
             # of these checks, because we need a way to be able to clear these notes out.
