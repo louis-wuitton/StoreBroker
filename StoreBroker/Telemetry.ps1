@@ -62,6 +62,7 @@ Add-Type -TypeDefinition @"
       State,
       SubmissionId,
       Type,
+      Orientation,
       UpdateAppProperties,
       UpdateCertificationNotes,
       UpdateGamingOptions,

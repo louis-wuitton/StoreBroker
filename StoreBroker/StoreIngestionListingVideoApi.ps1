@@ -14,6 +14,7 @@ Add-Type -TypeDefinition @"
    {
        fileName,
        description,
+       orientation,
        state,
        title
    }
@@ -105,25 +106,26 @@ function New-ListingVideo
             ParameterSetName="Object")]
         [PSCustomObject[]] $Object,
 
-        [Parameter(ParameterSetName="Individual")]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $FileName,
 
-        [Parameter(ParameterSetName="Individual")]
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
-        [string] $State,
-
-        [Parameter(ParameterSetName="Individual")]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $ThumbnailFileName,
 
-        [Parameter(ParameterSetName="Individual")]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $ThumbnailTitle,
 
         [Parameter(ParameterSetName="Individual")]
         [string] $ThumbnailDescription,
 
         [Parameter(ParameterSetName="Individual")]
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
-        [string] $ThumbnailState,
+        [int] $ThumbnailOrientation = 0,
 
         [string] $ClientRequestId,
 
@@ -142,7 +144,7 @@ function New-ListingVideo
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-            [StoreBrokerTelemetryProperty]::State = $State
+            [StoreBrokerTelemetryProperty]::Orientation = $ThumbnailOrientation
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -161,43 +163,13 @@ function New-ListingVideo
             # Convert the input into a Json body.
             $hashBody = @{}
             $hashBody[[StoreBrokerListingVideoProperty]::resourceType] = [StoreBrokerResourceType]::ListingVideo
+            $hashBody[[StoreBrokerListingVideoProperty]::fileName] = $FileName
 
-            if (-not [String]::IsNullOrWhiteSpace($FileName))
-            {
-                $hashBody[[StoreBrokerListingVideoProperty]::fileName] = $FileName
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($State))
-            {
-                $hashBody[[StoreBrokerListingVideoProperty]::state] = $State
-            }
-
-            if ((-not [String]::IsNullOrWhiteSpace($ThumbnailFileName)) -or
-                (-not [String]::IsNullOrWhiteSpace($ThumbnailTitle)) -or
-                (-not [String]::IsNullOrWhiteSpace($ThumbnailDescription)) -or
-                (-not [String]::IsNullOrWhiteSpace($ThumbnailState)))
-            {
-                $hashBody[[StoreBrokerListingVideoProperty]::thumbnail] = @{}
-                if (-not [String]::IsNullOrWhiteSpace($ThumbnailFileName))
-                {
-                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::fileName] = $ThumbnailFileName
-                }
-
-                if (-not [String]::IsNullOrWhiteSpace($ThumbnailTitle))
-                {
-                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::title] = $ThumbnailTitle
-                }
-
-                if (-not [String]::IsNullOrWhiteSpace($ThumbnailDescription))
-                {
-                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::description] = $ThumbnailDescription
-                }
-
-                if (-not [String]::IsNullOrWhiteSpace($ThumbnailState))
-                {
-                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::state] = $ThumbnailState
-                }
-            }
+            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail] = @{}
+            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::fileName] = $ThumbnailFileName
+            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::title] = $ThumbnailTitle
+            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::orientation] = $ThumbnailOrientation
+            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::description] = $ThumbnailDescription
         }
 
         $body = $hashBody | ConvertTo-Json
@@ -344,25 +316,28 @@ function Set-ListingVideo
             ParameterSetName="Object")]
         [PSCustomObject] $Object,
 
-        [Parameter(ParameterSetName="Individual")]
-        [string] $FileName,
-
-        [Parameter(ParameterSetName="Individual")]
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [ValidateSet('PendingUpload', 'Uploaded')]
         [string] $State,
 
-        [Parameter(ParameterSetName="Individual")]
-        [string] $ThumbnailFileName,
-
-        [Parameter(ParameterSetName="Individual")]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $ThumbnailTitle,
 
         [Parameter(ParameterSetName="Individual")]
         [string] $ThumbnailDescription,
 
-        [Parameter(ParameterSetName="Individual")]
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [ValidateSet('PendingUpload', 'Uploaded')]
         [string] $ThumbnailState,
+
+        [Parameter(ParameterSetName="Individual")]
+        [int] $ThumbnailOrientation = 0,
 
         [Parameter(
             Mandatory,
@@ -389,6 +364,7 @@ function Set-ListingVideo
             [StoreBrokerTelemetryProperty]::VideoId = $VideoId
             [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::State = $State
+            [StoreBrokerTelemetryProperty]::Orientation = $ThumbnailOrientation
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -409,43 +385,13 @@ function Set-ListingVideo
             $hashBody = @{}
             $hashBody[[StoreBrokerListingVideoProperty]::resourceType] = [StoreBrokerResourceType]::ListingVideo
             $hashBody['revisionToken'] = $RevisionToken
+            $hashBody[[StoreBrokerListingVideoProperty]::state] = $State
 
-            # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace for any
-            # of these checks, because we need a way to be able to clear these notes out.
-            #So, a $null means do nothing, while empty string / whitespace means clear out the value.
-            if ($null -ne $FileName)
-            {
-                $hashBody[[StoreBrokerListingVideoProperty]::fileName] = $FileName
-            }
-
-            if ($null -ne $State)
-            {
-                $hashBody[[StoreBrokerListingVideoProperty]::state] = $State
-            }
-
-            if (($null -ne $ThumbnailFileName) -or ($null -ne $ThumbnailTitle) -or ($null -ne $ThumbnailDescription) -or ($null -ne $ThumbnailState))
-            {
-                $hashBody[[StoreBrokerListingVideoProperty]::thumbnail] = @{}
-                if ($null -ne $ThumbnailFileName)
-                {
-                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::fileName] = $ThumbnailFileName
-                }
-
-                if ($null -ne $ThumbnailTitle)
-                {
-                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::title] = $ThumbnailTitle
-                }
-
-                if ($null -ne $ThumbnailDescription)
-                {
-                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::description] = $ThumbnailDescription
-                }
-
-                if ($null -ne $ThumbnailState)
-                {
-                    $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::state] = $ThumbnailState
-                }
-            }
+            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail] = @{}
+            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::title] = $ThumbnailTitle
+            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::description] = $ThumbnailDescription
+            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::orientation] = $ThumbnailOrientation
+            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::state] = $ThumbnailState
         }
 
         $body = $hashBody | ConvertTo-Json

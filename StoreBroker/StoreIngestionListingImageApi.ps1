@@ -4,7 +4,9 @@ Add-Type -TypeDefinition @"
        fileName,
        resourceType,
        revisionToken,
-       state
+       orientation,
+       state,
+       type
    }
 "@
 
@@ -94,10 +96,14 @@ function New-ListingImage
             ParameterSetName="Object")]
         [PSCustomObject[]] $Object,
 
-        [Parameter(ParameterSetName="Individual")]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $FileName,
 
-        [Parameter(ParameterSetName="Individual")]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [ValidateSet(
             'HeroImage414x180', 'HeroImage846x468', 'HeroImage558x756', 'HeroImage414x468', 'HeroImage558x558', 'HeroImage2400x1200',
             'Screenshot', 'ScreenshotWXGA', 'ScreenshotHD720', 'ScreenshotWVGA',
@@ -108,9 +114,7 @@ function New-ListingImage
         [string] $Type,
 
         [Parameter(ParameterSetName="Individual")]
-
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
-        [string] $State,
+        [int] $Orientation = 0,
 
         [string] $ClientRequestId,
 
@@ -130,7 +134,7 @@ function New-ListingImage
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
             [StoreBrokerTelemetryProperty]::Type = $Type
-            [StoreBrokerTelemetryProperty]::State = $State
+            [StoreBrokerTelemetryProperty]::Orientation = $Orientation
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -149,16 +153,9 @@ function New-ListingImage
             # Convert the input into a Json body.
             $hashBody = @{}
             $hashBody[[StoreBrokerListingImageProperty]::resourceType] = [StoreBrokerResourceType]::ListingImage
-
-            if (-not [String]::IsNullOrWhiteSpace($FileName))
-            {
-                $hashBody[[StoreBrokerListingImageProperty]::fileName] = $FileName
-            }
-
-            if (-not [String]::IsNullOrWhiteSpace($State))
-            {
-                $hashBody[[StoreBrokerListingImageProperty]::state] = $State
-            }
+            $hashBody[[StoreBrokerListingImageProperty]::fileName] = $FileName
+            $hashBody[[StoreBrokerListingImageProperty]::type] = $Type
+            $hashBody[[StoreBrokerListingImageProperty]::orientation] = $Orientation
         }
 
         $body = $hashBody | ConvertTo-Json
@@ -305,22 +302,16 @@ function Set-ListingImage
             ParameterSetName="Object")]
         [PSCustomObject] $Object,
 
-        [Parameter(ParameterSetName="Individual")]
-        [string] $FileName,
+        # Can't change filename or type once it's been created.  Would need to delete and re-create.
+
+        [Parameter(
+            Mandatory,
+            arameterSetName="Individual")]
+        [ValidateSet('PendingUpload', 'Uploaded')]
+        [string] $State, 
 
         [Parameter(ParameterSetName="Individual")]
-        [ValidateSet(
-            'HeroImage414x180', 'HeroImage846x468', 'HeroImage558x756', 'HeroImage414x468', 'HeroImage558x558', 'HeroImage2400x1200',
-            'Screenshot', 'ScreenshotWXGA', 'ScreenshotHD720', 'ScreenshotWVGA',
-            'SmallMobileTile', 'SmallXboxLiveTile', 'LargeMobileTile', 'LargeXboxLiveTile', 'Tile',
-            'DesktopIcon', 'Icon', 'AchievementIcon', 'ChallengePromoIcon', 'RewardDisplayIcon', 'Icon150X150', 'Icon71X71',
-            'Doublewide', 'Panoramic', 'Square', 'MobileScreenshot', 'XboxScreenshot', 'PpiScreenshot', 'AnalogScreenshot',
-            'BoxArt', 'BrandedKeyArt', 'PosterArt', 'FeaturedPromotionalArt', 'SquareHeroArt', 'TitledHeroArt')]
-        [string] $Type,
-
-        [Parameter(ParameterSetName="Individual")]
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
-        [string] $State,
+        [int] $Orientation = 0,
 
         [Parameter(
             Mandatory,
@@ -345,8 +336,8 @@ function Set-ListingImage
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
             [StoreBrokerTelemetryProperty]::ImageId = $ImageId
-            [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::State = $State
+            [StoreBrokerTelemetryProperty]::Orientation = $Orientation
             [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -367,19 +358,8 @@ function Set-ListingImage
             $hashBody = @{}
             $hashBody[[StoreBrokerListingImageProperty]::revisionToken] = $RevisionToken
             $hashBody[[StoreBrokerListingImageProperty]::resourceType] = [StoreBrokerResourceType]::ListingImage
-
-            # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace for any
-            # of these checks, because we need a way to be able to clear these notes out.
-            #So, a $null means do nothing, while empty string / whitespace means clear out the value.
-            if ($null -ne $FileName)
-            {
-                $hashBody[[StoreBrokerListingImageProperty]::fileName] = $FileName
-            }
-
-            if ($null -ne $State)
-            {
-                $hashBody[[StoreBrokerListingImageProperty]::state] = $State
-            }
+            $hashBody[[StoreBrokerListingImageProperty]::orientation] = $Orientation
+            $hashBody[[StoreBrokerListingImageProperty]::state] = $State
         }
 
         $body = $hashBody | ConvertTo-Json

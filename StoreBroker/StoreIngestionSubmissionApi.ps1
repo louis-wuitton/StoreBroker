@@ -28,6 +28,9 @@ function Get-Submissions
         [ValidateSet('InProgress', 'Published')]
         [string] $Type,
 
+        [ValidateSet('Live', 'Preview')]  # Preview is currently limited to Azure
+        [string] $Scope = 'Live',
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -48,12 +51,13 @@ function Get-Submissions
             [StoreBrokerTelemetryProperty]::FlightId = $FlightId
             [StoreBrokerTelemetryProperty]::SandboxId = $SandboxId
             [StoreBrokerTelemetryProperty]::Type = $Type
+            [StoreBrokerTelemetryProperty]::Scope = $Scope
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
         $getParams = @()
-        $getParams += "scope=Live" # Preview is limited to Azure
+        $getParams += "scope=$Scope"
 
         if (-not [String]::IsNullOrWhiteSpace($FlightId))
         {
@@ -124,6 +128,7 @@ function New-Submission
             Position = 1)]
         [string] $SandboxId,
 
+
         [Parameter(
             ParameterSetName = 'Retail',
             Position = 2)]
@@ -133,7 +138,8 @@ function New-Submission
         [Parameter(
             ParameterSetName = 'Sandbox',
             Position = 3)]
-        [int] $WaitSeconds = -1, # 0 means no wait.  We'll use -1 to indicate not to send it, which causes it to use the server side default of 60 seconds.
+        [ValidateSet('Live', 'Preview')]  # Preview is currently limited to Azure
+        [string] $Scope = 'Live',
 
         [Parameter(
             ParameterSetName = 'Retail',
@@ -144,7 +150,7 @@ function New-Submission
         [Parameter(
             ParameterSetName = 'Sandbox',
             Position = 4)]
-        [string] $ClientRequestId,
+        [int] $WaitSeconds = -1, # 0 means no wait.  We'll use -1 to indicate not to send it, which causes it to use the server side default of 60 seconds.
 
         [Parameter(
             ParameterSetName = 'Retail',
@@ -155,6 +161,11 @@ function New-Submission
         [Parameter(
             ParameterSetName = 'Sandbox',
             Position = 5)]
+        [string] $ClientRequestId,
+
+        [Parameter(ParameterSetName = 'Retail')]
+        [Parameter(ParameterSetName = 'Flight')]
+        [Parameter(ParameterSetName = 'Sandbox')]
         [string] $CorrelationId,
 
         [Parameter(ParameterSetName = 'Retail')]
@@ -162,15 +173,9 @@ function New-Submission
         [Parameter(ParameterSetName = 'Sandbox')]
         [switch] $Force,
 
-        [Parameter(
-            ParameterSetName = 'Retail',
-            Position = 5)]
-        [Parameter(
-            ParameterSetName = 'Flight',
-            Position = 6)]
-        [Parameter(
-            ParameterSetName = 'Sandbox',
-            Position = 6)]
+        [Parameter(ParameterSetName = 'Retail')]
+        [Parameter(ParameterSetName = 'Flight')]
+        [Parameter(ParameterSetName = 'Sandbox')]
         [string] $AccessToken,
 
         [Parameter(ParameterSetName = 'Retail')]
@@ -185,6 +190,7 @@ function New-Submission
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
         [StoreBrokerTelemetryProperty]::FlightId = $FlightId
         [StoreBrokerTelemetryProperty]::SandboxId = $SandboxId
+        [StoreBrokerTelemetryProperty]::Scope = $Scope
         [StoreBrokerTelemetryProperty]::WaitSeconds = $WaitSeconds
         [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -212,7 +218,7 @@ function New-Submission
     # Convert the input into a Json body.
     $hashBody = @{}
     $hashBody[[StoreBrokerSubmissionProperty]::resourceType] = [StoreBrokerResourceType]::Submission
-    $hashBody[[StoreBrokerSubmissionProperty]::scope] = 'Live' # Preview scope is limited to Azure/Service-ingestion
+    $hashBody[[StoreBrokerSubmissionProperty]::scope] = $Scope
 
     if (-not [String]::IsNullOrWhiteSpace($FlightId))
     {
@@ -494,6 +500,7 @@ function Set-SubmissionDetail
         [Parameter(ParameterSetName="Individual")]
         [switch] $ManualPublish,
 
+        # This is only relevant for sandboxes
         [Parameter(ParameterSetName="Individual")]
         [switch] $AutoPromote,
 
@@ -579,6 +586,7 @@ function Set-SubmissionDetail
     return (Invoke-SBRestMethod @params)
 }
 
+# This is only relevant for sandboxes
 function Push-Submission
 {
     [Alias('Promote-Submission')]

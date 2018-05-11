@@ -93,7 +93,9 @@ function New-ProductPackage
             ParameterSetName="Object")]
         [PSCustomObject] $Object,
 
-        [Parameter(ParameterSetName="Individual")]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $FileName,
 
         [string] $ClientRequestId,
@@ -186,8 +188,10 @@ function Set-ProductPackage
             ParameterSetName="Object")]
         [PSCustomObject] $Object,
 
-        [Parameter(ParameterSetName="Individual")]
-        [ValidateSet('PendingUpload', 'Uploaded', 'InProcessing', 'Processed', 'ProcessFailed')]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [ValidateSet('PendingUpload', 'Uploaded')]
         [string] $State = 'PendingUpload',
 
         [Parameter(
