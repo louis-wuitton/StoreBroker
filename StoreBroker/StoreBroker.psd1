@@ -40,7 +40,6 @@
 
     FunctionsToExport = @(
 
-        'Get-FeatureAvailabilities',
         'New-FeatureAvailability',
         'Set-FeatureAvailability',
         'Get-FeatureAvailability',

@@ -6,9 +6,11 @@ Add-Type -TypeDefinition @"
    }
 "@
 
-function Get-FeatureAvailabilities
+function Get-FeatureAvailability
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Multiple")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
@@ -16,6 +18,11 @@ function Get-FeatureAvailabilities
 
         [Parameter(Mandatory)]
         [string] $SubmissionId,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [string] $FeatureAvailabilityId,
 
         [string] $FeatureGroupId,
 
@@ -31,6 +38,7 @@ function Get-FeatureAvailabilities
 
         [string] $AccessToken,
 
+        [Parameter(ParameterSetName="Multiple")]
         [switch] $SinglePage,
 
         [switch] $NoStatus
@@ -40,9 +48,12 @@ function Get-FeatureAvailabilities
 
     try
     {
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($GroupId))
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::FeatureAvailabilityId = $FeatureAvailabilityId
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
             [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
@@ -67,18 +78,30 @@ function Get-FeatureAvailabilities
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/featureAvailabilities`?" + ($getParams -join '&')
-            "Description" = "Getting feature availability for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-FeatureAvailabilities"
+            "TelemetryEventName" = "Get-FeatureAvailability"
             "TelemetryProperties" = $telemetryProperties
-            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
-        return Invoke-SBRestMethodMultipleResult @params
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "products/$ProductId/featureavailabilities/$FeatureAvailabilityId`?" + ($getParams -join '&')
+            $params["Method" ] = 'Get'
+            $params["Description"] =  "Getting feature availability $FeatureAvailabilityId for $ProductId"
+            
+            return Invoke-SBRestMethod @params
+        }
+        else
+        {
+            $params["UriFragment"] = "products/$ProductId/featureAvailabilities`?" + ($getParams -join '&')
+            $params["Description"] =  "Getting feature availability for $ProductId"
+            $params["SinglePage" ] = $SinglePage
+            
+            return Invoke-SBRestMethodMultipleResult @params
+        }
     }
     catch [System.InvalidOperationException]
     {
@@ -227,88 +250,6 @@ function Set-FeatureAvailability
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Set-FeatureAvailability"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
-    }
-    catch [System.InvalidOperationException]
-    {
-        throw
-    }
-}
-
-function Get-FeatureAvailability
-{
-    [CmdletBinding(SupportsShouldProcess)]
-    param(
-        [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
-        [string] $ProductId,
-
-        [Parameter(Mandatory)]
-        [string] $SubmissionId,
-
-        [Parameter(Mandatory)]
-        [string] $FeatureAvailabilityId,
-
-        [string] $FeatureGroupId,
-
-        [switch] $IncludeMarketStates,
-
-        [switch] $IncludeTrial,
-
-        [switch] $IncludePricing,
-
-        [string] $ClientRequestId,
-
-        [string] $CorrelationId,
-
-        [string] $AccessToken,
-
-        [switch] $NoStatus
-    )
-
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
-
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::FeatureAvailabilityId = $FeatureAvailabilityId
-            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-            [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
-            [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
-            [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $getParams = @()
-        $getParams += "marketStates=$IncludeMarketStates"
-        $getParams += "trial=$IncludeTrial"
-        $getParams += "pricing=$IncludePricing"
-
-        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
-        {
-            $getParams += "submissionId=$SubmissionId"
-        }
-
-        if (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
-        {
-            $getParams += "featureGroupId=$FeatureGroupId"
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/featureavailabilities/$FeatureAvailabilityId`?" + ($getParams -join '&')
-            "Method" = 'Get'
-            "Description" = "Getting feature availability $FeatureAvailabilityId for $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-FeatureAvailability"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
