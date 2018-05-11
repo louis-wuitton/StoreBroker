@@ -9,13 +9,15 @@ Add-Type -TypeDefinition @"
    }
 "@
 
-function Get-Flights
+function Get-Flight
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
+
+        [string] $FlightId,
 
         [string] $ClientRequestId,
 
@@ -32,25 +34,40 @@ function Get-Flights
 
     try
     {
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($FlightId))
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::FlightId = $FlightId
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/flights"
-            "Description" = "Getting flights for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-Flights"
+            "TelemetryEventName" = "Get-Flight"
             "TelemetryProperties" = $telemetryProperties
-            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
-        return Invoke-SBRestMethodMultipleResult @params
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "products/$ProductId/flights/$FlightId"
+            $params["Method" ] = 'Get'
+            $params["Description"] =  "Getting flight $FlightId for $ProductId"
+
+            return Invoke-SBRestMethod @params
+        }
+        else
+        {
+            $params["UriFragment"] = "products/$ProductId/flights"
+            $params["Description"] =  "Getting flights for $ProductId"
+            $params["SinglePage" ] = $SinglePage
+
+            return Invoke-SBRestMethodMultipleResult @params
+        }
     }
     catch [System.InvalidOperationException]
     {
@@ -65,7 +82,7 @@ function New-Flight
         DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(
@@ -153,7 +170,7 @@ function Remove-Flight
     [Alias("Delete-Flight")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -199,7 +216,7 @@ function Set-Flight
         DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -279,58 +296,6 @@ function Set-Flight
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Set-Flight"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
-    }
-    catch [System.InvalidOperationException]
-    {
-        throw
-    }
-}
-
-function Get-Flight
-{
-    [CmdletBinding(SupportsShouldProcess)]
-    param(
-        [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
-        [string] $ProductId,
-
-        [Parameter(Mandatory)]
-        [string] $FlightId,
-
-        [string] $ClientRequestId,
-
-        [string] $CorrelationId,
-
-        [string] $AccessToken,
-
-        [switch] $NoStatus
-    )
-
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
-
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::FlightId = $FlightId
-            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/flights/$FlightId"
-            "Method" = 'Get'
-            "Description" = "Getting flight $FlightId for $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-Flight"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }

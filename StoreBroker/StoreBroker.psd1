@@ -44,7 +44,6 @@
         'Set-FeatureAvailability',
         'Get-FeatureAvailability',
 
-        'Get-FeatureGroups',
         'Remove-FeatureGroup',
         'New-FeatureGroup',
         'Set-FeatureGroup',
@@ -54,31 +53,26 @@
         'New-Group',
         'Set-Group',
 
-        'Get-Flight',
         'New-Flight',
         'Delete-Flight',
         'Get-Flight',
         'Set-Flight',
 
-        'Get-Listings',
         'New-Listing',
         'Delete-Listing',
         'Get-Listing',
         'Set-Listing',
 
-        'Get-ListingImages',
         'New-ListingImage',
         'Delete-ListingImage',
         'Get-ListingImage',
         'Set-ListingImage',
 
-        'Get-ListingVideos',
         'New-ListingVideo',
         'Delete-ListingVideo',
         'Get-ListingVideo',
         'Set-ListingVideo',
 
-        'Get-Products',
         'Get-Product',
         'New-Product',
         'Remove-Product',
@@ -86,11 +80,10 @@
         'Get-ProductRelated',
         'Get-ProductStoreLink',
 
-        'Get-Submissions',
         'Get-Submission',
         'Get-SubmissionDetail',
         'Set-SubmissionDetail',
-        'Get-SubmissionReports',
+        'Get-SubmissionReport',
         'Get-SubmissionValidation',
         'Remove-Submission',
         'New-Submission',
@@ -102,30 +95,26 @@
         'Get-SubmissionRollout',
         'Set-SubmissionRollout',
 
-        'Get-ProductPackages',
         'Remove-ProductPackage',
         'Get-ProductPackage',
         'New-ProductPackage',
         'Set-ProductPackage',
 
-        'Get-ProductPackageConfigurations',
         'Get-ProductPackageConfiguration',
         'New-ProductPackageConfiguration',
         'Set-ProductPackageConfiguration',
 
-        'Get-ProductProperties',
         'Get-ProductProperty',
         'New-ProductProperty',
         'Set-ProductProperty',
 
-        'Get-ProductAvailabilities',
         'Get-ProductAvailability',
         'New-ProductAvailability',
         'Set-ProductAvailability',
 
 
         'Clear-StoreBrokerAuthentication',
-        'Get-SubmissionPackage',
+        'Get-StoreFile',
         'Invoke-SBRestMethod',
         'Invoke-SBRestMethodMultipleResult',
         'Join-SubmissionPackage',
@@ -135,7 +124,7 @@
         'Open-DevPortal',
         'Open-Store',
         'Set-StoreBrokerAuthentication',
-        'Set-SubmissionPackage',
+        'Set-StoreFile',
         'Start-ApplicationFlightSubmissionMonitor',
         'Start-InAppProductSubmissionMonitor',
         'Start-SubmissionMonitor')
@@ -155,11 +144,14 @@
         'Delete-FeatureGroup',
 
 
+        'Get-SubmissionPackage',
         'New-PackageToolConfigFile',
         'New-StoreBrokerIapConfigFile',
+        'Set-SubmissionPackage',
         'Start-ApplicationSubmissionMonitor',
         'Start-IapSubmissionMonitor',
         'Upload-ApplicationSubmissionPackage',
+        'Upload-StoreFile',
         'Upload-SubmissionPackage')
 
     #CmdletsToExport = '*'

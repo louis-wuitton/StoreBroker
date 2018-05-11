@@ -761,24 +761,24 @@ function Get-AzureStorageDataMovementDllPath {
     return Get-NugetPackageDllPath -NugetPackageName $nugetPackageName -NugetPackageVersion $nugetPackageVersion -AssemblyPackageTailDirectory $assemblyPackageTailDir -AssemblyName $assemblyName -NoStatus:$NoStatus
 }
 
-function Set-SubmissionPackage
+function Set-StoreFile
 {
 <#
     .SYNOPSIS
-        Uploads the package to the URL provided after calling New-ApplicationSubmission.
+        Uploads the package to the URL provided after calling New-ListingImage, New-ListingVideo,
+        or New-ProductPackage.
 
     .DESCRIPTION
-        Uploads the package to the URL provided after calling New-ApplicationSubmission.
+        Uploads the package to the URL provided after calling New-ListingImage, New-ListingVideo,
+        or New-ProductPackage.
 
         The Git repo for this module can be found here: http://aka.ms/StoreBroker
 
-    .PARAMETER PackagePath
-        The package (zip) that contains all of the contents (appxupload/appxbundle/screenshots)
-        referenced by the submission.
+    .PARAMETER FilePath
+        The file that is to be uploaded.
 
     .PARAMETER UploadUrl
-        The unique URL that was provided in response to a successful call to
-        New-ApplicationSubmission.
+        The unique URL that was provided in a resource object that supports binary content.
         Supports Pipeline input.
 
     .PARAMETER NoStatus
@@ -787,12 +787,12 @@ function Set-SubmissionPackage
         the background, enabling the command prompt to provide status information.
 
     .EXAMPLE
-        Upload-SubmissionPackage "c:\foo.zip" "https://prodingestionbinaries1.blob.core.windows.net/ingestion/00000000-abcd-1234-0000-abcdefghijkl?sv=2014-02-14&sr=b&sig=WujGssA00/voXHaDgmaK1mpPn2JUkRPD/123gkAJdnI=&se=2015-12-17T12:58:14Z&sp=rwl"
+        Upload-StoreFile "c:\foo.zip" "https://prodingestionbinaries1.blob.core.windows.net/ingestion/00000000-abcd-1234-0000-abcdefghijkl?sv=2014-02-14&sr=b&sig=WujGssA00/voXHaDgmaK1mpPn2JUkRPD/123gkAJdnI=&se=2015-12-17T12:58:14Z&sp=rwl"
         Uploads the package content for the application submission,
         with the console window showing progress while waiting for the upload to complete.
 
     .EXAMPLE
-        Upload-SubmissionPackage "c:\foo.zip" "https://prodingestionbinaries1.blob.core.windows.net/ingestion/00000000-abcd-1234-0000-abcdefghijkl?sv=2014-02-14&sr=b&sig=WujGssA00/voXHaDgmaK1mpPn2JUkRPD/123gkAJdnI=&se=2015-12-17T12:58:14Z&sp=rwl" -NoStatus
+        Upload-StoreFile "c:\foo.zip" "https://prodingestionbinaries1.blob.core.windows.net/ingestion/00000000-abcd-1234-0000-abcdefghijkl?sv=2014-02-14&sr=b&sig=WujGssA00/voXHaDgmaK1mpPn2JUkRPD/123gkAJdnI=&se=2015-12-17T12:58:14Z&sp=rwl" -NoStatus
         Uploads the package content for the application submission,
         but the request happens in the foreground and there is no additional status
         shown to the user until the upload has completed.
@@ -803,35 +803,37 @@ function Set-SubmissionPackage
         the -NoStatus switch).
 
         This uses the "Set" verb to avoid Powershell import module warnings, but is then
-        aliased to Upload-ApplicationSubmissionPackage to better express what it is actually doing.
+        aliased to Upload-StoreFile to better express what it is actually doing.
 #>
     [CmdletBinding(SupportsShouldProcess)]
     [Alias('Set-ApplicationSubmissionPackage')]
+    [Alias('Set-SubmissionPackage')]
     [Alias('Upload-ApplicationSubmissionPackage')]
+    [Alias('Upload-StoreFile')]
     [Alias('Upload-SubmissionPackage')]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if (Test-Path -Path $_ -PathType Leaf) { $true } else { throw "$_ cannot be found." }})]
-        [string] $PackagePath,
+        [string] $FilePath,
 
         [Parameter(
             Mandatory,
             ValueFromPipeline=$True)]
-        [string] $UploadUrl,
+        [string] $SasUri,
 
         [switch] $NoStatus
     )
 
     # Let's resolve this path to a full path so that it works with non-PowerShell commands (like the Azure module)
-    $PackagePath = Resolve-UnverifiedPath -Path $PackagePath
+    $FilePath = Resolve-UnverifiedPath -Path $FilePath
 
     # Telemetry-related
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-    $telemetryProperties = @{ [StoreBrokerTelemetryProperty]::PackagePath = (Get-PiiSafeString -PlainText $PackagePath) }
+    $telemetryProperties = @{ [StoreBrokerTelemetryProperty]::FilePath = (Get-PiiSafeString -PlainText $FilePath) }
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    Write-Log -Message "Attempting to upload the package ($PackagePath) for the submission to $UploadUrl..." -Level Verbose
+    Write-Log -Message "Attempting to upload the file ($FilePath) to $SasUri..." -Level Verbose
 
     $azureStorageDll = Get-AzureStorageDllPath -NoStatus:$NoStatus
     $azureStorageDataMovementDll = Get-AzureStorageDataMovementDllPath -NoStatus:$NoStatus
@@ -855,24 +857,24 @@ function Set-SubmissionPackage
             $bytes = [System.IO.File]::ReadAllBytes($azureStorageDataMovementDll)
             [System.Reflection.Assembly]::Load($bytes) | Out-Null
 
-            $uri = New-Object -TypeName System.Uri -ArgumentList $UploadUrl
+            $uri = New-Object -TypeName System.Uri -ArgumentList $SasUri
             $cloudBlockBlob = New-Object -TypeName Microsoft.WindowsAzure.Storage.Blob.CloudBlockBlob -ArgumentList $uri
 
-            if ($PSCmdlet.ShouldProcess($PackagePath, "CloudBlockBlob.UploadFromFile"))
+            if ($PSCmdlet.ShouldProcess($FilePath, "CloudBlockBlob.UploadFromFile"))
             {
                 # We will run this async command synchronously within the console.
-                $task = [Microsoft.WindowsAzure.Storage.DataMovement.TransferManager]::UploadAsync($packagePath, $cloudBlockBlob, $null, $null)
+                $task = [Microsoft.WindowsAzure.Storage.DataMovement.TransferManager]::UploadAsync($FilePath, $cloudBlockBlob, $null, $null)
                 $task.GetAwaiter().GetResult() | Out-Null
             }
         }
         else
         {
-            $jobName = "Set-SubmissionPackage-" + (Get-Date).ToFileTime().ToString()
+            $jobName = "Set-StoreFile-" + (Get-Date).ToFileTime().ToString()
 
             if ($PSCmdlet.ShouldProcess($jobName, "Start-Job"))
             {
                 [scriptblock]$scriptBlock = {
-                    param($UploadUrl, $PackagePath, $AzureStorageDll, $AzureStorageDataMovementDll)
+                    param($SasUri, $FilePath, $AzureStorageDll, $AzureStorageDataMovementDll)
 
                     # Recommendations per https://github.com/Azure/azure-storage-net-data-movement#best-practice
                     [System.Net.ServicePointManager]::DefaultConnectionLimit = [Environment]::ProcessorCount * 8
@@ -884,19 +886,19 @@ function Set-SubmissionPackage
                     $bytes = [System.IO.File]::ReadAllBytes($AzureStorageDataMovementDll)
                     [System.Reflection.Assembly]::Load($bytes) | Out-Null
 
-                    $uri = New-Object -TypeName System.Uri -ArgumentList $UploadUrl
+                    $uri = New-Object -TypeName System.Uri -ArgumentList $SasUri
                     $cloudBlockBlob = New-Object -TypeName Microsoft.WindowsAzure.Storage.Blob.CloudBlockBlob -ArgumentList $uri
 
                     # We will run this async command synchronously within the console.
-                    $task = [Microsoft.WindowsAzure.Storage.DataMovement.TransferManager]::UploadAsync($PackagePath, $cloudBlockBlob, $null, $null)
+                    $task = [Microsoft.WindowsAzure.Storage.DataMovement.TransferManager]::UploadAsync($FilePath, $cloudBlockBlob, $null, $null)
                     $task.GetAwaiter().GetResult() | Out-Null
                 }
 
-                $null = Start-Job -Name $jobName -ScriptBlock $scriptBlock -Arg @($UploadUrl, $PackagePath, $azureStorageDll, $azureStorageDataMovementDll)
+                $null = Start-Job -Name $jobName -ScriptBlock $scriptBlock -Arg @($SasUri, $FilePath, $azureStorageDll, $azureStorageDataMovementDll)
 
                 if ($PSCmdlet.ShouldProcess($jobName, "Wait-JobWithAnimation"))
                 {
-                    Wait-JobWithAnimation -JobName $jobName -Description "Uploading $PackagePath"
+                    Wait-JobWithAnimation -JobName $jobName -Description "Uploading $FilePath"
                 }
 
                 if ($PSCmdlet.ShouldProcess($jobName, "Receive-Job"))
@@ -914,7 +916,7 @@ function Set-SubmissionPackage
         # Record the telemetry for this event.
         $stopwatch.Stop()
         $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
-        Set-TelemetryEvent -EventName Set-SubmissionPackage -Properties $telemetryProperties -Metrics $telemetryMetrics
+        Set-TelemetryEvent -EventName Set-StoreFile -Properties $telemetryProperties -Metrics $telemetryMetrics
     }
     catch [System.Management.Automation.RuntimeException]
     {
@@ -932,7 +934,7 @@ function Set-SubmissionPackage
             }
         }
 
-        Set-TelemetryException -Exception $_.Exception -ErrorBucket Set-SubmissionPackage -Properties $telemetryProperties
+        Set-TelemetryException -Exception $_.Exception -ErrorBucket Set-StoreFile -Properties $telemetryProperties
         $newLineOutput = ($output -join [Environment]::NewLine)
         Write-Log -Message $newLineOutput -Level Error
         throw $newLineOutput
@@ -948,7 +950,7 @@ function Set-SubmissionPackage
         $output += "StatusDescription: $($_.Exception.Response.StatusDescription)"
         $output += "$($_.ErrorDetails)"
 
-        Set-TelemetryException -Exception $_.Exception -ErrorBucket Set-SubmissionPackage -Properties $telemetryProperties
+        Set-TelemetryException -Exception $_.Exception -ErrorBucket Set-StoreFile -Properties $telemetryProperties
         $newLineOutput = ($output -join [Environment]::NewLine)
         Write-Log -Message $newLineOutput -Level Error
         throw $newLineOutput
@@ -959,28 +961,26 @@ function Set-SubmissionPackage
         [System.Net.ServicePointManager]::Expect100Continue = $origExpect100Continue
     }
 
-    Write-Log -Message "Successfully uploaded the application package." -Level Verbose
+    Write-Log -Message "Successfully uploaded the file." -Level Verbose
 }
 
-function Get-SubmissionPackage
+function Get-StoreFile
 {
 <#
     .SYNOPSIS
-        Downloads the existing package from the URL provided after calling New-ApplicationSubmission.
+        Downloads the file from the Azure SAS Uri provided.
 
     .DESCRIPTION
-        Downloads the existing package from the URL provided after calling New-ApplicationSubmission.
+        Downloads the file from the Azure SAS Uri provided.
 
         The Git repo for this module can be found here: http://aka.ms/StoreBroker
 
-    .PARAMETER UploadUrl
-        The unique URL that was provided in response to a successful call to
-        New-ApplicationSubmission.
+    .PARAMETER SasUri
+        The unique URL that was provided in a resource object that supports binary content.
         Supports Pipeline input.
 
-    .PARAMETER PackagePath
-        The local path that you want to store the package (zip) that contains all of the contents
-        (appxupload/appxbundle/screenshots) referenced by the submission.
+    .PARAMETER FilePath
+        The local path that you want to store the downloaded file.
 
     .PARAMETER NoStatus
         If this switch is specified, long-running commands will run on the main thread
@@ -988,13 +988,13 @@ function Get-SubmissionPackage
         the background, enabling the command prompt to provide status information.
 
     .EXAMPLE
-        Get-SubmissionPackage "https://prodingestionbinaries1.blob.core.windows.net/ingestion/00000000-abcd-1234-0000-abcdefghijkl?sv=2014-02-14&sr=b&sig=WujGssA00/voXHaDgmaK1mpPn2JUkRPD/123gkAJdnI=&se=2015-12-17T12:58:14Z&sp=rwl" "c:\foo.zip"
-        Downloads the package content for the application submission to c:\foo.zip,
+        Get-StoreFile "https://prodingestionbinaries1.blob.core.windows.net/ingestion/00000000-abcd-1234-0000-abcdefghijkl?sv=2014-02-14&sr=b&sig=WujGssA00/voXHaDgmaK1mpPn2JUkRPD/123gkAJdnI=&se=2015-12-17T12:58:14Z&sp=rwl" "c:\foo.appx"
+        Downloads the package to c:\foo.appx,
         with the console window showing progress while awaiting for the download to complete.
 
     .EXAMPLE
-        Get-SubmissionPackage "https://prodingestionbinaries1.blob.core.windows.net/ingestion/00000000-abcd-1234-0000-abcdefghijkl?sv=2014-02-14&sr=b&sig=WujGssA00/voXHaDgmaK1mpPn2JUkRPD/123gkAJdnI=&se=2015-12-17T12:58:14Z&sp=rwl" "c:\foo.zip" -NoStatus
-        Downloads the package content for the application submission to c:\foo.zip,
+        Get-StoreFile "https://prodingestionbinaries1.blob.core.windows.net/ingestion/00000000-abcd-1234-0000-abcdefghijkl?sv=2014-02-14&sr=b&sig=WujGssA00/voXHaDgmaK1mpPn2JUkRPD/123gkAJdnI=&se=2015-12-17T12:58:14Z&sp=rwl" "c:\foo.appx" -NoStatus
+        Downloads the package to c:\foo.appx,
         but the download happens in the foreground and there is no additional status
         shown to the user until the download completes.
 
@@ -1005,29 +1005,30 @@ function Get-SubmissionPackage
 #>
     [CmdletBinding(SupportsShouldProcess)]
     [Alias('Get-ApplicationSubmissionPackage')]
+    [Alias('Get-SubmissionPackage')]
     param(
         [Parameter(
             Mandatory,
             ValueFromPipeline=$True)]
-        [string] $UploadUrl,
+        [string] $SasUri,
 
         [Parameter(Mandatory)]
         [ValidateScript({if (Test-Path -Path $_ -PathType Leaf) { throw "$_ already exists. Choose a different destination name." } else { $true }})]
-        [string] $PackagePath,
+        [string] $FilePath,
 
         [switch] $NoStatus
     )
 
     # Let's resolve this path to a full path so that it works with non-PowerShell commands (like the Azure module)
-    $PackagePath = Resolve-UnverifiedPath -Path $PackagePath
+    $FilePath = Resolve-UnverifiedPath -Path $FilePath
 
     # Telemetry-related
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-    $telemetryProperties = @{ [StoreBrokerTelemetryProperty]::PackagePath = (Get-PiiSafeString -PlainText $PackagePath) }
+    $telemetryProperties = @{ [StoreBrokerTelemetryProperty]::FilePath = (Get-PiiSafeString -PlainText $FilePath) }
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    Write-Log -Message "Attempting to download the contents of $UploadUrl to $PackagePath..." -Level Verbose
+    Write-Log -Message "Attempting to download the contents of $SasUri to $FilePath..." -Level Verbose
 
     $azureStorageDll = Get-AzureStorageDllPath -NoStatus:$NoStatus
     $azureStorageDataMovementDll = Get-AzureStorageDataMovementDllPath -NoStatus:$NoStatus
@@ -1051,13 +1052,13 @@ function Get-SubmissionPackage
             $bytes = [System.IO.File]::ReadAllBytes($azureStorageDataMovementDll)
             [System.Reflection.Assembly]::Load($bytes) | Out-Null
 
-            $uri = New-Object -TypeName System.Uri -ArgumentList $UploadUrl
+            $uri = New-Object -TypeName System.Uri -ArgumentList $SasUri
             $cloudBlockBlob = New-Object -TypeName Microsoft.WindowsAzure.Storage.Blob.CloudBlockBlob -ArgumentList $uri
 
-            if ($PSCmdlet.ShouldProcess($PackagePath, "CloudBlockBlob.DownloadToFile"))
+            if ($PSCmdlet.ShouldProcess($FilePath, "CloudBlockBlob.DownloadToFile"))
             {
                 # We will run this async command synchronously within the console.
-                $task = [Microsoft.WindowsAzure.Storage.DataMovement.TransferManager]::DownloadAsync($cloudBlockBlob, $PackagePath)
+                $task = [Microsoft.WindowsAzure.Storage.DataMovement.TransferManager]::DownloadAsync($cloudBlockBlob, $FilePath)
                 $task.GetAwaiter().GetResult() | Out-Null
             }
         }
@@ -1068,7 +1069,7 @@ function Get-SubmissionPackage
             if ($PSCmdlet.ShouldProcess($jobName, "Start-Job"))
             {
                 [scriptblock]$scriptBlock = {
-                    param($UploadUrl, $PackagePath, $AzureStorageDll, $AzureStorageDataMovementDll)
+                    param($SasUri, $FilePath, $AzureStorageDll, $AzureStorageDataMovementDll)
 
                     # Recommendations per https://github.com/Azure/azure-storage-net-data-movement#best-practice
                     [System.Net.ServicePointManager]::DefaultConnectionLimit = [Environment]::ProcessorCount * 8
@@ -1080,19 +1081,19 @@ function Get-SubmissionPackage
                     $bytes = [System.IO.File]::ReadAllBytes($AzureStorageDataMovementDll)
                     [System.Reflection.Assembly]::Load($bytes) | Out-Null
 
-                    $uri = New-Object -TypeName System.Uri -ArgumentList $UploadUrl
+                    $uri = New-Object -TypeName System.Uri -ArgumentList $SasUri
                     $cloudBlockBlob = New-Object -TypeName Microsoft.WindowsAzure.Storage.Blob.CloudBlockBlob -ArgumentList $uri
 
                     # We will run this async command synchronously within the console.
-                    $task = [Microsoft.WindowsAzure.Storage.DataMovement.TransferManager]::DownloadAsync($cloudBlockBlob, $PackagePath)
+                    $task = [Microsoft.WindowsAzure.Storage.DataMovement.TransferManager]::DownloadAsync($cloudBlockBlob, $FilePath)
                     $task.GetAwaiter().GetResult() | Out-Null
                 }
 
-                $null = Start-Job -Name $jobName -ScriptBlock $scriptBlock -Arg @($UploadUrl, $PackagePath, $azureStorageDll, $azureStorageDataMovementDll)
+                $null = Start-Job -Name $jobName -ScriptBlock $scriptBlock -Arg @($SasUri, $FilePath, $azureStorageDll, $azureStorageDataMovementDll)
 
                 if ($PSCmdlet.ShouldProcess($jobName, "Wait-JobWithAnimation"))
                 {
-                    Wait-JobWithAnimation -JobName $jobName -Description "Downloading contents to $PackagePath"
+                    Wait-JobWithAnimation -JobName $jobName -Description "Downloading content to $FilePath"
                 }
 
                 if ($PSCmdlet.ShouldProcess($jobName, "Receive-Job"))
@@ -1110,7 +1111,7 @@ function Get-SubmissionPackage
         # Record the telemetry for this event.
         $stopwatch.Stop()
         $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
-        Set-TelemetryEvent -EventName Get-SubmissionPackage -Properties $telemetryProperties -Metrics $telemetryMetrics
+        Set-TelemetryEvent -EventName Get-StoreFile -Properties $telemetryProperties -Metrics $telemetryMetrics
     }
     catch [System.Management.Automation.RuntimeException]
     {
@@ -1128,7 +1129,7 @@ function Get-SubmissionPackage
             }
         }
 
-        Set-TelemetryException -Exception $_.Exception -ErrorBucket Get-SubmissionPackage -Properties $telemetryProperties
+        Set-TelemetryException -Exception $_.Exception -ErrorBucket Get-StoreFile -Properties $telemetryProperties
         $newLineOutput = ($output -join [Environment]::NewLine)
         Write-Log -Message $newLineOutput -Level Error
         throw $newLineOutput
@@ -1155,7 +1156,7 @@ function Get-SubmissionPackage
         [System.Net.ServicePointManager]::Expect100Continue = $origExpect100Continue
     }
 
-    Write-Log -Message "Successfully downloaded the blob contents." -Level Verbose
+    Write-Log -Message "Successfully downloaded the file." -Level Verbose
 }
 
 function Start-SubmissionMonitor

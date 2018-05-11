@@ -21,12 +21,12 @@ Add-Type -TypeDefinition @"
    }
 "@
 
-function Get-Listings
+function Get-Listing
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -49,9 +49,12 @@ function Get-Listings
 
     try
     {
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($LanguageCode))
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -69,18 +72,30 @@ function Get-Listings
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings`?" + ($getParams -join '&')
-            "Description" = "Getting listings for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-Listings"
+            "TelemetryEventName" = "Get-Listing"
             "TelemetryProperties" = $telemetryProperties
-            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
-        return Invoke-SBRestMethodMultipleResult @params
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode`?" + ($getParams -join '&')
+            $params["Method" ] = 'Get'
+            $params["Description"] =  "Getting $LanguageCode listing for $ProductId"
+
+            return Invoke-SBRestMethod @params
+        }
+        else
+        {
+            $params["UriFragment"] = "products/$ProductId/listings`?" + ($getParams -join '&')
+            $params["Description"] =  "Getting listings for $ProductId"
+            $params["SinglePage" ] = $SinglePage
+
+            return Invoke-SBRestMethodMultipleResult @params
+        }
     }
     catch [System.InvalidOperationException]
     {
@@ -95,7 +110,7 @@ function New-Listing
         DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -304,7 +319,7 @@ function Remove-Listing
     [Alias("Delete-Listing")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -369,7 +384,7 @@ function Set-Listing
         DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -564,76 +579,6 @@ function Set-Listing
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Set-Listing"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
-    }
-    catch [System.InvalidOperationException]
-    {
-        throw
-    }
-}
-
-function Get-Listing
-{
-    [CmdletBinding(SupportsShouldProcess)]
-    param(
-        [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
-        [string] $ProductId,
-
-        [Parameter(Mandatory)]
-        [string] $SubmissionId,
-
-        [Parameter(Mandatory)]
-        [Alias('LangCode')]
-        [string] $LanguageCode,
-
-        [string] $FeatureGroupId,
-
-        [string] $ClientRequestId,
-
-        [string] $CorrelationId,
-
-        [string] $AccessToken,
-
-        [switch] $NoStatus
-    )
-
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
-
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $getParams = @()
-        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
-        {
-            $getParams += "submissionId=$SubmissionId"
-        }
-
-        if (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
-        {
-            $getParams += "featureGroupId=$FeatureGroupId"
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode`?" + ($getParams -join '&')
-            "Method" = 'Get'
-            "Description" = "Getting $LanguageCode listing for $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-Listing"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }

@@ -10,22 +10,16 @@ Add-Type -TypeDefinition @"
 
 function Get-Group
 {
-    [CmdletBinding(
-        SupportsShouldProcess,
-        DefaultParametersetName="Multiple")]
+    [CmdletBinding(SupportsShouldProcess)]
     param(
-        [Parameter(
-            Mandatory,
-            ParameterSetName="Individual")]
         [string] $GroupId,
-        
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
 
         [string] $AccessToken,
 
-        [Parameter(ParameterSetName="Multiple")]
         [switch] $SinglePage,
 
         [switch] $NoStatus
@@ -56,7 +50,7 @@ function Get-Group
             $params["UriFragment"] = "groups/$GroupId"
             $params["Method" ] = 'Get'
             $params["Description"] = "Getting group $GroupId"
-            
+
             return Invoke-SBRestMethod @params
         }
         else
@@ -64,7 +58,7 @@ function Get-Group
             $params["UriFragment"] = "groups"
             $params["Description"] = "Getting all groups"
             $params["SinglePage" ] = $SinglePage
-            
+
             return Invoke-SBRestMethodMultipleResult @params
         }
 

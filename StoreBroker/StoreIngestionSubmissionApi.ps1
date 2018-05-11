@@ -13,23 +13,43 @@ Add-Type -TypeDefinition @"
    }
 "@
 
-function Get-Submissions
+function Get-Submission
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Search")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
+        [Parameter(ParameterSetName="Search")]
         [string] $FlightId,
 
+        [Parameter(ParameterSetName="Search")]
         [string] $SandboxId,
 
+        [Parameter(ParameterSetName="Search")]
         [ValidateSet('InProgress', 'Published')]
         [string] $Type,
 
+        [Parameter(ParameterSetName="Search")]
         [ValidateSet('Live', 'Preview')]  # Preview is currently limited to Azure
         [string] $Scope = 'Live',
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Known")]
+        [string] $SubmissionId,
+
+        [Parameter(ParameterSetName="Known")]
+        [switch] $Detail,
+
+        [Parameter(ParameterSetName="Known")]
+        [switch] $Reports,
+
+        [Parameter(ParameterSetName="Known")]
+        [switch] $Validation,
 
         [string] $ClientRequestId,
 
@@ -37,6 +57,7 @@ function Get-Submissions
 
         [string] $AccessToken,
 
+        [Parameter(ParameterSetName="Search")]
         [switch] $SinglePage,
 
         [switch] $NoStatus
@@ -46,12 +67,17 @@ function Get-Submissions
 
     try
     {
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::FlightId = $FlightId
             [StoreBrokerTelemetryProperty]::SandboxId = $SandboxId
             [StoreBrokerTelemetryProperty]::Type = $Type
             [StoreBrokerTelemetryProperty]::Scope = $Scope
+            [StoreBrokerTelemetryProperty]::GetDetail = $Detail
+            [StoreBrokerTelemetryProperty]::GetReports = $Reports
+            [StoreBrokerTelemetryProperty]::GetValidation = $Validation
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -75,18 +101,54 @@ function Get-Submissions
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/submissions`?" + ($getParams -join '&')
-            "Description" = "Getting submissions for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-Submissions"
+            "TelemetryEventName" = "Get-Submission"
             "TelemetryProperties" = $telemetryProperties
-            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
-        return Invoke-SBRestMethodMultipleResult @params
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "products/$ProductId/submissions/$SubmissionId"
+            $params["Method" ] = 'Get'
+            $params["Description"] =  "Getting submission $SubmissionId for $ProductId"
+
+            Write-Output (Invoke-SBRestMethod @params)
+
+            $params = @{
+                'ProductId' = $ProductId
+                'SubmissionId' = $SubmissionId
+                'ClientRequestId' = $ClientRequesId
+                'CorrelationId' = $CorrelationId
+                'AccessToken' = $AccessToken
+                'NoStatus' = $NoStatus
+            }
+
+            if ($Detail)
+            {
+                Write-Output (Get-SubmissionDetail @params)
+            }
+
+            if ($Reports)
+            {
+                Write-Output (Get-SubmissionReport @params)
+            }
+
+            if ($Validation)
+            {
+                Write-Output (Get-SubmissionValidation @params)
+            }
+        }
+        else
+        {
+            $params["UriFragment"] = "products/$ProductId/submissions`?" + ($getParams -join '&')
+            $params["Description"] =  "Getting submissions for $ProductId"
+            $params["SinglePage" ] = $SinglePage
+
+            return Invoke-SBRestMethodMultipleResult @params
+        }
     }
     catch [System.InvalidOperationException]
     {
@@ -113,7 +175,7 @@ function New-Submission
             Mandatory,
             ParameterSetName = 'Sandbox',
             Position = 0)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(
@@ -256,7 +318,7 @@ function Remove-Submission
     [Alias("Delete-Submission")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -295,87 +357,6 @@ function Remove-Submission
     $null = Invoke-SBRestMethod @params
 }
 
-function Get-Submission
-{
-    [CmdletBinding(SupportsShouldProcess)]
-    param(
-        [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
-        [string] $ProductId,
-
-        [Parameter(Mandatory)]
-        [string] $SubmissionId,
-
-        [string] $ClientRequestId,
-
-        [string] $CorrelationId,
-
-        [string] $AccessToken,
-
-        [switch] $NoStatus,
-
-        [switch] $Detail,
-
-        [switch] $Reports,
-
-        [switch] $Validation
-    )
-
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
-
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/submissions/$SubmissionId"
-            "Method" = 'Get'
-            "Description" = "Getting submission $SubmissionId for $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-Submission"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        Write-Output (Invoke-SBRestMethod @params)
-
-        $params = @{
-            'ProductId' = $ProductId
-            'SubmissionId' = $SubmissionId
-            'ClientRequestId' = $ClientRequesId
-            'CorrelationId' = $CorrelationId
-            'AccessToken' = $AccessToken
-            'NoStatus' = $NoStatus
-        }
-
-        if ($Detail)
-        {
-            Write-Output (Get-SubmissionDetail @params)
-        }
-
-        if ($Reports)
-        {
-            Write-Output (Get-SubmissionReports @params)
-        }
-
-        if ($Validation)
-        {
-            Write-Output (Get-SubmissionValidation @params)
-        }
-    }
-    catch [System.InvalidOperationException]
-    {
-        throw
-    }
-}
-
 function Stop-Submission
 {
     [Alias('Cancel-Submission')]
@@ -383,7 +364,7 @@ function Stop-Submission
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -427,7 +408,7 @@ function Get-SubmissionDetail
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -479,7 +460,7 @@ function Set-SubmissionDetail
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -594,7 +575,7 @@ function Push-Submission
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -639,7 +620,7 @@ function Publish-Submission
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -678,12 +659,12 @@ function Publish-Submission
     return (Invoke-SBRestMethod @params)
 }
 
-function Get-SubmissionReports
+function Get-SubmissionReport
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -717,7 +698,7 @@ function Get-SubmissionReports
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-SubmissionReports"
+            "TelemetryEventName" = "Get-SubmissionReport"
             "TelemetryProperties" = $telemetryProperties
             "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
@@ -739,7 +720,7 @@ function Submit-Submission
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -792,7 +773,7 @@ function Get-SubmissionValidation
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]

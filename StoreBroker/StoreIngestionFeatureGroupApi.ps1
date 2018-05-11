@@ -6,16 +6,18 @@ Add-Type -TypeDefinition @"
    }
 "@
 
-function Get-FeatureGroups
+function Get-FeatureGroup
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
         [string] $SubmissionId,
+
+        [string] $FeatureGroupId,
 
         [string] $ClientRequestId,
 
@@ -32,26 +34,41 @@ function Get-FeatureGroups
 
     try
     {
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/featureGroups`?submissionId=$SubmissionId"
-            "Description" = "Getting feature groups for product: $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-FeatureGroups"
+            "TelemetryEventName" = "Get-FeatureGroup"
             "TelemetryProperties" = $telemetryProperties
-            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
-        return Invoke-SBRestMethodMultipleResult @params
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "products/$ProductId/featureGroups/$FeatureGroupId`?submissionId=$SubmissionId"
+            $params["Method" ] = 'Get'
+            $params["Description"] =  "Getting feature group: $FeatureGroupId for product: $ProductId"
+
+            return Invoke-SBRestMethod @params
+        }
+        else
+        {
+            $params["UriFragment"] = "products/$ProductId/featureGroups`?submissionId=$SubmissionId"
+            $params["Description"] =  "Getting feature groups for product: $ProductId"
+            $params["SinglePage" ] = $SinglePage
+
+            return Invoke-SBRestMethodMultipleResult @params
+        }
     }
     catch [System.InvalidOperationException]
     {
@@ -66,7 +83,7 @@ function New-FeatureGroup
         DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -181,7 +198,7 @@ function Remove-FeatureGroup
     [Alias("Delete-FeatureGroup")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -237,7 +254,7 @@ function Set-FeatureGroup
         DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -320,57 +337,3 @@ function Set-FeatureGroup
     }
 }
 
-function Get-FeatureGroup
-{
-    [CmdletBinding(SupportsShouldProcess)]
-    param(
-        [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
-        [string] $ProductId,
-
-        [Parameter(Mandatory)]
-        [string] $SubmissionId,
-
-        [Parameter(Mandatory)]
-        [string] $FeatureGroupId,
-
-        [string] $ClientRequestId,
-
-        [string] $CorrelationId,
-
-        [string] $AccessToken,
-
-        [switch] $NoStatus
-    )
-
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
-
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/featureGroups/$FeatureGroupId`?submissionId=$SubmissionId"
-            "Method" = 'Get'
-            "Description" = "Getting feature group: $FeatureGroupId for product: $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-FeatureGroup"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
-    }
-    catch [System.InvalidOperationException]
-    {
-        throw
-    }
-}

@@ -10,12 +10,12 @@ Add-Type -TypeDefinition @"
    }
 "@
 
-function Get-ListingImages
+function Get-ListingImage
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -24,6 +24,8 @@ function Get-ListingImages
         [Parameter(Mandatory)]
         [Alias('LangCode')]
         [string] $LanguageCode,
+
+        [string] $ImageId,
 
         [string] $ClientRequestId,
 
@@ -40,10 +42,13 @@ function Get-ListingImages
 
     try
     {
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($ImageId))
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+            [StoreBrokerTelemetryProperty]::ImageId = $ImageId
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -55,18 +60,30 @@ function Get-ListingImages
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/images`?" + ($getParams -join '&')
-            "Description" = "Getting listing images for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ListingImages"
+            "TelemetryEventName" = "Get-ListingImage"
             "TelemetryProperties" = $telemetryProperties
-            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
-        return Invoke-SBRestMethodMultipleResult @params
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/images/$ImageId`?" + ($getParams -join '&')
+            $params["Method" ] = 'Get'
+            $params["Description"] =  "Getting listing image $ImageId for $ProductId"
+
+            return Invoke-SBRestMethod @params
+        }
+        else
+        {
+            $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/images`?" + ($getParams -join '&')
+            $params["Description"] =  "Getting listing images for $ProductId"
+            $params["SinglePage" ] = $SinglePage
+
+            return Invoke-SBRestMethodMultipleResult @params
+        }
     }
     catch [System.InvalidOperationException]
     {
@@ -81,7 +98,7 @@ function New-ListingImage
         DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -223,7 +240,7 @@ function Remove-ListingImage
     [Alias("Delete-ListingImage")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -284,7 +301,7 @@ function Set-ListingImage
         DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -308,7 +325,7 @@ function Set-ListingImage
             Mandatory,
             arameterSetName="Individual")]
         [ValidateSet('PendingUpload', 'Uploaded')]
-        [string] $State, 
+        [string] $State,
 
         [Parameter(ParameterSetName="Individual")]
         [int] $Orientation = 0,
@@ -373,72 +390,6 @@ function Set-ListingImage
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Set-ListingImage"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
-    }
-    catch [System.InvalidOperationException]
-    {
-        throw
-    }
-}
-
-function Get-ListingImage
-{
-    [CmdletBinding(SupportsShouldProcess)]
-    param(
-        [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
-        [string] $ProductId,
-
-        [Parameter(Mandatory)]
-        [string] $SubmissionId,
-
-        [Parameter(Mandatory)]
-        [Alias('LangCode')]
-        [string] $LanguageCode,
-
-        [Parameter(Mandatory)]
-        [string] $ImageId,
-
-        [string] $ClientRequestId,
-
-        [string] $CorrelationId,
-
-        [string] $AccessToken,
-
-        [switch] $NoStatus
-    )
-
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
-
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-            [StoreBrokerTelemetryProperty]::ImageId = $ImageId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $getParams = @()
-        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
-        {
-            $getParams += "submissionId=$SubmissionId"
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId`?" + ($getParams -join '&')
-            "Method" = 'Get'
-            "Description" = "Getting listing image $ImageId for $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ListingImage"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }

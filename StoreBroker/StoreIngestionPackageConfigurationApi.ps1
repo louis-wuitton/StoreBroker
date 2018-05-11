@@ -11,11 +11,13 @@ function Get-ProductPackageConfigurations
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
         [string] $SubmissionId,
+
+        [string] $PackageConfigurationId,
 
         [string] $FeatureGroupId,
 
@@ -34,9 +36,12 @@ function Get-ProductPackageConfigurations
 
     try
     {
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($PackageConfigurationId))
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::PackageConfigurationId = $PackageConfigurationId
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -54,18 +59,30 @@ function Get-ProductPackageConfigurations
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/packageConfigurations`?" + ($getParams -join '&')
-            "Description" = "Getting package configurations for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ProductPackageConfigurations"
+            "TelemetryEventName" = "Get-ProductPackageConfiguration"
             "TelemetryProperties" = $telemetryProperties
-            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
-        return Invoke-SBRestMethodMultipleResult @params
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "products/$ProductId/packageConfigurations/$PackageConfigurationId`?" + ($getParams -join '&')
+            $params["Method" ] = 'Get'
+            $params["Description"] =  "Getting package configuration $PackageConfigurationId for $ProductId"
+
+            return Invoke-SBRestMethod @params
+        }
+        else
+        {
+            $params["UriFragment"] = "products/$ProductId/packageConfigurations`?" + ($getParams -join '&')
+            $params["Description"] =  "Getting package configurations for $ProductId"
+            $params["SinglePage" ] = $SinglePage
+
+            return Invoke-SBRestMethodMultipleResult @params
+        }
     }
     catch [System.InvalidOperationException]
     {
@@ -80,7 +97,7 @@ function New-ProductPackageConfiguration
         DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -167,7 +184,7 @@ function Set-ProductPackageConfiguration
         DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -257,74 +274,3 @@ function Set-ProductPackageConfiguration
         throw
     }
 }
-
-function Get-ProductPackageConfiguration
-{
-    [CmdletBinding(SupportsShouldProcess)]
-    param(
-        [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
-        [string] $ProductId,
-
-         [Parameter(Mandatory)]
-        [string] $SubmissionId,
-
-        [Parameter(Mandatory)]
-        [string] $PackageConfigurationId,
-
-        [string] $FeatureGroupId,
-
-        [string] $ClientRequestId,
-
-        [string] $CorrelationId,
-
-        [string] $AccessToken,
-
-        [switch] $NoStatus
-    )
-
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
-
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::PackageConfigurationId = $PackageConfigurationId
-            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $getParams = @()
-        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
-        {
-            $getParams += "submissionId=$SubmissionId"
-        }
-
-        if (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
-        {
-            $getParams += "featureGroupId=$FeatureGroupId"
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/packageConfigurations/$PackageConfigurationId`?" + ($getParams -join '&')
-            "Method" = 'Get'
-            "Description" = "Getting package configuration $PackageConfigurationId for $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ProductPackageConfiguration"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
-    }
-    catch [System.InvalidOperationException]
-    {
-        throw
-    }
-}
-
-

@@ -8,20 +8,15 @@ Add-Type -TypeDefinition @"
 
 function Get-FeatureAvailability
 {
-    [CmdletBinding(
-        SupportsShouldProcess,
-        DefaultParametersetName="Multiple")]
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
         [string] $SubmissionId,
 
-        [Parameter(
-            Mandatory,
-            ParameterSetName="Individual")]
         [string] $FeatureAvailabilityId,
 
         [string] $FeatureGroupId,
@@ -38,7 +33,6 @@ function Get-FeatureAvailability
 
         [string] $AccessToken,
 
-        [Parameter(ParameterSetName="Multiple")]
         [switch] $SinglePage,
 
         [switch] $NoStatus
@@ -48,7 +42,7 @@ function Get-FeatureAvailability
 
     try
     {
-        $singleQuery = (-not [String]::IsNullOrWhiteSpace($GroupId))
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($FeatureAvailabilityId))
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
@@ -91,7 +85,7 @@ function Get-FeatureAvailability
             $params["UriFragment"] = "products/$ProductId/featureavailabilities/$FeatureAvailabilityId`?" + ($getParams -join '&')
             $params["Method" ] = 'Get'
             $params["Description"] =  "Getting feature availability $FeatureAvailabilityId for $ProductId"
-            
+
             return Invoke-SBRestMethod @params
         }
         else
@@ -99,7 +93,7 @@ function Get-FeatureAvailability
             $params["UriFragment"] = "products/$ProductId/featureAvailabilities`?" + ($getParams -join '&')
             $params["Description"] =  "Getting feature availability for $ProductId"
             $params["SinglePage" ] = $SinglePage
-            
+
             return Invoke-SBRestMethodMultipleResult @params
         }
     }
@@ -116,7 +110,7 @@ function New-FeatureAvailability
         DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -192,7 +186,7 @@ function Set-FeatureAvailability
         DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]

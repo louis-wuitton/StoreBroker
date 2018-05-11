@@ -20,12 +20,12 @@ Add-Type -TypeDefinition @"
    }
 "@
 
-function Get-ListingVideos
+function Get-ListingVideo
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -34,6 +34,8 @@ function Get-ListingVideos
         [Parameter(Mandatory)]
         [Alias('LangCode')]
         [string] $LanguageCode,
+
+        [string] $VideoId,
 
         [string] $ClientRequestId,
 
@@ -50,10 +52,13 @@ function Get-ListingVideos
 
     try
     {
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($VideoId))
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+            [StoreBrokerTelemetryProperty]::VideoId = $VideoId
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -65,19 +70,30 @@ function Get-ListingVideos
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/videos`?" + ($getParams -join '&')
-            "Description" = "Getting listing videos for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ListingVideos"
+            "TelemetryEventName" = "Get-ListingVideo"
             "TelemetryProperties" = $telemetryProperties
-            "SinglePage" = $SinglePage
             "NoStatus" = $NoStatus
         }
 
-        return Invoke-SBRestMethodMultipleResult @params
-    }
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/videos/$VideoId`?" + ($getParams -join '&')
+            $params["Method" ] = 'Get'
+            $params["Description"] =  "Getting listing video $VideoId for $ProductId"
+
+            return Invoke-SBRestMethod @params
+        }
+        else
+        {
+            $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/videos`?" + ($getParams -join '&')
+            $params["Description"] =  "Getting listing videos for $ProductId"
+            $params["SinglePage" ] = $SinglePage
+
+            return Invoke-SBRestMethodMultipleResult @params
+        }    }
     catch [System.InvalidOperationException]
     {
         throw
@@ -91,7 +107,7 @@ function New-ListingVideo
         DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -237,7 +253,7 @@ function Remove-ListingVideo
     [Alias("Delete-ListingVideo")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -eq 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." } else { $true }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -298,7 +314,7 @@ function Set-ListingVideo
         DefaultParametersetName="Object")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]
@@ -405,72 +421,6 @@ function Set-ListingVideo
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
             "TelemetryEventName" = "Set-ListingVideo"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
-    }
-    catch [System.InvalidOperationException]
-    {
-        throw
-    }
-}
-
-function Get-ListingVideo
-{
-    [CmdletBinding(SupportsShouldProcess)]
-    param(
-        [Parameter(Mandatory)]
-        [ValidateScript({if ($_.Length -gt 12) { $true } else { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Products with -AppId to find the ProductId for this AppId." }})]
-        [string] $ProductId,
-
-        [Parameter(Mandatory)]
-        [string] $SubmissionId,
-
-        [Parameter(Mandatory)]
-        [Alias('LangCode')]
-        [string] $LanguageCode,
-
-        [Parameter(Mandatory)]
-        [string] $VideoId,
-
-        [string] $ClientRequestId,
-
-        [string] $CorrelationId,
-
-        [string] $AccessToken,
-
-        [switch] $NoStatus
-    )
-
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
-
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-            [StoreBrokerTelemetryProperty]::VideoId = $VideoId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $getParams = @()
-        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
-        {
-            $getParams += "submissionId=$SubmissionId"
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/videos/$VideoId`?" + ($getParams -join '&')
-            "Method" = 'Get'
-            "Description" = "Getting listing video $VideoId for $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ListingVideo"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
