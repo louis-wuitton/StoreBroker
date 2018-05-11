@@ -19,6 +19,7 @@
 
         'StoreIngestionFeatureAvailabilityApi.ps1',
         'StoreIngestionFeatureGroupApi.ps1',
+        'StoreIngestionGroupApi.ps1',
         'StoreIngestionFlightApi.ps1',
         'StoreIngestionListingApi.ps1',
         'StoreIngestionListingImageApi.ps1',
@@ -49,6 +50,10 @@
         'New-FeatureGroup',
         'Set-FeatureGroup',
         'Get-FeatureGroup',
+
+        'Get-Group',
+        'New-Group',
+        'Set-Group',
 
         'Get-Flight',
         'New-Flight',

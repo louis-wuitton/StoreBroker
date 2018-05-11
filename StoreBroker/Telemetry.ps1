@@ -57,6 +57,7 @@ Add-Type -TypeDefinition @"
       ShouldOverridePackageLogos,
       ShowFlight,
       ShowSubmission,
+      SingleQuery,
       SourceFilePath,
       State,
       SubmissionId,

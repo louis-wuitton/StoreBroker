@@ -123,7 +123,7 @@ function Get-Products
         $typesString = $Type -join ","
         if (-not [String]::IsNullOrWhiteSpace($typesString))
         {
-            $getParams +=  "types=$typesString"
+            $getParams +=  "resourceTypes=$typesString"
         }
 
         $params = @{

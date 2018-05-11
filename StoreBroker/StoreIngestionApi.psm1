@@ -67,6 +67,7 @@ Add-Type -TypeDefinition @"
    {
        FeatureAvailability,
        FeatureGroup,
+       Group,
        Listing,
        ListingImage,
        ListingVideo,
