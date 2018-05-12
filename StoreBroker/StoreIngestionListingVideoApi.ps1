@@ -50,53 +50,47 @@ function Get-ListingVideo
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    try
+    $singleQuery = (-not [String]::IsNullOrWhiteSpace($VideoId))
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+        [StoreBrokerTelemetryProperty]::VideoId = $VideoId
+        [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    $getParams = @()
+    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
     {
-        $singleQuery = (-not [String]::IsNullOrWhiteSpace($VideoId))
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-            [StoreBrokerTelemetryProperty]::VideoId = $VideoId
-            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
+        $getParams += "submissionId=$SubmissionId"
+    }
 
-        $getParams = @()
-        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
-        {
-            $getParams += "submissionId=$SubmissionId"
-        }
+    $params = @{
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "Get-ListingVideo"
+        "TelemetryProperties" = $telemetryProperties
+        "NoStatus" = $NoStatus
+    }
 
-        $params = @{
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ListingVideo"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        if ($singleQuery)
-        {
-            $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/videos/$VideoId`?" + ($getParams -join '&')
-            $params["Method" ] = 'Get'
-            $params["Description"] =  "Getting listing video $VideoId for $ProductId"
-
-            return Invoke-SBRestMethod @params
-        }
-        else
-        {
-            $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/videos`?" + ($getParams -join '&')
-            $params["Description"] =  "Getting listing videos for $ProductId"
-            $params["SinglePage" ] = $SinglePage
-
-            return Invoke-SBRestMethodMultipleResult @params
-        }    }
-    catch [System.InvalidOperationException]
+    if ($singleQuery)
     {
-        throw
+        $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/videos/$VideoId`?" + ($getParams -join '&')
+        $params["Method" ] = 'Get'
+        $params["Description"] =  "Getting listing video $VideoId for $ProductId"
+
+        return Invoke-SBRestMethod @params
+    }
+    else
+    {
+        $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/videos`?" + ($getParams -join '&')
+        $params["Description"] =  "Getting listing videos for $ProductId"
+        $params["SinglePage" ] = $SinglePage
+
+        return Invoke-SBRestMethodMultipleResult @params
     }
 }
 
@@ -154,98 +148,92 @@ function New-ListingVideo
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    try
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+        [StoreBrokerTelemetryProperty]::Orientation = $ThumbnailOrientation
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    $getParams = @()
+    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
     {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-            [StoreBrokerTelemetryProperty]::Orientation = $ThumbnailOrientation
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
+        $getParams += "submissionId=$SubmissionId"
+    }
 
-        $getParams = @()
-        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ListingVideo
+
+    $hashBody = $Object
+    if ($null -eq $hashBody)
+    {
+        # Convert the input into a Json body.
+        $hashBody = @{}
+        $hashBody[[StoreBrokerListingVideoProperty]::resourceType] = [StoreBrokerResourceType]::ListingVideo
+        $hashBody[[StoreBrokerListingVideoProperty]::fileName] = $FileName
+
+        $hashBody[[StoreBrokerListingVideoProperty]::thumbnail] = @{}
+        $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::fileName] = $ThumbnailFileName
+        $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::title] = $ThumbnailTitle
+        $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::orientation] = $ThumbnailOrientation
+        $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::description] = $ThumbnailDescription
+    }
+
+    $body = Get-JsonBody -InputObject $hashBody
+
+    $uriFragment = "products/$ProductId/listings/$LanguageCode/videos`?" + ($getParams -join '&')
+    $description = "Creating new $LanguageCode listing videos for $ProductId"
+    $isbulkOperation = $Object.Count -gt 1
+    if ($isbulkOperation)
+    {
+        $uriFragment = "products/$ProductId/listings/$LanguageCode/videos/bulk`?" + ($getParams -join '&')
+        $description = "Bulk creating $LanguageCode listing videos for $ProductId"
+    }
+
+    $params = @{
+        "UriFragment" = $uriFragment
+        "Method" = 'Post'
+        "Description" = $description
+        "Body" = $body
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "New-ListingVideo"
+        "TelemetryProperties" = $telemetryProperties
+        "NoStatus" = $NoStatus
+    }
+
+    $result = Invoke-SBRestMethod @params
+    if ($isbulkOperation)
+    {
+        $finalResult = @()
+        $finalResult += $result.value
+
+        if ($null -ne $result.nextLink)
         {
-            $getParams += "submissionId=$SubmissionId"
-        }
-
-        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ListingVideo
-
-        $hashBody = $Object
-        if ($null -eq $hashBody)
-        {
-            # Convert the input into a Json body.
-            $hashBody = @{}
-            $hashBody[[StoreBrokerListingVideoProperty]::resourceType] = [StoreBrokerResourceType]::ListingVideo
-            $hashBody[[StoreBrokerListingVideoProperty]::fileName] = $FileName
-
-            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail] = @{}
-            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::fileName] = $ThumbnailFileName
-            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::title] = $ThumbnailTitle
-            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::orientation] = $ThumbnailOrientation
-            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::description] = $ThumbnailDescription
-        }
-
-        $body = $hashBody | ConvertTo-Json
-
-        $uriFragment = "products/$ProductId/listings/$LanguageCode/videos`?" + ($getParams -join '&')
-        $description = "Creating new $LanguageCode listing videos for $ProductId"
-        $isbulkOperation = $Object.Count -gt 1
-        if ($isbulkOperation)
-        {
-            $uriFragment = "products/$ProductId/listings/$LanguageCode/videos/bulk`?" + ($getParams -join '&')
-            $description = "Bulk creating $LanguageCode listing videos for $ProductId"
-        }
-
-        $params = @{
-            "UriFragment" = $uriFragment
-            "Method" = 'Post'
-            "Description" = $description
-            "Body" = $body
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "New-ListingVideo"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        $result = Invoke-SBRestMethod @params
-        if ($isbulkOperation)
-        {
-            $finalResult = @()
-            $finalResult += $result.value
-
-            if ($null -ne $result.nextLink)
-            {
-                $params = @{
-                    "UriFragment" = $result.nextLink
-                    "Description" = "Getting remaining results"
-                    "ClientRequestId" = $ClientRequestId
-                    "CorrelationId" = $CorrelationId
-                    "AccessToken" = $AccessToken
-                    "TelemetryEventName" = "New-ListingVideo"
-                    "TelemetryProperties" = $telemetryProperties
-                    "NoStatus" = $NoStatus
-                }
-
-                $finalResult += Invoke-SBRestMethodMultipleResult @params
+            $params = @{
+                "UriFragment" = $result.nextLink
+                "Description" = "Getting remaining results"
+                "ClientRequestId" = $ClientRequestId
+                "CorrelationId" = $CorrelationId
+                "AccessToken" = $AccessToken
+                "TelemetryEventName" = "New-ListingVideo"
+                "TelemetryProperties" = $telemetryProperties
+                "NoStatus" = $NoStatus
             }
 
-            return $finalResult
+            $finalResult += Invoke-SBRestMethodMultipleResult @params
         }
-        else
-        {
-            return $result
-        }
+
+        return $finalResult
     }
-    catch [System.InvalidOperationException]
+    else
     {
-        throw
+        return $result
     }
 }
+
 function Remove-ListingVideo
 {
     [CmdletBinding(SupportsShouldProcess)]
@@ -371,64 +359,57 @@ function Set-ListingVideo
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-            [StoreBrokerTelemetryProperty]::VideoId = $VideoId
-            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
-            [StoreBrokerTelemetryProperty]::State = $State
-            [StoreBrokerTelemetryProperty]::Orientation = $ThumbnailOrientation
-            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $getParams = @()
-        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
-        {
-            $getParams += "submissionId=$SubmissionId"
-        }
-
-        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ListingVideo
-
-        $hashBody = $Object
-        if ($null -eq $hashBody)
-        {
-            # Convert the input into a Json body.
-            $hashBody = @{}
-            $hashBody[[StoreBrokerListingVideoProperty]::resourceType] = [StoreBrokerResourceType]::ListingVideo
-            $hashBody['revisionToken'] = $RevisionToken
-            $hashBody[[StoreBrokerListingVideoProperty]::state] = $State
-
-            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail] = @{}
-            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::title] = $ThumbnailTitle
-            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::description] = $ThumbnailDescription
-            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::orientation] = $ThumbnailOrientation
-            $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::state] = $ThumbnailState
-        }
-
-        $body = $hashBody | ConvertTo-Json
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/Videos/$VideoId`?" + ($getParams -join '&')
-            "Method" = 'Put'
-            "Description" = "Updating listing video $VideoId for $ProductId"
-            "Body" = $body
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Set-ListingVideo"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+        [StoreBrokerTelemetryProperty]::VideoId = $VideoId
+        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+        [StoreBrokerTelemetryProperty]::State = $State
+        [StoreBrokerTelemetryProperty]::Orientation = $ThumbnailOrientation
+        [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
-    catch [System.InvalidOperationException]
+
+    $getParams = @()
+    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
     {
-        throw
+        $getParams += "submissionId=$SubmissionId"
     }
+
+    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ListingVideo
+
+    $hashBody = $Object
+    if ($null -eq $hashBody)
+    {
+        # Convert the input into a Json body.
+        $hashBody = @{}
+        $hashBody[[StoreBrokerListingVideoProperty]::resourceType] = [StoreBrokerResourceType]::ListingVideo
+        $hashBody['revisionToken'] = $RevisionToken
+        $hashBody[[StoreBrokerListingVideoProperty]::state] = $State
+
+        $hashBody[[StoreBrokerListingVideoProperty]::thumbnail] = @{}
+        $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::title] = $ThumbnailTitle
+        $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::description] = $ThumbnailDescription
+        $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::orientation] = $ThumbnailOrientation
+        $hashBody[[StoreBrokerListingVideoProperty]::thumbnail][[StoreBrokerListingVideoThumbnailProperty]::state] = $ThumbnailState
+    }
+
+    $body = Get-JsonBody -InputObject $hashBody
+
+    $params = @{
+        "UriFragment" = "products/$ProductId/listings/$LanguageCode/Videos/$VideoId`?" + ($getParams -join '&')
+        "Method" = 'Put'
+        "Description" = "Updating listing video $VideoId for $ProductId"
+        "Body" = $body
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "Set-ListingVideo"
+        "TelemetryProperties" = $telemetryProperties
+        "NoStatus" = $NoStatus
+    }
+
+    return Invoke-SBRestMethod @params
 }

@@ -13,6 +13,28 @@ Add-Type -TypeDefinition @"
    }
 "@
 
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerSubmissionState
+   {
+       InProgress,
+       Published
+   }
+"@
+
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerSubmissionSubState
+   {
+       InDraft,
+       Submitted,
+       Failed,
+       FailedInCertification,
+       ReadyToPublish,
+       Publishing,
+       Published,
+       InStore
+   }
+"@
+
 function Get-Submission
 {
     [CmdletBinding(
@@ -65,94 +87,87 @@ function Get-Submission
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    try
+    $singleQuery = (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::FlightId = $FlightId
+        [StoreBrokerTelemetryProperty]::SandboxId = $SandboxId
+        [StoreBrokerTelemetryProperty]::Type = $Type
+        [StoreBrokerTelemetryProperty]::Scope = $Scope
+        [StoreBrokerTelemetryProperty]::GetDetail = $Detail
+        [StoreBrokerTelemetryProperty]::GetReports = $Reports
+        [StoreBrokerTelemetryProperty]::GetValidation = $Validation
+        [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    $getParams = @()
+    $getParams += "scope=$Scope"
+
+    if (-not [String]::IsNullOrWhiteSpace($FlightId))
     {
-        $singleQuery = (-not [String]::IsNullOrWhiteSpace($SubmissionId))
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::FlightId = $FlightId
-            [StoreBrokerTelemetryProperty]::SandboxId = $SandboxId
-            [StoreBrokerTelemetryProperty]::Type = $Type
-            [StoreBrokerTelemetryProperty]::Scope = $Scope
-            [StoreBrokerTelemetryProperty]::GetDetail = $Detail
-            [StoreBrokerTelemetryProperty]::GetReports = $Reports
-            [StoreBrokerTelemetryProperty]::GetValidation = $Validation
-            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
+        $getParams += "flightId=$FlightId"
+    }
 
-        $getParams = @()
-        $getParams += "scope=$Scope"
+    if (-not [String]::IsNullOrWhiteSpace($SandboxId))
+    {
+        $getParams += "sandboxId=$SandboxId"
+    }
 
-        if (-not [String]::IsNullOrWhiteSpace($FlightId))
-        {
-            $getParams += "flightId=$FlightId"
-        }
+    if (-not [String]::IsNullOrWhiteSpace($Type))
+    {
+        $getParams += "type=$Type"
+    }
 
-        if (-not [String]::IsNullOrWhiteSpace($SandboxId))
-        {
-            $getParams += "sandboxId=$SandboxId"
-        }
+    $params = @{
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "Get-Submission"
+        "TelemetryProperties" = $telemetryProperties
+        "NoStatus" = $NoStatus
+    }
 
-        if (-not [String]::IsNullOrWhiteSpace($Type))
-        {
-            $getParams += "type=$Type"
-        }
+    if ($singleQuery)
+    {
+        $params["UriFragment"] = "products/$ProductId/submissions/$SubmissionId"
+        $params["Method" ] = 'Get'
+        $params["Description"] =  "Getting submission $SubmissionId for $ProductId"
+
+        Write-Output (Invoke-SBRestMethod @params)
 
         $params = @{
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-Submission"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
+            'ProductId' = $ProductId
+            'SubmissionId' = $SubmissionId
+            'ClientRequestId' = $ClientRequesId
+            'CorrelationId' = $CorrelationId
+            'AccessToken' = $AccessToken
+            'NoStatus' = $NoStatus
         }
 
-        if ($singleQuery)
+        if ($Detail)
         {
-            $params["UriFragment"] = "products/$ProductId/submissions/$SubmissionId"
-            $params["Method" ] = 'Get'
-            $params["Description"] =  "Getting submission $SubmissionId for $ProductId"
-
-            Write-Output (Invoke-SBRestMethod @params)
-
-            $params = @{
-                'ProductId' = $ProductId
-                'SubmissionId' = $SubmissionId
-                'ClientRequestId' = $ClientRequesId
-                'CorrelationId' = $CorrelationId
-                'AccessToken' = $AccessToken
-                'NoStatus' = $NoStatus
-            }
-
-            if ($Detail)
-            {
-                Write-Output (Get-SubmissionDetail @params)
-            }
-
-            if ($Reports)
-            {
-                Write-Output (Get-SubmissionReport @params)
-            }
-
-            if ($Validation)
-            {
-                Write-Output (Get-SubmissionValidation @params)
-            }
+            Write-Output (Get-SubmissionDetail @params)
         }
-        else
-        {
-            $params["UriFragment"] = "products/$ProductId/submissions`?" + ($getParams -join '&')
-            $params["Description"] =  "Getting submissions for $ProductId"
-            $params["SinglePage" ] = $SinglePage
 
-            return Invoke-SBRestMethodMultipleResult @params
+        if ($Reports)
+        {
+            Write-Output (Get-SubmissionReport @params)
+        }
+
+        if ($Validation)
+        {
+            Write-Output (Get-SubmissionValidation @params)
         }
     }
-    catch [System.InvalidOperationException]
+    else
     {
-        throw
+        $params["UriFragment"] = "products/$ProductId/submissions`?" + ($getParams -join '&')
+        $params["Description"] =  "Getting submissions for $ProductId"
+        $params["SinglePage" ] = $SinglePage
+
+        return Invoke-SBRestMethodMultipleResult @params
     }
 }
 
@@ -190,59 +205,22 @@ function New-Submission
             Position = 1)]
         [string] $SandboxId,
 
+        [int] $WaitSeconds = -1, # 0 means no wait.  We'll use -1 to indicate not to send it, which causes it to use the server side default of 60 seconds.
 
-        [Parameter(
-            ParameterSetName = 'Retail',
-            Position = 2)]
-        [Parameter(
-            ParameterSetName = 'Flight',
-            Position = 3)]
-        [Parameter(
-            ParameterSetName = 'Sandbox',
-            Position = 3)]
         [ValidateSet('Live', 'Preview')]  # Preview is currently limited to Azure
         [string] $Scope = 'Live',
 
-        [Parameter(
-            ParameterSetName = 'Retail',
-            Position = 3)]
-        [Parameter(
-            ParameterSetName = 'Flight',
-            Position = 4)]
-        [Parameter(
-            ParameterSetName = 'Sandbox',
-            Position = 4)]
-        [int] $WaitSeconds = -1, # 0 means no wait.  We'll use -1 to indicate not to send it, which causes it to use the server side default of 60 seconds.
-
-        [Parameter(
-            ParameterSetName = 'Retail',
-            Position = 4)]
-        [Parameter(
-            ParameterSetName = 'Flight',
-            Position = 5)]
-        [Parameter(
-            ParameterSetName = 'Sandbox',
-            Position = 5)]
+        [ValidateSet('NoAction', 'Complete', 'RollBack')]
+        [string] $ExistingPackageRolloutAction = $script:keywordNoAction,
+        
         [string] $ClientRequestId,
 
-        [Parameter(ParameterSetName = 'Retail')]
-        [Parameter(ParameterSetName = 'Flight')]
-        [Parameter(ParameterSetName = 'Sandbox')]
         [string] $CorrelationId,
 
-        [Parameter(ParameterSetName = 'Retail')]
-        [Parameter(ParameterSetName = 'Flight')]
-        [Parameter(ParameterSetName = 'Sandbox')]
         [switch] $Force,
 
-        [Parameter(ParameterSetName = 'Retail')]
-        [Parameter(ParameterSetName = 'Flight')]
-        [Parameter(ParameterSetName = 'Sandbox')]
         [string] $AccessToken,
 
-        [Parameter(ParameterSetName = 'Retail')]
-        [Parameter(ParameterSetName = 'Flight')]
-        [Parameter(ParameterSetName = 'Sandbox')]
         [switch] $NoStatus
     )
 
@@ -259,16 +237,74 @@ function New-Submission
     }
 
     # TODO: Get force working once flight is implemented
-    if ($Force)
+    if ($Force -or ($ExistingPackageRolloutAction -ne $script:keywordNoAction))
     {
-        $message = "-Force is not implemented yet"
-        Write-Log -Message $message -Level Error
-        throw $message
-    }
+        Write-Log -Message "Force creation requested. Removing any pending submission." -Level Verbose
 
-    if ([System.String]::IsNullOrEmpty($AccessToken))
-    {
-        $AccessToken = Get-AccessToken -NoStatus:$NoStatus
+        $commonParams = @{
+            'ProductId' = $ProductId
+            'ClientRequestId' = $ClientRequestId
+            'CorrelationId' = $CorrelationId
+            'AccessToken' = $AccessToken
+            'NoStatus' = $NoStatus
+        }
+
+        $getSubmissionParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
+        $getSubmissionParams['FlightId'] = $FlightId
+        $getSubmissionParams['SandboxId'] = $SandboxId
+        $getSubmissionParams['Scope'] = $Scope
+
+        $subs = Get-Submission @getSubmissionParams
+        $inProgressSub = $subs | Where-Object { $_.state -eq [StoreBrokerSubmissionState]::InProgress }
+        $commonParams['SubmissionId'] = $inProgressSub.id
+
+        if ($Force -and ($null -ne $inProgressSub))
+        {
+            # Prevent users from getting into an unrecoverable state.  They shouldn't delete the Draft
+            # submission if it's for a Flight that doesn't have a published submission yet.
+            if (($null -ne $FlightId) -and ($subs.Count -eq 1))
+            {
+                $message = "This flight does not have a published submission yet.  If you delete this draft submission, you''ll get into an unrecoverable state. You should instead try to fix this existing pending submission [SubmissionId = $($inProgressSub.id)]"
+                Write-Log -Message $message -Level Error
+                throw $message
+            }
+
+            # We can't delete a submission that isn't in the InDraft substate.  We'd have to cancel it first.
+            if ($inProgressSub.substate -ne [StoreBrokerSubmissionSubState]::InDraft)
+            {
+                Stop-Submission @commonParams
+            }
+
+            Remove-Submission @commonParams
+        }
+
+        # The user may have requested that we also take care of any existing rollout state for them.
+        if ($ExistingPackageRolloutAction -ne $script:keywordNoAction)
+        {
+            $publishedSubmission = $subs | Where-Object { $_.state -eq [StoreBrokerSubmissionState]::Published }
+            $commonParams['SubmissionId'] = $publishedSubmission.id
+
+            $rollout = Get-SubmissionRollout @commonParams
+            # TODO: Verify that I understand what these properties actually mean, compared to v1
+            if ($rollout.isEnabled -and ($rollout.state -eq [StoreBrokerRolloutState]::Initialized))
+            {
+                $setSubmissionRolloutParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
+                        
+                if ($ExistingPackageRolloutAction -eq 'Complete')
+                {
+                    Write-Log -Message "Finalizing package rollout for existing submission before continuing." -Level Verbose
+                    $rollout.state = [StoreBrokerRolloutState]::Completed
+                }
+                elseif ($ExistingPackageRolloutAction -eq 'RollBack')
+                {
+                    Write-Log -Message "Halting package rollout for existing submission before continuing." -Level Verbose
+                    $rollout.state = [StoreBrokerRolloutState]::RolledBack
+                }
+
+                $getSubmissionParams['Object'] = $rollout
+                Set-RolloutSubmission @setSubmissionRolloutParams
+            }
+        }
     }
 
     $getParams = @()
@@ -278,7 +314,7 @@ function New-Submission
     }
 
     # Convert the input into a Json body.
-    $hashBody = @{}
+    $global:hashBody = @{}
     $hashBody[[StoreBrokerSubmissionProperty]::resourceType] = [StoreBrokerResourceType]::Submission
     $hashBody[[StoreBrokerSubmissionProperty]::scope] = $Scope
 
@@ -292,7 +328,7 @@ function New-Submission
         $hashBody[[StoreBrokerSubmissionProperty]::sandboxId] = $SandboxId
     }
 
-    $body = $hashBody | ConvertTo-Json
+    $body = Get-JsonBody -InputObject $hashBody
     Write-Log -Message "Body: $body" -Level Verbose
 
     $params = @{
@@ -425,33 +461,26 @@ function Get-SubmissionDetail
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/submissions/$SubmissionId/detail"
-            "Method" = 'Get'
-            "Description" = "Getting details of submission $SubmissionId for $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-SubmissionDetail"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
-    catch [System.InvalidOperationException]
-    {
-        throw
+
+    $params = @{
+        "UriFragment" = "products/$ProductId/submissions/$SubmissionId/detail"
+        "Method" = 'Get'
+        "Description" = "Getting details of submission $SubmissionId for $ProductId"
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "Get-SubmissionDetail"
+        "TelemetryProperties" = $telemetryProperties
+        "NoStatus" = $NoStatus
     }
+
+    return Invoke-SBRestMethod @params
 }
 
 function Set-SubmissionDetail
@@ -548,7 +577,7 @@ function Set-SubmissionDetail
         }
     }
 
-    $body = $hashBody | ConvertTo-Json
+    $body = Get-JsonBody -InputObject $hashBody
     Write-Log -Message "Body: $body" -Level Verbose
 
     $params = @{
@@ -683,33 +712,26 @@ function Get-SubmissionReport
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/submissions/$SubmissionId/reports"
-            "Description" = "Getting reports of submission $SubmissionId for $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-SubmissionReport"
-            "TelemetryProperties" = $telemetryProperties
-            "SinglePage" = $SinglePage
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethodMultipleResult @params
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
-    catch [System.InvalidOperationException]
-    {
-        throw
+
+    $params = @{
+        "UriFragment" = "products/$ProductId/submissions/$SubmissionId/reports"
+        "Description" = "Getting reports of submission $SubmissionId for $ProductId"
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "Get-SubmissionReport"
+        "TelemetryProperties" = $telemetryProperties
+        "SinglePage" = $SinglePage
+        "NoStatus" = $NoStatus
     }
+
+    return Invoke-SBRestMethodMultipleResult @params
 }
 
 function Submit-Submission
@@ -790,31 +812,24 @@ function Get-SubmissionValidation
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/submissions/$SubmissionId/validation"
-            "Method" = 'Get'
-            "Description" = "Getting validation of submission $SubmissionId for $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-SubmissionValidation"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
-    catch [System.InvalidOperationException]
-    {
-        throw
+
+    $params = @{
+        "UriFragment" = "products/$ProductId/submissions/$SubmissionId/validation"
+        "Method" = 'Get'
+        "Description" = "Getting validation of submission $SubmissionId for $ProductId"
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "Get-SubmissionValidation"
+        "TelemetryProperties" = $telemetryProperties
+        "NoStatus" = $NoStatus
     }
+
+    return Invoke-SBRestMethod @params
 }

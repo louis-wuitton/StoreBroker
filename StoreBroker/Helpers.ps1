@@ -1019,3 +1019,40 @@ function Get-HttpWebResponseContent
         }
     }
 }
+
+function Get-JsonBody
+{
+    [CmdletBinding()]
+    [OutputType([String])]
+    param(
+        [Parameter(Mandatory)]
+        $InputObject,
+
+        [switch] $RecursiveCall
+    )
+
+    if ($InputObject -is [hashtable])
+    {
+        # ConvertTo-Json only works if the keys are strings.
+        # We need to string-ify all keys
+        $modified = @{}
+        foreach ($key in $InputObject.Keys.GetEnumerator())
+        {
+            $modified[$key.ToString()] = (Get-JsonBody -InputObject $InputObject[$key] -RecursiveCall)
+        }
+        
+        return (ConvertTo-Json -InputObject $modified -Depth $script:jsonConversionDepth)
+    }
+    elseif ($InputObject -is [System.Enum])
+    {
+        return $InputObject.ToString()
+    }
+    elseif ($RecursiveCall)
+    {
+        return $InputObject
+    }
+    else
+    {
+        return ConvertTo-Json -InputObject $InputObject -Depth $script:jsonConversionDepth    
+    }
+}

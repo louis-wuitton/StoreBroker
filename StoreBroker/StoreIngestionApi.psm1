@@ -1,5 +1,8 @@
 # Copyright (C) Microsoft Corporation.  All rights reserved.
 
+# This will ensure that if an internal command throws an exception, we don't continue execution
+$script:ErrorActionPreference = 'Stop'
+
 # Configured via Set-StoreBrokerAuthentication / Clear-StoreBrokerAuthentication
 $script:proxyEndpoint = $null
 

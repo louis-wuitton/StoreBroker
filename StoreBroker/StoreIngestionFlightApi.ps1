@@ -32,46 +32,39 @@ function Get-Flight
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    try
-    {
-        $singleQuery = (-not [String]::IsNullOrWhiteSpace($FlightId))
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::FlightId = $FlightId
-            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $params = @{
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-Flight"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        if ($singleQuery)
-        {
-            $params["UriFragment"] = "products/$ProductId/flights/$FlightId"
-            $params["Method" ] = 'Get'
-            $params["Description"] =  "Getting flight $FlightId for $ProductId"
-
-            return Invoke-SBRestMethod @params
-        }
-        else
-        {
-            $params["UriFragment"] = "products/$ProductId/flights"
-            $params["Description"] =  "Getting flights for $ProductId"
-            $params["SinglePage" ] = $SinglePage
-
-            return Invoke-SBRestMethodMultipleResult @params
-        }
+    $singleQuery = (-not [String]::IsNullOrWhiteSpace($FlightId))
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::FlightId = $FlightId
+        [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
-    catch [System.InvalidOperationException]
+
+    $params = @{
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "Get-Flight"
+        "TelemetryProperties" = $telemetryProperties
+        "NoStatus" = $NoStatus
+    }
+
+    if ($singleQuery)
     {
-        throw
+        $params["UriFragment"] = "products/$ProductId/flights/$FlightId"
+        $params["Method" ] = 'Get'
+        $params["Description"] =  "Getting flight $FlightId for $ProductId"
+
+        return Invoke-SBRestMethod @params
+    }
+    else
+    {
+        $params["UriFragment"] = "products/$ProductId/flights"
+        $params["Description"] =  "Getting flights for $ProductId"
+        $params["SinglePage" ] = $SinglePage
+
+        return Invoke-SBRestMethodMultipleResult @params
     }
 }
 
@@ -116,51 +109,44 @@ function New-Flight
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
-            [StoreBrokerTelemetryProperty]::RelativeRank = $RelativeRank
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::PackageFlight
-
-        $hashBody = $Object
-        if ($null -eq $hashBody)
-        {
-            # Convert the input into a Json body.
-            $hashBody = @{}
-            $hashBody[[StoreBrokerFlightProperty]::resourceType] = [StoreBrokerResourceType]::PackageFlight
-            $hashBody[[StoreBrokerFlightProperty]::name] = $Name
-            $hashBody[[StoreBrokerFlightProperty]::groupIds] = @($GroupId)
-            $hashBody[[StoreBrokerFlightProperty]::relativeRank] = $RelativeRank
-        }
-
-        $body = $hashBody | ConvertTo-Json
-        Write-Log -Message "Body: $body" -Level Verbose
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/flights"
-            "Method" = 'Post'
-            "Description" = "Creating new flight for $ProductId"
-            "Body" = $body
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "New-Flight"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+        [StoreBrokerTelemetryProperty]::RelativeRank = $RelativeRank
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
-    catch [System.InvalidOperationException]
+
+    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::PackageFlight
+
+    $hashBody = $Object
+    if ($null -eq $hashBody)
     {
-        throw
+        # Convert the input into a Json body.
+        $hashBody = @{}
+        $hashBody[[StoreBrokerFlightProperty]::resourceType] = [StoreBrokerResourceType]::PackageFlight
+        $hashBody[[StoreBrokerFlightProperty]::name] = $Name
+        $hashBody[[StoreBrokerFlightProperty]::groupIds] = @($GroupId)
+        $hashBody[[StoreBrokerFlightProperty]::relativeRank] = $RelativeRank
     }
+
+    $body = Get-JsonBody -InputObject $hashBody
+    Write-Log -Message "Body: $body" -Level Verbose
+
+    $params = @{
+        "UriFragment" = "products/$ProductId/flights"
+        "Method" = 'Post'
+        "Description" = "Creating new flight for $ProductId"
+        "Body" = $body
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "New-Flight"
+        "TelemetryProperties" = $telemetryProperties
+        "NoStatus" = $NoStatus
+    }
+
+    return Invoke-SBRestMethod @params
 }
 
 function Remove-Flight
@@ -258,52 +244,45 @@ function Set-Flight
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::FlightId = $FlightId
-            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
-            [StoreBrokerTelemetryProperty]::RelativeRank = $RelativeRank
-            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::PackageFlight
-
-        $hashBody = $Object
-        if ($null -eq $hashBody)
-        {
-            # Convert the input into a Json body.
-            $hashBody = @{}
-            $hashBody[[StoreBrokerFlightProperty]::resourceType] = [StoreBrokerResourceType]::PackageFlight
-            $hashBody[[StoreBrokerFlightProperty]::name] = $Name
-            $hashBody[[StoreBrokerFlightProperty]::groupIds] = @($GroupId)
-            $hashBody[[StoreBrokerFlightProperty]::relativeRank] = $RelativeRank
-            $hashBody[[StoreBrokerFlightProperty]::revisionToken] = $RevisionToken
-        }
-
-        $body = $hashBody | ConvertTo-Json
-        Write-Log -Message "Body: $body" -Level Verbose
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/flights/$FlightId"
-            "Method" = 'Put'
-            "Description" = "Updating flight $FlightId for $ProductId"
-            "Body" = $body
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Set-Flight"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::FlightId = $FlightId
+        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+        [StoreBrokerTelemetryProperty]::RelativeRank = $RelativeRank
+        [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
-    catch [System.InvalidOperationException]
+
+    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::PackageFlight
+
+    $hashBody = $Object
+    if ($null -eq $hashBody)
     {
-        throw
+        # Convert the input into a Json body.
+        $hashBody = @{}
+        $hashBody[[StoreBrokerFlightProperty]::resourceType] = [StoreBrokerResourceType]::PackageFlight
+        $hashBody[[StoreBrokerFlightProperty]::name] = $Name
+        $hashBody[[StoreBrokerFlightProperty]::groupIds] = @($GroupId)
+        $hashBody[[StoreBrokerFlightProperty]::relativeRank] = $RelativeRank
+        $hashBody[[StoreBrokerFlightProperty]::revisionToken] = $RevisionToken
     }
+
+    $body = Get-JsonBody -InputObject $hashBody
+    Write-Log -Message "Body: $body" -Level Verbose
+
+    $params = @{
+        "UriFragment" = "products/$ProductId/flights/$FlightId"
+        "Method" = 'Put'
+        "Description" = "Updating flight $FlightId for $ProductId"
+        "Body" = $body
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "Set-Flight"
+        "TelemetryProperties" = $telemetryProperties
+        "NoStatus" = $NoStatus
+    }
+
+    return Invoke-SBRestMethod @params
 }

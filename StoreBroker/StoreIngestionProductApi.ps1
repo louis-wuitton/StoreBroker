@@ -151,7 +151,7 @@ function New-Product
         $hashBody[[StoreBrokerProductProperty]::name] = $Name
     }
 
-    $body = $hashBody | ConvertTo-Json
+    $body = Get-JsonBody -InputObject $hashBody
 
     $params = @{
         "UriFragment" = "products/"
@@ -230,32 +230,25 @@ function Get-ProductPackageIdentity
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::AppId = $AppId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/packageIdentity"
-            "Method" = "Get"
-            "Description" = "Getting package identity for product: $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ProductPackageIdentity"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::AppId = $AppId
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
-    catch [System.InvalidOperationException]
-    {
-        throw
+
+    $params = @{
+        "UriFragment" = "products/$ProductId/packageIdentity"
+        "Method" = "Get"
+        "Description" = "Getting package identity for product: $ProductId"
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "Get-ProductPackageIdentity"
+        "TelemetryProperties" = $telemetryProperties
+        "NoStatus" = $NoStatus
     }
+
+    return Invoke-SBRestMethod @params
 }
 
 function Get-ProductStoreLink
@@ -277,32 +270,25 @@ function Get-ProductStoreLink
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::AppId = $AppId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/storelink"
-            "Method" = "Get"
-            "Description" = "Getting store link for product: $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ProductStoreLink"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::AppId = $AppId
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
-    catch [System.InvalidOperationException]
-    {
-        throw
+
+    $params = @{
+        "UriFragment" = "products/$ProductId/storelink"
+        "Method" = "Get"
+        "Description" = "Getting store link for product: $ProductId"
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "Get-ProductStoreLink"
+        "TelemetryProperties" = $telemetryProperties
+        "NoStatus" = $NoStatus
     }
+
+    return Invoke-SBRestMethod @params
 }
 
 function Get-ProductRelated
@@ -330,33 +316,26 @@ function Get-ProductRelated
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::AppId = $AppId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $getParams = @()
-        $getParams += "relationshipType=$Type"
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/related`?" + ($getParams -join '&')
-            "Description" = "Getting related products for product: $ProductId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-ProductRelated"
-            "TelemetryProperties" = $telemetryProperties
-            "SinglePage" = $SinglePage
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethodMultipleResult @params
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::AppId = $AppId
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
-    catch [System.InvalidOperationException]
-    {
-        throw
+
+    $getParams = @()
+    $getParams += "relationshipType=$Type"
+
+    $params = @{
+        "UriFragment" = "products/$ProductId/related`?" + ($getParams -join '&')
+        "Description" = "Getting related products for product: $ProductId"
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "Get-ProductRelated"
+        "TelemetryProperties" = $telemetryProperties
+        "SinglePage" = $SinglePage
+        "NoStatus" = $NoStatus
     }
+
+    return Invoke-SBRestMethodMultipleResult @params
 }

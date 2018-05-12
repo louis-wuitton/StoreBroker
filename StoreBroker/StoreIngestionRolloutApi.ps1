@@ -10,6 +10,15 @@ Add-Type -TypeDefinition @"
    }
 "@
 
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerRolloutState
+   {
+       Initialized,
+       Completed,
+       RolledBack
+   }
+"@
+
 function Get-SubmissionRollout
 {
     [CmdletBinding(SupportsShouldProcess)]
@@ -32,33 +41,26 @@ function Get-SubmissionRollout
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    try
-    {
-        $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-        }
-
-        $params = @{
-            "UriFragment" = "products/$ProductId/submissions/$SubmissionId/rollout"
-            "Method" = 'Get'
-            "Description" = "Getting rollout info for product: $ProductId submissionId: $SubmissionId"
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-SubmissionRollout"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
-        }
-
-        return Invoke-SBRestMethod @params
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
-    catch [System.InvalidOperationException]
-    {
-        throw
+
+    $params = @{
+        "UriFragment" = "products/$ProductId/submissions/$SubmissionId/rollout"
+        "Method" = 'Get'
+        "Description" = "Getting rollout info for product: $ProductId submissionId: $SubmissionId"
+        "ClientRequestId" = $ClientRequestId
+        "CorrelationId" = $CorrelationId
+        "AccessToken" = $AccessToken
+        "TelemetryEventName" = "Get-SubmissionRollout"
+        "TelemetryProperties" = $telemetryProperties
+        "NoStatus" = $NoStatus
     }
+
+    return Invoke-SBRestMethod @params
 }
 
 function Set-SubmissionRollout
@@ -82,7 +84,7 @@ function Set-SubmissionRollout
 
         [Parameter(ParameterSetName="Individual")]
         [ValidateSet('Initialized', 'Completed', 'RolledBack')]
-        [string] $State,
+        [string] $State = 'Initialized',
 
         [Parameter(ParameterSetName="Individual")]
         [int] $Percentage = -1,
@@ -96,10 +98,6 @@ function Set-SubmissionRollout
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
-
-        [switch] $ManualPublish,
-
-        [switch] $AutoPromote,
 
         [string] $AccessToken,
 
@@ -117,7 +115,7 @@ function Set-SubmissionRollout
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::PackageFlight
+    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::Rollout
 
     $hashBody = $Object
     if ($null -eq $hashBody)
@@ -158,7 +156,7 @@ function Set-SubmissionRollout
         }
     }
 
-    $body = $hashBody | ConvertTo-Json
+    $body = Get-JsonBody -InputObject $hashBody
     Write-Log -Message "Body: $body" -Level Verbose
 
     $params = @{
