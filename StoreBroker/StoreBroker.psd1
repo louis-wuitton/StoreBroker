@@ -31,6 +31,7 @@
         'StoreIngestionPropertyApi.ps1',
         'StoreIngestionRolloutApi.ps1',
         'StoreIngestionSubmissionApi.ps1',
+        'StoreIngestionUpdateApi.ps1',
 
 
         'Telemetry.ps1')
@@ -39,6 +40,8 @@
     PowerShellVersion = '4.0'
 
     FunctionsToExport = @(
+        'Update-Submission',
+
         'New-FeatureAvailability',
         'Set-FeatureAvailability',
         'Get-FeatureAvailability',
