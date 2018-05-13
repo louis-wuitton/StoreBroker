@@ -164,9 +164,12 @@ function Set-ProductProperty
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [string] $PropertyId,
-
         [string] $SubmissionId,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [string] $PropertyId,
 
         [Parameter(
             Mandatory,
@@ -191,10 +194,15 @@ function Set-ProductProperty
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
+    if ($null -ne $Object)
+    {
+        $PropertyId = $Object.id
+    }
+
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::PropertyId = $PropertyId
         [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::PropertyId = $PropertyId
         [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
         [StoreBrokerTelemetryProperty]::ResourceType = $Type
         [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken

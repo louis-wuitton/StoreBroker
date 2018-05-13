@@ -10,6 +10,17 @@ Add-Type -TypeDefinition @"
    }
 "@
 
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerListingImageState
+   {
+       PendingUpload,
+       Uploaded,
+       InProcessing,
+       Processed,
+       ProcessFailed
+   }
+"@
+
 function Get-ListingImage
 {
     [CmdletBinding(SupportsShouldProcess)]
@@ -298,7 +309,9 @@ function Set-ListingImage
         [Alias('LangCode')]
         [string] $LanguageCode,
 
-        [Parameter(Mandatory)]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $ImageId,
 
         [Parameter(
@@ -332,6 +345,11 @@ function Set-ListingImage
     )
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+
+    if ($null -ne $Object)
+    {
+        $ImageId = $Object.id
+    }
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId

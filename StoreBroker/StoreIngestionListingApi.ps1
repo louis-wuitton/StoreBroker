@@ -376,7 +376,9 @@ function Set-Listing
         [Parameter(Mandatory)]
         [string] $SubmissionId,
 
-        [Parameter(Mandatory)]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [Alias('LangCode')]
         [string] $LanguageCode,
 
@@ -444,6 +446,11 @@ function Set-Listing
     )
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+
+    if ($null -ne $Object)
+    {
+        $LanguageCode = $Object.languageCode
+    }
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId

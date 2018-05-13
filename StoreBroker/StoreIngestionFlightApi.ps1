@@ -205,7 +205,9 @@ function Set-Flight
         [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
-        [Parameter(Mandatory)]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $FlightId,
 
         [Parameter(
@@ -243,6 +245,11 @@ function Set-Flight
     )
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+
+    if ($null -ne $Object)
+    {
+        $FlightId = $Object.id
+    }
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId

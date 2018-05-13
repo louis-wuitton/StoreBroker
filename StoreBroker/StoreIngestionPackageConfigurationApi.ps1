@@ -6,7 +6,7 @@ Add-Type -TypeDefinition @"
    }
 "@
 
-function Get-ProductPackageConfigurations
+function Get-ProductPackageConfiguration
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(

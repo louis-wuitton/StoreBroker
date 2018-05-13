@@ -181,6 +181,7 @@ function New-ListingVideo
     }
 
     $body = Get-JsonBody -InputObject $hashBody
+    Write-Log -Message "Body: $body" -Level Verbose
 
     $uriFragment = "products/$ProductId/listings/$LanguageCode/videos`?" + ($getParams -join '&')
     $description = "Creating new $LanguageCode listing videos for $ProductId"
@@ -312,7 +313,9 @@ function Set-ListingVideo
         [Alias('LangCode')]
         [string] $LanguageCode,
 
-        [Parameter(Mandatory)]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $VideoId,
 
         [Parameter(
@@ -358,6 +361,11 @@ function Set-ListingVideo
     )
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+
+    if ($null -ne $Object)
+    {
+        $VideoId = $Object.id
+    }
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId

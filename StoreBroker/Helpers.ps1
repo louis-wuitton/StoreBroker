@@ -1020,15 +1020,12 @@ function Get-HttpWebResponseContent
     }
 }
 
-function Get-JsonBody
+function Convert-EnumToString
 {
     [CmdletBinding()]
-    [OutputType([String])]
     param(
         [Parameter(Mandatory)]
-        $InputObject,
-
-        [switch] $RecursiveCall
+        $InputObject
     )
 
     if ($InputObject -is [hashtable])
@@ -1038,21 +1035,29 @@ function Get-JsonBody
         $modified = @{}
         foreach ($key in $InputObject.Keys.GetEnumerator())
         {
-            $modified[$key.ToString()] = (Get-JsonBody -InputObject $InputObject[$key] -RecursiveCall)
+            $modified[$key.ToString()] = (Convert-EnumToString -InputObject $InputObject[$key])
         }
         
-        return (ConvertTo-Json -InputObject $modified -Depth $script:jsonConversionDepth)
+        return $modified
     }
     elseif ($InputObject -is [System.Enum])
     {
         return $InputObject.ToString()
     }
-    elseif ($RecursiveCall)
+    else
     {
         return $InputObject
     }
-    else
-    {
-        return ConvertTo-Json -InputObject $InputObject -Depth $script:jsonConversionDepth    
-    }
+}
+
+function Get-JsonBody
+{
+    [CmdletBinding()]
+    [OutputType([String])]
+    param(
+        [Parameter(Mandatory)]
+        $InputObject
+    )
+
+    return ConvertTo-Json -InputObject (Convert-EnumToString -InputObject $InputObject) -Depth $script:jsonConversionDepth    
 }

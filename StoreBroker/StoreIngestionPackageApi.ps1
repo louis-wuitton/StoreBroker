@@ -8,7 +8,18 @@ Add-Type -TypeDefinition @"
    }
 "@
 
-function Get-ProductPackages
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerPackageState
+   {
+       PendingUpload,
+       Uploaded,
+       InProcessing,
+       Processed,
+       ProcessFailed
+   }
+"@
+
+function Get-ProductPackage
 {
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -181,9 +192,12 @@ function Set-ProductPackage
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [string] $PackageId,
-
         [string] $SubmissionId,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [string] $PackageId,
 
         [string] $FeatureGroupId,
 
@@ -214,14 +228,18 @@ function Set-ProductPackage
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
+    if ($null -ne $Object)
+    {
+        $PackageId = $Object.id
+    }
+
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::PackageId = $PackageId
         [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::PackageId = $PackageId
         [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
         [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
         [StoreBrokerTelemetryProperty]::State = $State
-        [StoreBrokerTelemetryProperty]::Version = $Version
         [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
         [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -279,9 +297,10 @@ function Remove-ProductPackage
         [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [string] $PackageId,
-
         [string] $SubmissionId,
+
+        [Parameter(Mandatory)]
+        [string] $PackageId,
 
         [string] $FeatureGroupId,
 
@@ -298,8 +317,8 @@ function Remove-ProductPackage
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::PackageId = $PackageId
         [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::PackageId = $PackageId
         [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
         [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId

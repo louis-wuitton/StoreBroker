@@ -14,6 +14,7 @@ Add-Type -TypeDefinition @"
       Auto,
       AutoCommit,
       ClientRequestId,
+      ContentPath,
       CorrelationId,
       DayOfWeek,
       ErrorBucket,
@@ -38,6 +39,7 @@ Add-Type -TypeDefinition @"
       IsMandatoryUpdate,
       IsManualPublish,
       IsSeekEnabled,
+      JsonPath,
       LanguageCode,
       Message,
       Name,
@@ -51,6 +53,7 @@ Add-Type -TypeDefinition @"
       ProductId,
       ProductType,
       PropertyId,
+      RedundantPackagesToKeep,
       ReplacePackages,
       RequestId,
       ResourceType,
@@ -86,6 +89,7 @@ Add-Type -TypeDefinition @"
       Visibility,
       WaitSeconds,
       Web,
+      ZipPath
    }
 "@
 

@@ -2467,57 +2467,6 @@ function Invoke-SBRestMethodMultipleResult
     }
 }
 
-function Remove-UnofficialSubmissionProperties
-{
-<#
-    .SYNOPSIS
-        Removes additional properties from the submission object that aren't part of the submission API.
-
-    .DESCRIPTION
-        Removes additional properties from the submission object that aren't part of the submission API.
-
-        The properties don't actually need to exist on the submission object before calling this function.
-
-    .PARAMETER Submission
-        A PSCustomObject representing the submission.
-
-    .EXAMPLE
-        Remove-UnofficialSubmissionProperties -Submission (Get-ApplicationSubmission -AppId $appId -SubmissionId $submissionId)
-
-    .NOTES
-        Valid properties for applicationPackages are taken from https://docs.microsoft.com/en-us/windows/uwp/monetize/manage-app-submissions#application-package-object
-#>
-    [CmdletBinding()]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseSingularNouns", "", Justification="This really does remove multiple properties.")]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseShouldProcessForStateChangingFunctions", "", Justification="This has no impact to system state.")]
-    param(
-        [Parameter(Mandatory)]
-        [PSCustomObject] $Submission
-    )
-
-    # These properties aren't really valid in submission content.
-    # We can safely call this method without validating that the property actually exists.
-    $Submission.PSObject.Properties.Remove("appId")
-    $Submission.PSObject.Properties.Remove("iapId")
-
-    foreach ($package in $Submission.applicationPackages)
-    {
-        @(
-            "version",
-            "architecture",
-            "targetPlatform",
-            "languages",
-            "capabilities",
-            "targetDeviceFamilies",
-            "targetDeviceFamiliesEx",
-            "minOSVersion",
-            "innerPackages"
-        ) | ForEach-Object {
-            $package.PSObject.Properties.Remove($_)
-        }
-    }
-}
-
 function Test-ResourceType
 {
     [CmdletBinding()]

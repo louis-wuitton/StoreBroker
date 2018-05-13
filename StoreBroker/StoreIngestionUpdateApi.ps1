@@ -12,13 +12,13 @@ function Update-Submission
 
         [Parameter(Mandatory)]
         [ValidateScript({if (Test-Path -Path $_ -PathType Leaf) { $true } else { throw "$_ cannot be found." }})]
-        [string] $SubmissionDataPath,
+        [string] $JsonPath,
 
         [ValidateScript({if (Test-Path -Path $_ -PathType Leaf) { $true } else { throw "$_ cannot be found." }})]
-        [string] $PackagePath,
+        [string] $ZipPath,
 
         [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
-        [string] $SubmissionContentPath,
+        [string] $ContentPath,
 
         [switch] $AutoCommit,
 
@@ -65,6 +65,10 @@ function Update-Submission
 
         [switch] $UpdateNotesForCertification,
 
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
         [string] $AccessToken = "",
 
         [switch] $NoStatus
@@ -74,10 +78,10 @@ function Update-Submission
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
-    Write-Log -Message "Reading in the submission content from: $SubmissionDataPath" -Level Verbose
-    if ($PSCmdlet.ShouldProcess($SubmissionDataPath, "Get-Content"))
+    Write-Log -Message "Reading in the submission content from: $JsonPath" -Level Verbose
+    if ($PSCmdlet.ShouldProcess($JsonPath, "Get-Content"))
     {
-        $submission = [string](Get-Content $SubmissionDataPath -Encoding UTF8) | ConvertFrom-Json
+        $submission = [string](Get-Content $JsonPath -Encoding UTF8) | ConvertFrom-Json
     }
 
     # Extra layer of validation to protect users from trying to submit a payload to the wrong application
@@ -99,7 +103,7 @@ function Update-Submission
         if ($AppId -ne $submission.appId)
         {
             $output = @()
-            $output += "The AppId [$($submission.appId)] in the submission content [$SubmissionDataPath] does not match the intended AppId [$AppId]."
+            $output += "The AppId [$($submission.appId)] in the submission content [$JsonPath] does not match the intended AppId [$AppId]."
             $output += "You either entered the wrong AppId at the commandline, or you're referencing the wrong submission content to upload."
 
             $newLineOutput = ($output -join [Environment]::NewLine)
@@ -107,8 +111,6 @@ function Update-Submission
             throw $newLineOutput
         }
     }
-
-    Remove-UnofficialSubmissionProperties -Submission $submission
 
     # Identify potentially incorrect usage of this method by checking to see if no modification
     # switch was provided by the user
@@ -127,11 +129,6 @@ function Update-Submission
             "This means that the new submission will be identical to the current one.",
             "If this was not your intention, please read-up on the documentation for this command:",
             "     Get-Help Update-ApplicationSubmission -ShowWindow")
-    }
-
-    if ([System.String]::IsNullOrEmpty($AccessToken))
-    {
-        $AccessToken = Get-AccessToken -NoStatus:$NoStatus
     }
 
     try
@@ -204,16 +201,16 @@ function Update-Submission
             "",
             ($script:manualPublishWarning -f 'Update-ApplicationSubmission'))
 
-        if (![System.String]::IsNullOrEmpty($PackagePath))
+        if (![System.String]::IsNullOrEmpty($ZipPath))
         {
-            Write-Log -Message "Uploading the package [$PackagePath] since it was provided." -Level Verbose
-            Set-SubmissionPackage -PackagePath $PackagePath -UploadUrl $uploadUrl -NoStatus:$NoStatus
+            Write-Log -Message "Uploading the package [$ZipPath] since it was provided." -Level Verbose
+            Set-SubmissionPackage -ZipPath $ZipPath -UploadUrl $uploadUrl -NoStatus:$NoStatus
         }
         elseif (!$AutoCommit)
         {
             Write-Log -Message @(
                 "Your next step is to upload the package using:",
-                "  Upload-SubmissionPackage -PackagePath <package> -UploadUrl `"$uploadUrl`"")
+                "  Upload-SubmissionPackage -ZipPath <package> -UploadUrl `"$uploadUrl`"")
         }
 
         if ($AutoCommit)
@@ -243,7 +240,7 @@ function Update-Submission
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::AppId = $AppId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::PackagePath = (Get-PiiSafeString -PlainText $PackagePath)
+            [StoreBrokerTelemetryProperty]::ZipPath = (Get-PiiSafeString -PlainText $ZipPath)
             [StoreBrokerTelemetryProperty]::AutoCommit = $AutoCommit
             [StoreBrokerTelemetryProperty]::Force = $Force
             [StoreBrokerTelemetryProperty]::PackageRolloutPercentage = $PackageRolloutPercentage
@@ -256,7 +253,9 @@ function Update-Submission
             [StoreBrokerTelemetryProperty]::UpdateTrailers = $UpdateTrailers
             [StoreBrokerTelemetryProperty]::UpdateAppProperties = $UpdateAppProperties
             [StoreBrokerTelemetryProperty]::UpdateNotesForCertification = $UpdateNotesForCertification
-        }
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+            }
 
         Set-TelemetryEvent -EventName Update-ApplicationSubmission -Properties $telemetryProperties -Metrics $telemetryMetrics
 
@@ -267,6 +266,421 @@ function Update-Submission
         Write-Log -Exception $_ -Level Error
         throw
     }
+}
+
+# Internal helper
+# Operates on an existing submissionId
+function Patch-ProductPackages
+{
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="AddPackages")]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [Parameter(Mandatory)]
+        [PSCustomObject] $SubmissionData,
+
+        [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
+        [string] $ContentPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all internal helpers only operate on a Contentpath
+
+        [Parameter(ParameterSetName="AddPackages")]
+        [switch] $AddPackages,
+
+        [Parameter(ParameterSetName="ReplacePackages")]
+        [switch] $ReplacePackages,
+
+        [Parameter(ParameterSetName="UpdatePackages")]
+        [switch] $UpdatePackages,
+
+        [Parameter(ParameterSetName="UpdatePackages")]
+        [int] $RedundantPackagesToKeep = 1,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    if (($AddPackages -or $ReplacePackages -or $UpdatePackages) -and ($SubmissionData.applicationPackages.Count -eq 0))
+    {
+        $output = @()
+        $output += "Your submission doesn't contain any packages, so you cannot Add, Replace or Update packages."
+        $output += "Please check your input settings to New-SubmissionPackage and ensure you're providing a value for AppxPath."
+        $output = $output -join [Environment]::NewLine
+        Write-Log -Message $output -Level Error
+        throw $output
+    }
+
+    if ((-not $AddPackages) -and (-not $ReplacePackages) -and (-not $UpdatePackages))
+    {
+        return
+    }
+
+    $params = @{
+        'ProductId' = $ProductId
+        'SubmissionId' = $SubmissionId
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
+
+    if ($ReplacePackages)
+    {
+        # Get all of the current packages in the submission and delete them
+        $packages = Get-ProductPackage @params
+        foreach ($package in $packages)
+        {
+            $null = Remove-ProductPackage @params -PackageId $package.id
+        }
+    }
+    elseif ($UpdatePackages)
+    {
+        # TODO -- Better understand the current object model so that we can accurately determine
+        # which packages are redundant.
+        # TODO: BE CAREFUL ABOUT KEEPING PRE-WIN 10 PACKAGES!!!
+    }
+
+    # Regardless of which method we're following, the last thing that we'll do is get these new
+    # associated with this submission
+    foreach ($package in $SubmissionData.applicationPackages)
+    {
+        $params['FileName'] = (Split-Path -Path $package.fileName -Leaf)
+        $packageSubmission = New-ProductPackage @params
+        $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $package.fileName) -SasUri $packageSubmission.fileSasUri -NoStatus:$NoStatus
+        $packageSubmission.state = [StoreBrokerPackageState]::Uploaded.ToString()
+        $null = Set-ProductPackage @params -Object $packageSubmission
+    }
+
+    # Record the telemetry for this event.
+    $stopwatch.Stop()
+    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
+        [StoreBrokerTelemetryProperty]::AddPackages = $AddPackages
+        [StoreBrokerTelemetryProperty]::ReplacePackages = $ReplacePackages
+        [StoreBrokerTelemetryProperty]::UpdatePackages = $UpdatePackages
+        [StoreBrokerTelemetryProperty]::RedundantPackagesToKeep = $RedundantPackagesToKeep
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    Set-TelemetryEvent -EventName Patch-SubmissionPackage -Properties $telemetryProperties -Metrics $telemetryMetrics
+    return
+}
+
+# Internal helper
+# Operates on an existing submissionId
+function Patch-Listings
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [Parameter(Mandatory)]
+        [PSCustomObject] $SubmissionData,
+
+        [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
+        [string] $ContentPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all internal helpers only operate on a Contentpath
+
+        [Parameter(Mandatory)]
+        [Alias('LangCode')]
+        [string] $LanguageCode,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    $indentLevel = 2
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    $params = @{
+        'ProductId' = $ProductId
+        'SubmissionId' = $SubmissionId
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
+
+    # Determine what our current listings are.
+    $currentListings = Get-Listing @params
+
+    # We need to keep track of languages in $currentListings that don't have a match in
+    # $SubmissionData (so that we can remove them), as well which languages occur in $SubmissionData
+    # that aren't in $currentListings so that we can add them.  We don't simply delete all and start
+    # over due to the increased time/cost that we'd have by doing so.
+    [System.Collections.ArrayList]$listingsToDelete = @()
+    [System.Collections.ArrayList]$clonedLangCodes = @()
+
+    # First we delete all of the existing images
+    Write-Log -Message 'Updating the cloned listings with information supplied by user data.' -Level Verbose -Indent $indentLevel
+    foreach ($listing in $currentListings)
+    {
+        $suppliedListing = $SubmissionData.listings.($listing.languageCode).baseListing
+        if ($null -eq $suppliedListing)
+        {
+            $listingsToDelete.Add($listing.languageCode)
+            continue
+        }
+
+        # Updating the existing Listing submission with the user's supplied content
+        $listing.shortTitle = $suppliedListing.shortTitle
+        $listing.voiceTitle = $suppliedListing.voiceTitle
+        $listing.releaseNotes = $suppliedListing.releaseNotes
+        $listing.keywords = $suppliedListing.keywords
+        $listing.trademark = $suppliedListing.copyrightAndTrademarkInfo
+        $listing.licenseTerm = $suppliedListing.licenseTerms
+        $listing.features = $suppliedListing.features
+        $listing.recommendedHardware = $suppliedListing.minimumHardware
+        $listing.devStudio = $suppliedListing.devStudio
+        #TODO: $listing.shouldOverridePackageLogos = ???
+        $listing.title = $suppliedListing.title
+        $listing.description = $suppliedListing.description
+        $listing.shortDescription = $suppliedListing.shortDescription
+
+        $langCode = $listing.languageCode
+        $clonedLangCodes.Add($langCode)
+
+        $null = Set-Listing @params -Object $listing
+        $null = Patch-ListingImages @params -LanguageCode $langCode
+    }
+
+    # Now we have to see what languages exist in the user's supplied content that we didn't already
+    # have cloned submissions for
+    Write-Log -Message 'Now adding listings for languages that didn''t have pre-existing clones.' -Level Verbose -Indent $indentLevel
+    $SubmissionData.listings |
+        Get-Member -type NoteProperty |
+            ForEach-Object {
+                $langCode = $_.Name
+                $suppliedListing = $SubmissionData.listings.$langCode.baselisting
+                if (-not $clonedLangCodes.Contains($langCode))
+                {
+                    $listingParams = $params.PSObject.Copy() # Get a new instance, not a reference
+                    $listingParams['LanguageCode'] = $langCode
+                    $listingParams['ShortTitle'] = $suppliedListing.shortTitle
+                    $listingParams['VoiceTitle'] = $suppliedListing.voiceTitle
+                    $listingParams['ReleaseNotes'] = $suppliedListing.releaseNotes
+                    $listingParams['Keywords'] = $suppliedListing.keywords
+                    $listingParams['Trademark'] = $suppliedListing.copyrightAndTrademarkInfo
+                    $listingParams['LicenseTerm'] = $suppliedListing.licenseTerms
+                    $listingParams['Features'] = $suppliedListing.features
+                    $listingParams['RecommendedHardware'] = $suppliedListing.minimumHardware
+                    $listingParams['DevStudio'] = $suppliedListing.devStudio
+                    #TODO: $listingParams['shouldOverridePackageLogos'] = ???
+                    $listingParams['Title'] = $suppliedListing.title
+                    $listingParams['Description'] = $suppliedListing.description
+                    $listingParams['ShortDescription'] = $suppliedListing.shortDescription
+
+                    $null = New-Listing @listingParams
+                    $null = Patch-ListingImages @params -LanguageCode $langCode
+                }
+            }
+
+    Write-Log -Message 'Now removing listings for languages that were cloned by the submission but don''t have current user data.' -Level Verbose -Indent $indentLevel
+    foreach ($langCode in $listingsToDelete)
+    {
+        $null = Remove-Listing @params -LanguageCode $langCode
+        $null = Patch-ListingImages @params -LanguageCode $langCode
+    }
+
+    # Record the telemetry for this event.
+    $stopwatch.Stop()
+    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    Set-TelemetryEvent -EventName Patch-Listings -Properties $telemetryProperties -Metrics $telemetryMetrics
+    return
+}
+
+# Internal helper
+# Operates on an existing submissionId
+function Patch-ListingImages
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [Parameter(Mandatory)]
+        [PSCustomObject] $SubmissionData,
+
+        [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
+        [string] $ContentPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all internal helpers only operate on a Contentpath
+
+        [Parameter(Mandatory)]
+        [Alias('LangCode')]
+        [string] $LanguageCode,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    $indentLevel = 4
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    $params = @{
+        'ProductId' = $ProductId
+        'SubmissionId' = $SubmissionId
+        'LanguageCode' = $LanguageCode
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
+
+    $currentImages = Get-ListingImage @params
+
+    # First we delete all of the existing images
+    Write-Log -Message "Removing all [$LanguageCode] listing images." -Level Verbose -Indent $indentLevel
+    foreach ($image in $currentImages)
+    {
+        $null = Remove-ListingImage @params -ImageId $image.id
+    }
+
+    # Then we proceed with adding/uploading all of the current images
+    Write-Log -Message "Creating [$LanguageCode] listing images." -Level Verbose -Indent $indentLevel
+    foreach ($image in $SubmissionData.listings.$LanguageCode.baseListing.images)
+    {
+        # TODO: Determine if we should expose Orientation to the PDP and then here.
+        $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $image.imageType
+        $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
+        $imageSubmission.state = [StoreBrokerListingImageState]::Uploaded.ToString()
+        $null = Set-ListingImage @params -Object $imageSubmission
+    }
+
+    # Record the telemetry for this event.
+    $stopwatch.Stop()
+    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+        [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
+        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    Set-TelemetryEvent -EventName Patch-ListingImages -Properties $telemetryProperties -Metrics $telemetryMetrics
+    return
+}
+
+# Internal helper
+# Operates on an existing submissionId
+function Patch-ListingVideos
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [Parameter(Mandatory)]
+        [PSCustomObject] $SubmissionData,
+
+        [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
+        [string] $ContentPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all internal helpers only operate on a Contentpath
+
+        [Parameter(Mandatory)]
+        [Alias('LangCode')]
+        [string] $LanguageCode,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    $indentLevel = 4
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    $params = @{
+        'ProductId' = $ProductId
+        'SubmissionId' = $SubmissionId
+        'LanguageCode' = $LanguageCode
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
+
+    $currentVideos = Get-ListingVideo @params
+
+    # First we delete all of the existing videos
+    Write-Log -Message "Removing all [$LanguageCode] listing videos." -Level Verbose -Indent $indentLevel
+    foreach ($video in $currentVideos)
+    {
+        $null = Remove-ListingVideo @params -VideoId $video.id
+    }
+
+    # Then we proceed with adding/uploading all of the current videos
+    Write-Log -Message "Creating [$LanguageCode] listing videos." -Level Verbose -Indent $indentLevel
+    # foreach ($image in $SubmissionData.listings.$LanguageCode.baseListing.images)
+    # {
+    #     $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $image.imageType
+    #     $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
+    #     $imageSubmission.state = [StoreBrokerListingImageState]::Uploaded.ToString()
+    #     $null = Set-ListingImage @params -Object $imageSubmission
+    # }
+
+    # Record the telemetry for this event.
+    $stopwatch.Stop()
+    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+        [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    Set-TelemetryEvent -EventName Patch-ListingVideos -Properties $telemetryProperties -Metrics $telemetryMetrics
+    return
 }
 
 function Patch-Submission
@@ -328,12 +742,12 @@ function Patch-Submission
         Users should provide this in local time and it will be converted automatically to UTC.
 
     .PARAMETER AddPackages
-        Causes the packages that are listed in SubmissionDataPath to be added to the package listing
+        Causes the packages that are listed in JsonPath to be added to the package listing
         in the final, patched submission.  This switch is mutually exclusive with ReplacePackages.
 
     .PARAMETER ReplacePackages
         Causes any existing packages in the cloned submission to be removed and only the packages
-        that are listed in SubmissionDataPath will be in the final, patched submission.
+        that are listed in JsonPath will be in the final, patched submission.
         This switch is mutually exclusive with AddPackages.
 
     .PARAMETER UpdateListings
@@ -343,34 +757,34 @@ function Patch-Submission
 
     .PARAMETER UpdatePublishModeAndVisibility
         Updates fields under the "Publish Mode and Visibility" category in the PackageTool config file.
-        Updates the following fields using values from SubmissionDataPath: targetPublishMode,
+        Updates the following fields using values from JsonPath: targetPublishMode,
         targetPublishDate, and visibility.
 
     .PARAMETER UpdatePricingAndAvailability
         Updates fields under the "Pricing and Availability" category in the PackageTool config file.
-        Updates the following fields using values from SubmissionDataPath: targetPublishMode,
+        Updates the following fields using values from JsonPath: targetPublishMode,
         targetPublishDate, visibility, pricing, allowTargetFutureDeviceFamilies,
         allowMicrosoftDecideAppAvailabilityToFutureDeviceFamilies, and enterpriseLicensing.
 
     .PARAMETER UpdateAppProperties
         Updates fields under the "App Properties" category in the PackageTool config file.
-        Updates the following fields using values from SubmissionDataPath: applicationCategory,
+        Updates the following fields using values from JsonPath: applicationCategory,
         hardwarePreferences, hasExternalInAppProducts, meetAccessibilityGuidelines,
         canInstallOnRemovableMedia, automaticBackupEnabled, and isGameDvrEnabled.
 
     .PARAMETER UpdateGamingOptions
         Updates fields under the "Ganming Options" category in the PackageTool config file.
-        Updates the following fields using values from SubmissionDataPath under gamingOptions:
+        Updates the following fields using values from JsonPath under gamingOptions:
         genres, isLocalMultiplayer, isLocalCooperative, isOnlineMultiplayer, isOnlineCooperative,
         localMultiplayerMinPlayers, localMultiplayerMaxPlayers, localCooperativeMinPlayers,
         localCooperativeMaxPlayers, isBroadcastingPrivilegeGranted, isCrossPlayEnabled, and kinectDataForExternal.
 
     .PARAMETER UpdateTrailers
         Replaces the trailers array in the final, patched submission with the trailers array
-        from SubmissionDataPath.
+        from JsonPath.
 
     .PARAMETER UpdateNotesForCertification
-        Updates the notesForCertification field using the value from SubmissionDataPath.
+        Updates the notesForCertification field using the value from JsonPath.
 
     .EXAMPLE
         $patchedSubmission = Prepare-ApplicationSubmission $clonedSubmission $jsonContent

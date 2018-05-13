@@ -184,6 +184,15 @@ function Set-SubmissionRollout
             "and update all existing customers to the newer ones by calling",
             "    Set-SubmissionRollout -ProductId $ProductId -SubmissionId $SubmissionId -State Completed")
     }
+    elseif (($result.percentage -ge 0) -and ($result.state -eq [StoreBrokerRolloutState]::Initialized))
+    {
+        Write-Log -Level Warning -Message @(
+            "Your rollout selections apply to all of your packages, but will only apply to your customers running OS",
+            "versions that support package flights (Windows.Desktop build 10586 or later; Windows.Mobile build 10586.63",
+            "or later, and Xbox), including any customers who get the app via Store-managed licensing via the",
+            "Windows Store for Business.  When using gradual package rollout, customers on earlier OS versions will not",
+            "get packages from the latest submission until you finalize the package rollout.")
+    }
 
     return $result
 }

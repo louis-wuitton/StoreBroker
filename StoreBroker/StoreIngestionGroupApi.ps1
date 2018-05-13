@@ -139,7 +139,9 @@ function Set-Group
         SupportsShouldProcess,
         DefaultParametersetName="Object")]
     param(
-        [Parameter(Mandatory)]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $GroupId,
 
         [Parameter(
@@ -172,6 +174,11 @@ function Set-Group
     )
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+
+    if ($null -ne $Object)
+    {
+        $GroupId = $Object.id
+    }
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)

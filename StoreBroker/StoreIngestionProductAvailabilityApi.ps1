@@ -182,7 +182,9 @@ function Set-ProductAvailability
         [Parameter(Mandatory)]
         [string] $SubmissionId,
 
-        [Parameter(Mandatory)]
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
         [string] $ProductAvailabilityId,
 
         [Parameter(
@@ -214,6 +216,11 @@ function Set-ProductAvailability
     )
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+
+    if ($null -ne $Object)
+    {
+        $ProductAvailabilityId = $Object.id
+    }
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId

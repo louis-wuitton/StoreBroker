@@ -247,8 +247,10 @@ function Set-FeatureGroup
         [Parameter(Mandatory)]
         [string] $SubmissionId,
 
-        [Parameter(Mandatory)]
-        [string] $ImageId,
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [string] $FeatureGroupId,
 
         [Parameter(
             Mandatory,
@@ -271,9 +273,15 @@ function Set-FeatureGroup
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
+    if ($null -ne $Object)
+    {
+        $FeatureGroupId = $Object.id
+    }
+
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
         [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::FeatureGroupId = $GroupId
         [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
         [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
         [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId

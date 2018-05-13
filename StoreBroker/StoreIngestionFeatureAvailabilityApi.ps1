@@ -178,6 +178,11 @@ function Set-FeatureAvailability
         [Parameter(Mandatory)]
         [string] $SubmissionId,
 
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Individual")]
+        [string] $FeatureAvailabilityId,
+
         [string] $FeatureGroupId,
 
         [switch] $IncludeMarketStates,
@@ -202,6 +207,11 @@ function Set-FeatureAvailability
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
+    if ($null -ne $Object)
+    {
+        $FeatureAvailabilityId = $Object.id
+    }
+            
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
         [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
