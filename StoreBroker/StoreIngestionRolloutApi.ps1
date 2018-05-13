@@ -172,5 +172,18 @@ function Set-SubmissionRollout
         "NoStatus" = $NoStatus
     }
 
-    return (Invoke-SBRestMethod @params)
+    $result = (Invoke-SBRestMethod @params)
+
+    # TODO: Verify that this is still true with the v2 API
+    if (($result.percentage -eq 100) -and ($result.state -ne [StoreBrokerRolloutState]::Completed))
+    {
+        Write-Log -Level Warning -Message @(
+            "Changing the rollout percentage to 100% does not ensure that all of your customers will get the",
+            "packages from the latest submissions, because some customers may be on OS versions that don't",
+            "support rollout. You must finalize the rollout in order to stop distributing the older packages",
+            "and update all existing customers to the newer ones by calling",
+            "    Set-SubmissionRollout -ProductId $ProductId -SubmissionId $SubmissionId -State Completed")
+    }
+
+    return $result
 }
