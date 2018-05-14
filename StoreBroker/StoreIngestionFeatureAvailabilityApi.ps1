@@ -38,7 +38,7 @@ function Get-FeatureAvailability
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $singleQuery = (-not [String]::IsNullOrWhiteSpace($FeatureAvailabilityId))
     $telemetryProperties = @{
@@ -131,7 +131,7 @@ function New-FeatureAvailability
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -205,13 +205,13 @@ function Set-FeatureAvailability
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     if ($null -ne $Object)
     {
         $FeatureAvailabilityId = $Object.id
     }
-            
+
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
         [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId

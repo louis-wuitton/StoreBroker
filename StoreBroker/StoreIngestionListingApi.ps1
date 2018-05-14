@@ -45,7 +45,7 @@ function Get-Listing
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $singleQuery = (-not [String]::IsNullOrWhiteSpace($LanguageCode))
     $telemetryProperties = @{
@@ -171,7 +171,7 @@ function New-Listing
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -326,7 +326,7 @@ function Remove-Listing
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -445,7 +445,7 @@ function Set-Listing
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     if ($null -ne $Object)
     {

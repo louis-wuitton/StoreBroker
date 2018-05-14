@@ -29,7 +29,7 @@ function Update-Submission
         [string] $TargetPublishMode = $script:keywordDefault,
 
         [DateTime] $TargetPublishDate,
- 
+
         [ValidateSet('Default', 'Public', 'Private', 'Hidden', 'StopSelling')]
         [string] $Visibility = $script:keywordDefault,
 
@@ -84,6 +84,13 @@ function Update-Submission
     $indentLevel = 1
     $isContentPathTemporary = $false
 
+    if ((-not [String]::IsNullOrWhiteSpace($ZipPath)) -and (-not [String]::IsNullOrWhiteSpace($ContentPath)))
+    {
+        $message = "You should specify either ZipPath OR ContentPath.  Not both."
+        Write-Log -Message $message -Level Error
+        throw $message
+    }
+
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
     if ($null -eq $CorrelationId)
@@ -100,7 +107,7 @@ function Update-Submission
         'NoStatus' = $NoStatus
     }
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     Write-Log -Message "Reading in the submission content from: $JsonPath" -Level Verbose
     if ($PSCmdlet.ShouldProcess($JsonPath, "Get-Content"))
@@ -124,7 +131,7 @@ function Update-Submission
             "and then diff the new config file against your current one to see the requested productId change.")
 
         # May be an older json file that still uses the AppId.  If so, do the conversion to check that way.
-        $appId = jsonSubmission.appId
+        $appId = $jsonSubmission.appId
         if (-not ([String]::IsNullOrWhiteSpace($appId)))
         {
             $product = Get-Product -AppId $appId @commonParams
@@ -237,7 +244,7 @@ function Update-Submission
                 # $jsonContent.allowTargetFutureDeviceFamilies
                 # $jsonContent.allowMicrosoftDecideAppAvailabilityToFutureDeviceFamilies
                 # $jsonContent.enterpriseLicensing
-            }        
+            }
 
             $packageParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
             $packageParams.Add('SubmissionData', $SubmissionData)
@@ -598,7 +605,7 @@ function Patch-Listings
                         # suppliedListing.websiteUrl
                         # suppliedListing.privacyPolicy
                         # suppliedListing.supportContact
-    
+
                         $null = New-Listing @listingParams
                         $null = Patch-ListingImages @params -LanguageCode $langCode
                     }
@@ -803,7 +810,7 @@ function Patch-ListingVideos
                 $videoParams['ThumbnailTitle'] = $title
                 $videoParams['ThumbnailDescription'] = $description
                 # TODO: $videoParams['ThumbnailOrientation'] = ???
-    
+
                 $videoSubmission = New-ListingVideo @videoParams
                 $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $fileName) -SasUri $videoSubmission.fileSasUri -NoStatus:$NoStatus
                 $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $thumbnailFileName) -SasUri $videoSubmission.thumbnail.fileSasUri -NoStatus:$NoStatus

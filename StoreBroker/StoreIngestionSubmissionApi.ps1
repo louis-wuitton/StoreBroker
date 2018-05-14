@@ -85,7 +85,7 @@ function Get-Submission
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $singleQuery = (-not [String]::IsNullOrWhiteSpace($SubmissionId))
     $telemetryProperties = @{
@@ -212,7 +212,7 @@ function New-Submission
 
         [ValidateSet('NoAction', 'Complete', 'RollBack')]
         [string] $ExistingPackageRolloutAction = $script:keywordNoAction,
-        
+
         [switch] $Force,
 
         [string] $ClientRequestId,
@@ -224,7 +224,7 @@ function New-Submission
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -289,7 +289,7 @@ function New-Submission
             if ($rollout.isEnabled -and ($rollout.state -eq [StoreBrokerRolloutState]::Initialized))
             {
                 $setSubmissionRolloutParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
-                        
+
                 if ($ExistingPackageRolloutAction -eq 'Complete')
                 {
                     Write-Log -Message "Finalizing package rollout for existing submission before continuing." -Level Verbose
@@ -369,7 +369,7 @@ function Remove-Submission
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -415,7 +415,7 @@ function Stop-Submission
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -459,7 +459,7 @@ function Get-SubmissionDetail
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -523,7 +523,7 @@ function Set-SubmissionDetail
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -619,7 +619,7 @@ function Push-Submission
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -664,7 +664,7 @@ function Publish-Submission
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -710,7 +710,7 @@ function Get-SubmissionReport
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -759,7 +759,7 @@ function Submit-Submission
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -810,7 +810,7 @@ function Get-SubmissionValidation
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId

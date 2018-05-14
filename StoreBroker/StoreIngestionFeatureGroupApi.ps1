@@ -30,7 +30,7 @@ function Get-FeatureGroup
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $singleQuery = (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
     $telemetryProperties = @{
@@ -96,7 +96,7 @@ function New-FeatureGroup
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -203,7 +203,7 @@ function Remove-FeatureGroup
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -271,7 +271,7 @@ function Set-FeatureGroup
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     if ($null -ne $Object)
     {

@@ -89,7 +89,7 @@ function Get-Applications
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $params = @{
         "UriFragment" = "applications"
@@ -227,7 +227,7 @@ function Get-Application
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{ [StoreBrokerTelemetryProperty]::AppId = $AppId }
 
@@ -367,7 +367,7 @@ function Get-ApplicationSubmission
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::AppId = $AppId
@@ -657,7 +657,7 @@ function Get-ApplicationSubmissionStatus
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::AppId = $AppId
@@ -731,7 +731,7 @@ function Remove-ApplicationSubmission
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::AppId = $AppId
@@ -830,7 +830,7 @@ function New-ApplicationSubmission
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     if ([System.String]::IsNullOrEmpty($AccessToken))
     {
@@ -1150,7 +1150,7 @@ function Update-ApplicationSubmission
 
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     Write-Log -Message "Reading in the submission content from: $SubmissionDataPath" -Level Verbose
     if ($PSCmdlet.ShouldProcess($SubmissionDataPath, "Get-Content"))
@@ -1855,7 +1855,7 @@ function Set-ApplicationSubmission
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     $submissionId = $UpdatedSubmission.id
     $body = [string]($UpdatedSubmission | ConvertTo-Json -Depth $script:jsonConversionDepth)
@@ -1936,7 +1936,7 @@ function Complete-ApplicationSubmission
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     try
     {
@@ -2033,7 +2033,7 @@ function Get-ApplicationSubmissionPackageRollout
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     try
     {
@@ -2124,7 +2124,7 @@ function Update-ApplicationSubmissionPackageRollout
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     try
     {
@@ -2222,7 +2222,7 @@ function Stop-ApplicationSubmissionPackageRollout
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     try
     {
@@ -2318,7 +2318,7 @@ function Complete-ApplicationSubmissionPackageRollout
         [switch] $NoStatus
     )
 
-    Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
     try
     {
