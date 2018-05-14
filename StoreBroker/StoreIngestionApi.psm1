@@ -1600,10 +1600,17 @@ function Open-Store()
 
     Opens the user's browser to the specified app's Windows Store page.
 #>
-    [cmdletbinding()]
-    param(
-        [Parameter(Mandatory)]
+[CmdletBinding(DefaultParametersetName="ProductId")]
+param(
+    [Parameter(
+        Mandatory,
+        ParameterSetName="AppId")]
         [string] $AppId,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="ProductId")]
+        [string] $ProductId,
 
         [switch] $Web
     )
@@ -1611,13 +1618,19 @@ function Open-Store()
     # Telemetry-related
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::AppId = $AppId
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
         [StoreBrokerTelemetryProperty]::Web = $Web
     }
 
     Set-TelemetryEvent -EventName Open-Store -Properties $telemetryProperties
 
-    $product = Get-Product -AppId $AppId
-    $storeLinks = Get-ProductStoreLink -ProductId $product.id
+    if ($null -eq $ProductId)
+    {
+        $product = Get-Product -AppId $AppId
+        $ProductId = $product.id
+    }
+
+    $storeLinks = Get-ProductStoreLink -ProductId $ProductId
 
     $uri = $storeLinks.storeProtocolLink
     if ($Web)
