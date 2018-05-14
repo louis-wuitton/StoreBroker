@@ -213,9 +213,17 @@ function Update-Submission
                     [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $ContentPath)
                     Write-Log -Message "Unzip complete." -Level Verbose -Indent $indentLevel
                 }
-            }
 
-            $null = Patch-Listings @commonParams -SubmissionData $jsonSubmission -ContentPath $ContentPath -UpdateListings:$UpdateListings -UpdateTrailers:$UpdateTrailers
+                $null = Patch-Listings @commonParams -SubmissionData $jsonSubmission -ContentPath $ContentPath -UpdateListings:$UpdateListings -UpdateTrailers:$UpdateTrailers
+
+                $packageParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
+                $packageParams.Add('SubmissionData', $SubmissionData)
+                $packageParams.Add('ContentPath', $ContentPath)
+                if ($AddPackages) { $packageParams.Add('AddPackages', $AddPackages) }
+                if ($ReplacePackages) { $packageParams.Add('ReplacePackages', $ReplacePackages) }
+                if ($UpdatePackages) { $packageParams.Add('UpdatePackages', $UpdatePackages); $packageParams.Add('RedundantPackagesToKeep', $RedundantPackagesToKeep) }
+                $null = Patch-ProductPackages @packageParams
+            }
 
             if ($UpdateAppProperties)
             {
@@ -245,14 +253,6 @@ function Update-Submission
                 # $jsonContent.allowMicrosoftDecideAppAvailabilityToFutureDeviceFamilies
                 # $jsonContent.enterpriseLicensing
             }
-
-            $packageParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
-            $packageParams.Add('SubmissionData', $SubmissionData)
-            $packageParams.Add('ContentPath', $ContentPath)
-            if ($AddPackages) { $packageParams.Add('AddPackages', $AddPackages) }
-            if ($ReplacePackages) { $packageParams.Add('ReplacePackages', $ReplacePackages) }
-            if ($UpdatePackages) { $packageParams.Add('UpdatePackages', $UpdatePackages); $packageParams.Add('RedundantPackagesToKeep', $RedundantPackagesToKeep) }
-            $null = Patch-ProductPackages @packageParams
 
             if ($UpdateGamingOptions)
             {
