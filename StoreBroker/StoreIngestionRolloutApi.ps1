@@ -115,7 +115,7 @@ function Set-SubmissionRollout
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::Rollout
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Rollout)
 
     $hashBody = $Object
     if ($null -eq $hashBody)

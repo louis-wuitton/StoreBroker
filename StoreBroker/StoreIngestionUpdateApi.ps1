@@ -217,7 +217,7 @@ function Update-Submission
                 $null = Patch-Listings @commonParams -SubmissionData $jsonSubmission -ContentPath $ContentPath -UpdateListings:$UpdateListings -UpdateTrailers:$UpdateTrailers
 
                 $packageParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
-                $packageParams.Add('SubmissionData', $SubmissionData)
+                $packageParams.Add('SubmissionData', $jsonSubmission)
                 $packageParams.Add('ContentPath', $ContentPath)
                 if ($AddPackages) { $packageParams.Add('AddPackages', $AddPackages) }
                 if ($ReplacePackages) { $packageParams.Add('ReplacePackages', $ReplacePackages) }
@@ -239,7 +239,13 @@ function Update-Submission
                 # $jsonContent.isGameDvrEnabled
             }
 
-            $null = Patch-Details @commonParams -SubmissionData $jsonSubmission -UpdatePublishModeAndVisibility:$UpdatePublishModeAndVisibility -UpdateNotesForCertification:$UpdateNotesForCertification -TargetPublishMode $TargetPublishMode -TargetPublishDate $TargetPublishDate
+            $detailsParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
+            $detailsParams.Add('SubmissionData', $jsonSubmission)
+            $detailsParams.Add('UpdatePublishModeAndVisibility', $UpdatePublishModeAndVisibility)
+            $detailsParams.Add('UpdateNotesForCertification', $UpdateNotesForCertification)
+            $detailsParams.Add('TargetPublishMode', $TargetPublishMode)
+            if ($null -ne $TargetPublishDate) { $detailsParams.Add("TargetPublishDate", $TargetPublishDate) }
+            $null = Patch-Details @detailsParams
 
             $null = Patch-ProductAvailability $commonParams -SubmissionData $jsonSubmission -UpdatePublishModeAndVisibility:$UpdatePublishModeAndVisibility -Visibility $Visibility
 
@@ -951,7 +957,7 @@ function Patch-Details
         'NoStatus' = $NoStatus
     }
 
-    $detail = Get-ProductDetail @params
+    $detail = Get-SubmissionDetail @params
 
     if ($UpdatePublishModeAndVisibility)
     {
@@ -1006,7 +1012,7 @@ function Patch-Details
         $details.certificationNotes = $SubmissionData.notesForCertification
     }
 
-    $null = Set-ProductDetail @params -Object $detail
+    $null = Set-SubmissionDetail @params -Object $detail
 
     # Record the telemetry for this event.
     $stopwatch.Stop()

@@ -144,6 +144,7 @@
         'Delete-ListingVideo',
         'Delete-Flight',
         'Delete-FeatureGroup',
+        'New-SubmissionDetail',
 
 
         'Get-SubmissionPackage',

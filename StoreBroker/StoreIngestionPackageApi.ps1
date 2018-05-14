@@ -140,7 +140,7 @@ function New-ProductPackage
         $getParams += "featureGroupId=$FeatureGroupId"
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::Package
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Package)
 
     $hashBody = $Object
     if ($null -eq $hashBody)
@@ -245,7 +245,7 @@ function Set-ProductPackage
         $getParams += "featureGroupId=$FeatureGroupId"
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::Package
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Package)
 
     $hashBody = $Object
     if ($null -eq $hashBody)

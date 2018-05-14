@@ -117,7 +117,7 @@ function New-Flight
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::PackageFlight
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::PackageFlight)
 
     $hashBody = $Object
     if ($null -eq $hashBody)
@@ -261,7 +261,7 @@ function Set-Flight
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::PackageFlight
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::PackageFlight)
 
     $hashBody = $Object
     if ($null -eq $hashBody)

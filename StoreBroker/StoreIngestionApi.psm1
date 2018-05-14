@@ -2484,12 +2484,13 @@ function Test-ResourceType
     param(
         [PSCustomObject] $Object,
 
-        [string] $ResourceType
+        [StoreBrokerResourceType] $ResourceType
     )
 
-    if (($null -ne $Object) -and ($Object.resourceType -ne $ResourceType))
+    $resourceTypeString = $ResourceType.ToString()
+    if (($null -ne $Object) -and ($Object.resourceType -ne $resourceTypeString))
     {
-        $message = "Expected an object with a resourceType of [$ResourceType], got [$($Object.resourceType)]."
+        $message = "Expected an object with a resourceType of [$resourceTypeString], got [$($Object.resourceType)]."
         Write-Log -Message $message -Level Error
         throw $message
     }

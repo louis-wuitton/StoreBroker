@@ -101,7 +101,7 @@ function New-Group
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::Group
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Group)
 
     $hashBody = $Object
     if ($null -eq $hashBody)
@@ -188,7 +188,7 @@ function Set-Group
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::Group
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Group)
 
     $hashBody = $Object
     if ($null -eq $hashBody)

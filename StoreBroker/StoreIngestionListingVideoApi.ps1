@@ -163,7 +163,7 @@ function New-ListingVideo
         $getParams += "submissionId=$SubmissionId"
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ListingVideo
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::ListingVideo)
 
     $hashBody = $Object
     if ($null -eq $hashBody)
@@ -386,7 +386,7 @@ function Set-ListingVideo
         $getParams += "submissionId=$SubmissionId"
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ListingVideo
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::ListingVideo)
 
     $hashBody = $Object
     if ($null -eq $hashBody)

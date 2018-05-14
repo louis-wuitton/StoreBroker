@@ -112,7 +112,7 @@ function New-FeatureGroup
         $getParams += "submissionId=$SubmissionId"
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::FeatureGroup
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::FeatureGroup)
 
     $hashBody = $Object
     if ($null -eq $hashBody)
@@ -294,7 +294,7 @@ function Set-FeatureGroup
         $getParams += "submissionId=$SubmissionId"
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::FeatureGroup
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::FeatureGroup)
 
     $hashBody = $Object
     if ($null -eq $hashBody)

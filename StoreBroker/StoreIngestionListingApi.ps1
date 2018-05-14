@@ -194,7 +194,7 @@ function New-Listing
         $getParams += "featureGroupId=$FeatureGroupId"
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::Listing
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Listing)
 
     $hashBody = $Object
     if ($null -eq $hashBody)
@@ -469,7 +469,7 @@ function Set-Listing
         $getParams += "submissionId=$SubmissionId"
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::Listing
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Listing)
 
     $hashBody = $Object
     if ($null -eq $hashBody)

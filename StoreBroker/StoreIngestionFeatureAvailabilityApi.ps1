@@ -145,7 +145,7 @@ function New-FeatureAvailability
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::FeatureAvailability
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::FeatureAvailability)
 
     $body = Get-JsonBody -InputObject $Object
 
@@ -225,7 +225,7 @@ function Set-FeatureAvailability
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::FeatureAvailability
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::FeatureAvailability)
 
     $body = Get-JsonBody -InputObject $Object
 

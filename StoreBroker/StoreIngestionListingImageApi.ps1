@@ -154,7 +154,7 @@ function New-ListingImage
         $getParams += "submissionId=$SubmissionId"
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ListingImage
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::ListingImage)
 
     $hashBody = $Object
     if ($null -eq $hashBody)
@@ -359,7 +359,7 @@ function Set-ListingImage
         $getParams += "submissionId=$SubmissionId"
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ListingImage
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::ListingImage)
 
     $hashBody = $Object
     if ($null -eq $hashBody)

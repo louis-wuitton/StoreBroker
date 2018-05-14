@@ -133,7 +133,7 @@ function New-ProductAvailability
         $getParams += "submissionId=$SubmissionId"
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ProductAvailability
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::ProductAvailability)
 
     $hashBody = $Object
     if ($null -eq $hashBody)
@@ -240,7 +240,7 @@ function Set-ProductAvailability
         $getParams += "submissionId=$SubmissionId"
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::ProductAvailability
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::ProductAvailability)
 
     $hashBody = $Object
     if ($null -eq $hashBody)

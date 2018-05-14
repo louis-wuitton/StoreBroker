@@ -486,6 +486,7 @@ function Get-SubmissionDetail
 function Set-SubmissionDetail
 {
     [CmdletBinding(SupportsShouldProcess)]
+    [Alias('New-SubmissionDetail')]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
     param(
         [Parameter(Mandatory)]
@@ -534,7 +535,7 @@ function Set-SubmissionDetail
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
-    Test-ResourceType -Object $Object -ResourceType [StoreBrokerResourceType]::PackageFlight
+    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::SubmissionDetail)
 
     $hashBody = $Object
     if ($null -eq $hashBody)
@@ -582,7 +583,7 @@ function Set-SubmissionDetail
 
     $params = @{
         "UriFragment" = "products/$ProductId/submissions/$SubmissionId/detail"
-        "Method" = 'Put'
+        "Method" = 'Post'
         "Description" = "Updating detail for submission: $SubmissionId"
         "Body" = $body
         "ClientRequestId" = $ClientRequestId
