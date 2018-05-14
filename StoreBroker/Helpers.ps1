@@ -597,7 +597,9 @@ function Write-Log
         # could confuse an end user.
         switch ($Level)
         {
-            'Error'   { Write-Error $consoleMessage }
+            # Need to explicitly say SilentlyContinue here so that we continue on, given that
+            # we've assigned a script-level ErrorActionPreference of "Stop" for the module.
+            'Error'   { Write-Error $consoleMessage -ErrorAction SilentlyContinue }
             'Warning' { Write-Warning $consoleMessage }
             'Verbose' { Write-Verbose $consoleMessage }
             'Debug'   { Write-Debug $consoleMessage }
@@ -1037,7 +1039,7 @@ function Convert-EnumToString
         {
             $modified[$key.ToString()] = (Convert-EnumToString -InputObject $InputObject[$key])
         }
-        
+
         return $modified
     }
     elseif ($InputObject -is [System.Enum])
@@ -1059,5 +1061,5 @@ function Get-JsonBody
         $InputObject
     )
 
-    return ConvertTo-Json -InputObject (Convert-EnumToString -InputObject $InputObject) -Depth $script:jsonConversionDepth    
+    return ConvertTo-Json -InputObject (Convert-EnumToString -InputObject $InputObject) -Depth $script:jsonConversionDepth
 }
