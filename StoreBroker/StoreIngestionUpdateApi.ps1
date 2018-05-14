@@ -358,7 +358,7 @@ function Patch-ProductPackages
         $params['FileName'] = (Split-Path -Path $package.fileName -Leaf)
         $packageSubmission = New-ProductPackage @params
         $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $package.fileName) -SasUri $packageSubmission.fileSasUri -NoStatus:$NoStatus
-        $packageSubmission.state = [StoreBrokerPackageState]::Uploaded.ToString()
+        $packageSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
         $null = Set-ProductPackage @params -Object $packageSubmission
     }
 
@@ -402,6 +402,8 @@ function Patch-Listings
         [Parameter(Mandatory)]
         [Alias('LangCode')]
         [string] $LanguageCode,
+
+        [switch] $UpdateTrailers,
 
         [string] $ClientRequestId,
 
@@ -466,13 +468,18 @@ function Patch-Listings
 
         $null = Set-Listing @params -Object $listing
         $null = Patch-ListingImages @params -LanguageCode $langCode
+
+        if ($UpdateTrailers)
+        {
+            $null = Patch-ListingVideos @params -LanguageCode $langCode
+        }
     }
 
     # Now we have to see what languages exist in the user's supplied content that we didn't already
     # have cloned submissions for
     Write-Log -Message 'Now adding listings for languages that didn''t have pre-existing clones.' -Level Verbose -Indent $indentLevel
     $SubmissionData.listings |
-        Get-Member -type NoteProperty |
+        Get-Member -Type NoteProperty |
             ForEach-Object {
                 $langCode = $_.Name
                 $suppliedListing = $SubmissionData.listings.$langCode.baselisting
@@ -496,6 +503,11 @@ function Patch-Listings
 
                     $null = New-Listing @listingParams
                     $null = Patch-ListingImages @params -LanguageCode $langCode
+
+                    if ($UpdateTrailers)
+                    {
+                        $null = Patch-ListingVideos @params -LanguageCode $langCode
+                    }
                 }
             }
 
@@ -503,7 +515,7 @@ function Patch-Listings
     foreach ($langCode in $listingsToDelete)
     {
         $null = Remove-Listing @params -LanguageCode $langCode
-        $null = Patch-ListingImages @params -LanguageCode $langCode
+        $null = Patch-ListingImages @params -LanguageCode $langCode -RemoveOnly
     }
 
     # Record the telemetry for this event.
@@ -543,6 +555,8 @@ function Patch-ListingImages
         [Alias('LangCode')]
         [string] $LanguageCode,
 
+        [switch] $RemoveOnly,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -575,15 +589,18 @@ function Patch-ListingImages
         $null = Remove-ListingImage @params -ImageId $image.id
     }
 
-    # Then we proceed with adding/uploading all of the current images
-    Write-Log -Message "Creating [$LanguageCode] listing images." -Level Verbose -Indent $indentLevel
-    foreach ($image in $SubmissionData.listings.$LanguageCode.baseListing.images)
+    if (-not $RemoveOnly)
     {
-        # TODO: Determine if we should expose Orientation to the PDP and then here.
-        $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $image.imageType
-        $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
-        $imageSubmission.state = [StoreBrokerListingImageState]::Uploaded.ToString()
-        $null = Set-ListingImage @params -Object $imageSubmission
+        # Then we proceed with adding/uploading all of the current images
+        Write-Log -Message "Creating [$LanguageCode] listing images." -Level Verbose -Indent $indentLevel
+        foreach ($image in $SubmissionData.listings.$LanguageCode.baseListing.images)
+        {
+            # TODO: Determine if we should expose Orientation to the PDP and then here.
+            $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $image.imageType
+            $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
+            $imageSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
+            $null = Set-ListingImage @params -Object $imageSubmission
+        }
     }
 
     # Record the telemetry for this event.
@@ -595,6 +612,7 @@ function Patch-ListingImages
         [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
         [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
         [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+        [StoreBrokerTelemetryProperty]::RemoveOnly = $RemoveOnly
         [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
@@ -624,6 +642,8 @@ function Patch-ListingVideos
         [Parameter(Mandatory)]
         [Alias('LangCode')]
         [string] $LanguageCode,
+
+        [switch] $RemoveOnly,
 
         [string] $ClientRequestId,
 
@@ -657,15 +677,36 @@ function Patch-ListingVideos
         $null = Remove-ListingVideo @params -VideoId $video.id
     }
 
-    # Then we proceed with adding/uploading all of the current videos
-    Write-Log -Message "Creating [$LanguageCode] listing videos." -Level Verbose -Indent $indentLevel
-    # foreach ($image in $SubmissionData.listings.$LanguageCode.baseListing.images)
-    # {
-    #     $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $image.imageType
-    #     $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
-    #     $imageSubmission.state = [StoreBrokerListingImageState]::Uploaded.ToString()
-    #     $null = Set-ListingImage @params -Object $imageSubmission
-    # }
+    if (-not $RemoveOnly)
+    {
+        # Then we proceed with adding/uploading all of the current videos
+        Write-Log -Message "Creating [$LanguageCode] listing videos." -Level Verbose -Indent $indentLevel
+        foreach ($trailer in $SubmissionData.trailerAssets)
+        {
+            $fileName = $trailer.videoFileName
+            $trailerAssets = $trailer.trailerAssets.$LanguageCode
+            if ($null -ne $trailerAssets)
+            {
+                $title = $trailerAssets.title
+                $thumbnailFileName = $trailerAssets.imageList[0].fileName
+                $thumbnailDescription = $trailerAssets.imageList[0].description
+
+                $videoParams = $params.PSObject.Copy() # Get a new instance, not a reference
+                $videoParams['FileName'] = (Split-Path -Path $fileName -Leaf)
+                $videoParams['ThumbnailFileName'] = (Split-Path -Path $thumbnailFileName -Leaf)
+                $videoParams['ThumbnailTitle'] = $title
+                $videoParams['ThumbnailDescription'] = $description
+                # TODO: $videoParams['ThumbnailOrientation'] = ???
+    
+                $videoSubmission = New-ListingVideo @videoParams
+                $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $fileName) -SasUri $videoSubmission.fileSasUri -NoStatus:$NoStatus
+                $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $thumbnailFileName) -SasUri $videoSubmission.thumbnail.fileSasUri -NoStatus:$NoStatus
+                $videoSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
+                $videoSubmission.thumbnail.state = [StoreBrokerFileState]::Uploaded.ToString()
+                $null = Set-ListingVideo @params -Object $videoSubmission
+            }
+        }
+    }
 
     # Record the telemetry for this event.
     $stopwatch.Stop()
@@ -941,7 +982,7 @@ function Patch-Submission
         # of the patched submission that we provide. Otherwise, we'd have to create empty listing
         # objects that would likely fail validation.
         $existingListings |
-            Get-Member -type NoteProperty |
+            Get-Member -Type NoteProperty |
                 ForEach-Object {
                     $lang = $_.Name
                     if ($null -ne $PatchedSubmission.listings.$lang.baseListing.images)
@@ -965,7 +1006,7 @@ function Patch-Submission
         # platform in the patched submission, we will just carry forward the previous images for
         # that platformOverride and mark them as PendingDelete, just like we do for normal listings.
         $existingListings |
-            Get-Member -type NoteProperty |
+            Get-Member -Type NoteProperty |
                 ForEach-Object {
                     $lang = $_.Name
 
@@ -974,7 +1015,7 @@ function Patch-Submission
                     if ($null -ne $PatchedSubmission.listings.$lang.baseListing)
                     {
                         $existingListings.$lang.platformOverrides |
-                            Get-Member -type NoteProperty |
+                            Get-Member -Type NoteProperty |
                                 ForEach-Object {
                                     $platform = $_.Name
 

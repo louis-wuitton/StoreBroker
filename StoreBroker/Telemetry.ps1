@@ -54,6 +54,7 @@ Add-Type -TypeDefinition @"
       ProductType,
       PropertyId,
       RedundantPackagesToKeep,
+      RemoveOnly,
       ReplacePackages,
       RequestId,
       ResourceType,

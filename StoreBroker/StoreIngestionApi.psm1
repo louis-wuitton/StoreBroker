@@ -83,6 +83,16 @@ Add-Type -TypeDefinition @"
    }
 "@
 
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerFileState
+   {
+       PendingUpload,
+       Uploaded,
+       InProcessing,
+       Processed,
+       ProcessFailed
+   }
+"@
 function Initialize-StoreIngestionApiGlobalVariables
 {
 <#

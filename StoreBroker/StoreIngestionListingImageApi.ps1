@@ -10,16 +10,6 @@ Add-Type -TypeDefinition @"
    }
 "@
 
-Add-Type -TypeDefinition @"
-   public enum StoreBrokerListingImageState
-   {
-       PendingUpload,
-       Uploaded,
-       InProcessing,
-       Processed,
-       ProcessFailed
-   }
-"@
 
 function Get-ListingImage
 {

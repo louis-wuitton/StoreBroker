@@ -8,17 +8,6 @@ Add-Type -TypeDefinition @"
    }
 "@
 
-Add-Type -TypeDefinition @"
-   public enum StoreBrokerPackageState
-   {
-       PendingUpload,
-       Uploaded,
-       InProcessing,
-       Processed,
-       ProcessFailed
-   }
-"@
-
 function Get-ProductPackage
 {
     [CmdletBinding(SupportsShouldProcess)]
