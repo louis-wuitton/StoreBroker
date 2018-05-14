@@ -19,13 +19,13 @@ function Get-FeatureGroup
 
         [string] $FeatureGroupId,
 
+        [switch] $SinglePage,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
 
         [string] $AccessToken,
-
-        [switch] $SinglePage,
 
         [switch] $NoStatus
     )

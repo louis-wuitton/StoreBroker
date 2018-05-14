@@ -8,7 +8,7 @@ function Update-Submission
     [OutputType([Object[]])]
     param(
         [Parameter(Mandatory)]
-        [string] $AppId,
+        [string] $ProductId,
 
         [Parameter(Mandatory)]
         [ValidateScript({if (Test-Path -Path $_ -PathType Leaf) { $true } else { throw "$_ cannot be found." }})]
@@ -20,7 +20,8 @@ function Update-Submission
         [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
         [string] $ContentPath,
 
-        [switch] $AutoCommit,
+        [Alias('AutoCommit')]
+        [switch] $AutoSubmit,
 
         [string] $SubmissionId = "",
 
@@ -28,8 +29,8 @@ function Update-Submission
         [string] $TargetPublishMode = $script:keywordDefault,
 
         [DateTime] $TargetPublishDate,
-
-        [ValidateSet('Default', 'Public', 'Private', 'Hidden')]
+ 
+        [ValidateSet('Default', 'Public', 'Private', 'Hidden', 'StopSelling')]
         [string] $Visibility = $script:keywordDefault,
 
         [ValidateSet('NoAction', 'Finalize', 'Halt')]
@@ -51,6 +52,12 @@ function Update-Submission
         [Parameter(ParameterSetName="ReplacePackages")]
         [switch] $ReplacePackages,
 
+        [Parameter(ParameterSetName="UpdatePackages")]
+        [switch] $UpdatePackages,
+
+        [Parameter(ParameterSetName="UpdatePackages")]
+        [int] $RedundantPackagesToKeep = 1,
+
         [switch] $UpdateListings,
 
         [switch] $UpdatePublishModeAndVisibility,
@@ -69,47 +76,71 @@ function Update-Submission
 
         [string] $CorrelationId,
 
-        [string] $AccessToken = "",
+        [string] $AccessToken,
 
         [switch] $NoStatus
     )
 
+    $indentLevel = 1
+    $isContentPathTemporary = $false
+
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    if ($null -eq $CorrelationId)
+    {
+        # We'll assign our own unique CorrelationId for this update request
+        # if one wasn't provided to us already.
+        $CorrelationId = "$((Get-Date).ToString("yyyyMMddssmm.ffff"))-$ProductId"
+    }
+
+    $commonParams = @{
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
 
     Write-Log -Message "Executing: $($MyInvocation.Line)" -Level Verbose
 
     Write-Log -Message "Reading in the submission content from: $JsonPath" -Level Verbose
     if ($PSCmdlet.ShouldProcess($JsonPath, "Get-Content"))
     {
-        $submission = [string](Get-Content $JsonPath -Encoding UTF8) | ConvertFrom-Json
+        $jsonSubmission = [string](Get-Content $JsonPath -Encoding UTF8) | ConvertFrom-Json
     }
 
-    # Extra layer of validation to protect users from trying to submit a payload to the wrong application
-    if ([String]::IsNullOrWhiteSpace($submission.appId))
+    # Extra layer of validation to protect users from trying to submit a payload to the wrong product
+    $jsonProductId = $jsonSubmission.productId
+    if ([String]::IsNullOrWhiteSpace($jsonProductId))
     {
         $configPath = Join-Path -Path ([System.Environment]::GetFolderPath('Desktop')) -ChildPath 'newconfig.json'
 
         Write-Log -Level Warning -Message @(
-            "The config file used to generate this submission did not have an AppId defined in it.",
-            "The AppId entry in the config helps ensure that payloads are not submitted to the wrong application.",
-            "Please update your app's StoreBroker config file by adding an `"appId`" property with",
-            "your app's AppId to the `"appSubmission`" section.  If you're unclear on what change",
-            "needs to be done, you can re-generate your config file using",
-            "   New-StoreBrokerConfigFile -AppId $AppId -Path `"$configPath`"",
-            "and then diff the new config file against your current one to see the requested appId change.")
-    }
-    else
-    {
-        if ($AppId -ne $submission.appId)
-        {
-            $output = @()
-            $output += "The AppId [$($submission.appId)] in the submission content [$JsonPath] does not match the intended AppId [$AppId]."
-            $output += "You either entered the wrong AppId at the commandline, or you're referencing the wrong submission content to upload."
+            "The config file used to generate this submission did not have a ProductId defined in it.",
+            "The ProductId entry in the config helps ensure that payloads are not submitted to the wrong product.",
+            "Please update your app's StoreBroker config file by adding a `"productId`" property with",
+            "your app's ProductId to the `"appSubmission`" section ([$ProductId]).",
+            "If you're unclear on what change, needs to be done, you can re-generate your config file using",
+            "   New-StoreBrokerConfigFile -ProductId $ProductId -Path `"$configPath`"",
+            "and then diff the new config file against your current one to see the requested productId change.")
 
-            $newLineOutput = ($output -join [Environment]::NewLine)
-            Write-Log -Message $newLineOutput -Level Error
-            throw $newLineOutput
+        # May be an older json file that still uses the AppId.  If so, do the conversion to check that way.
+        $appId = jsonSubmission.appId
+        if (-not ([String]::IsNullOrWhiteSpace($appId)))
+        {
+            $product = Get-Product -AppId $appId @commonParams
+            $jsonProductId = $product.id
         }
+    }
+
+    if ((-not [String]::IsNullOrWhiteSpace($jsonProductId)) -and ($ProductId -ne $jsonProductId))
+    {
+        $output = @()
+        $output += "The ProductId [$jsonProductId] in the submission content [$JsonPath] does not match the intended ProductId [$ProductId]."
+        $output += "You either entered the wrong ProductId at the commandline, or you're referencing the wrong submission content to upload."
+
+        $newLineOutput = ($output -join [Environment]::NewLine)
+        Write-Log -Message $newLineOutput -Level Error
+        throw $newLineOutput
     }
 
     # Identify potentially incorrect usage of this method by checking to see if no modification
@@ -128,23 +159,30 @@ function Update-Submission
             "You have not specified any `"modification`" switch for updating the submission.",
             "This means that the new submission will be identical to the current one.",
             "If this was not your intention, please read-up on the documentation for this command:",
-            "     Get-Help Update-ApplicationSubmission -ShowWindow")
+            "     Get-Help Update-Submission -ShowWindow")
     }
+
+    $commonParams['ProductId'] = $ProductId
 
     try
     {
+        $product = Get-Product @commonParams
+        $appId = ($product.externalIds | Where-Object { $_.type -eq 'StoreId' }).value
+
         if ([System.String]::IsNullOrEmpty($SubmissionId))
         {
-            $submissionToUpdate = New-ApplicationSubmission -AppId $AppId -ExistingPackageRolloutAction $ExistingPackageRolloutAction -Force:$Force -AccessToken $AccessToken -NoStatus:$NoStatus
+            $submission = New-Submission @commonParams -ExistingPackageRolloutAction $ExistingPackageRolloutAction -Force:$Force
+            $SubmissionId = $submission.id
         }
         else
         {
-            $submissionToUpdate = Get-ApplicationSubmission -AppId $AppId -SubmissionId $SubmissionId -AccessToken $AccessToken -NoStatus:$NoStatus
-            if ($submissionToUpdate.status -ne $script:keywordPendingCommit)
+            $submission = Get-Submission @commonParams -SubmissionId $SubmissionId
+            if (($submission.state -ne [StoreBrokerSubmissionState]::InProgress) -or
+                ($submission.subState -ne [StoreBrokerSubmissionSubState]::InDraft))
             {
                 $output = @()
-                $output += "We can only modify a submission that is in the '$script:keywordPendingCommit' state."
-                $output += "The submission that you requested to modify ($SubmissionId) is in '$($submissionToUpdate.status)' state."
+                $output += "We can only modify a submission that is: $([StoreBrokerSubmissionState]::InProgress)/$([StoreBrokerSubmissionSubState]::InDraft) state."
+                $output += "The submission that you requested to modify ($SubmissionId) is: $($submission.state)/$($submission.subState)."
 
                 $newLineOutput = ($output -join [Environment]::NewLine)
                 Write-Log -Message $newLineOutput -Level Error
@@ -152,100 +190,138 @@ function Update-Submission
             }
         }
 
-        if ($PSCmdlet.ShouldProcess("Patch-ApplicationSubmission"))
+        $commonParams['SubmissionId'] = $SubmissionId
+
+        if ($PSCmdlet.ShouldProcess("Patch-Submission"))
         {
-            $params = @{}
-            $params.Add("ClonedSubmission", $submissionToUpdate)
-            $params.Add("NewSubmission", $submission)
-            $params.Add("TargetPublishMode", $TargetPublishMode)
-            if ($null -ne $TargetPublishDate) { $params.Add("TargetPublishDate", $TargetPublishDate) }
-            $params.Add("Visibility", $Visibility)
-            $params.Add("UpdateListings", $UpdateListings)
-            $params.Add("UpdatePublishModeAndVisibility", $UpdatePublishModeAndVisibility)
-            $params.Add("UpdatePricingAndAvailability", $UpdatePricingAndAvailability)
-            $params.Add("UpdateAppProperties", $UpdateAppProperties)
-            $params.Add("UpdateGamingOptions", $UpdateGamingOptions)
-            $params.Add("UpdateTrailers", $UpdateTrailers)
-            $params.Add("UpdateNotesForCertification", $UpdateNotesForCertification)
-            if ($PackageRolloutPercentage -ge 0) { $params.Add("PackageRolloutPercentage", $PackageRolloutPercentage) }
-            $params.Add("IsMandatoryUpdate", $IsMandatoryUpdate)
-            if ($null -ne $MandatoryUpdateEffectiveDate) { $params.Add("MandatoryUpdateEffectiveDate", $MandatoryUpdateEffectiveDate) }
+            # If we know that we'll be doing anything with binary content, ensure that it's accessible unzipped.
+            if ($UpdateListings -or $UpdateTrailers -or $AddPackages -or $ReplacePackages -or $UpdatePackages)
+            {
+                if ([String]::IsNullOrEmpty($ContentPath))
+                {
+                    Add-Type -AssemblyName System.IO.Compression.FileSystem
+                    $isContentPathTemporary = $true
+                    $ContentPath = New-TemporaryDirectory
+                    Write-Log -Message "Unzipping archive (Item: $ZipPath) to (Target: $ContentPath)." -Level Verbose -Indent $indentLevel
+                    [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $ContentPath)
+                    Write-Log -Message "Unzip complete." -Level Verbose -Indent $indentLevel
+                }
+            }
 
-            # Because these are mutually exclusive and tagged as such, we have to be sure to *only*
-            # add them to the parameter set if they're true.
-            if ($AddPackages) { $params.Add("AddPackages", $AddPackages) }
-            if ($ReplacePackages) { $params.Add("ReplacePackages", $ReplacePackages) }
+            $null = Patch-Listings @commonParams -SubmissionData $jsonSubmission -ContentPath $ContentPath -UpdateListings:$UpdateListings -UpdateTrailers:$UpdateTrailers
 
-            $patchedSubmission = Patch-ApplicationSubmission @params
+            if ($UpdateAppProperties)
+            {
+                # Category / SubCategory
+                $null = Patch-Properties @commonParams -SubmissionData $jsonSubmission
+
+                # TODO: No equivalent for:
+                # $jsonContent.hardwarePreferences
+                # $jsonContent.hasExternalInAppProducts
+                # $jsonContent.meetAccessibilityGuidelines
+                # $jsonContent.canInstallOnRemovableMedia
+                # $jsonContent.automaticBackupEnabled
+                # $jsonContent.isGameDvrEnabled
+            }
+
+            $null = Patch-Details @commonParams -SubmissionData $jsonSubmission -UpdatePublishModeAndVisibility:$UpdatePublishModeAndVisibility -UpdateNotesForCertification:$UpdateNotesForCertification -TargetPublishMode $TargetPublishMode -TargetPublishDate $TargetPublishDate
+
+            $null = Patch-ProductAvailability $commonParams -SubmissionData $jsonSubmission -UpdatePublishModeAndVisibility:$UpdatePublishModeAndVisibility -Visibility $Visibility
+
+            if ($UpdatePricingAndAvailability)
+            {
+                # TODO: Figure out how to do pricing in v2
+                # $jsonContent.pricing
+
+                # TODO: No equivalent for:
+                # $jsonContent.allowTargetFutureDeviceFamilies
+                # $jsonContent.allowMicrosoftDecideAppAvailabilityToFutureDeviceFamilies
+                # $jsonContent.enterpriseLicensing
+            }        
+
+            $packageParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
+            $packageParams.Add('SubmissionData', $SubmissionData)
+            $packageParams.Add('ContentPath', $ContentPath)
+            if ($AddPackages) { $packageParams.Add('AddPackages', $AddPackages) }
+            if ($ReplacePackages) { $packageParams.Add('ReplacePackages', $ReplacePackages) }
+            if ($UpdatePackages) { $packageParams.Add('UpdatePackages', $UpdatePackages); $packageParams.Add('RedundantPackagesToKeep', $RedundantPackagesToKeep) }
+            $null = Patch-ProductPackages @packageParams
+
+            if ($UpdateGamingOptions)
+            {
+                # TODO: No equivalent
+                # $jsonContent.gamingOptions
+
+                if ($null -eq $jsonContent.gamingOptions)
+                {
+                    $output = @()
+                    $output += "You selected to update the Gaming Options for this submission, but it appears you don't have"
+                    $output += "that section in your config file.  You should probably re-generate your config file with"
+                    $output += "New-StoreBrokerConfigFile, transfer any modified properties to that new config file, and then"
+                    $output += "re-generate your StoreBroker payload with New-SubmissionPackage."
+                    $output = $output -join [Environment]::NewLine
+                    Write-Log -Message $output -Level Error
+                    throw $output
+                }
+            }
+
+            if ($PackageRolloutPercentage -ge 0)
+            {
+                $null = Patch-SubmissionRollout @packageParams -Percentage $PackageRolloutPercentage
+            }
+
+            if ($IsMandatoryUpdate)
+            {
+                # TODO: No equivalent
+                # $jsonContent.packageDeliveryOptions.isMandatoryUpdate
+                # if ($null -ne $MandatoryUpdateEffectiveDate)
+                # {
+                #     if ($IsMandatoryUpdate)
+                #     {
+                #         $PatchedSubmission.packageDeliveryOptions.mandatoryUpdateEffectiveDate = $MandatoryUpdateEffectiveDate.ToUniversalTime().ToString('o')
+                #     }
+                #     else
+                #     {
+                #         Write-Log -Message "MandatoryUpdateEffectiveDate specified without indicating IsMandatoryUpdate.  The value will be ignored." -Level Warning
+                #     }
+                # }
+            }
         }
-
-        if ($PSCmdlet.ShouldProcess("Set-ApplicationSubmission"))
-        {
-            $params = @{}
-            $params.Add("AppId", $AppId)
-            $params.Add("UpdatedSubmission", $patchedSubmission)
-            $params.Add("AccessToken", $AccessToken)
-            $params.Add("NoStatus", $NoStatus)
-            $replacedSubmission = Set-ApplicationSubmission @params
-        }
-
-        $submissionId = $replacedSubmission.id
-        $uploadUrl = $replacedSubmission.fileUploadUrl
 
         Write-Log -Message @(
             "Successfully cloned the existing submission and modified its content.",
             "You can view it on the Dev Portal here:",
-            "    https://dev.windows.com/en-us/dashboard/apps/$AppId/submissions/$submissionId/",
-            "or by running this command:",
-            "    Get-ApplicationSubmission -AppId $AppId -SubmissionId $submissionId | Format-ApplicationSubmission",
-            "",
-            ($script:manualPublishWarning -f 'Update-ApplicationSubmission'))
+            "    https://dev.windows.com/en-us/dashboard/apps/$appId/submissions/$submissionId/")
 
-        if (![System.String]::IsNullOrEmpty($ZipPath))
+        if ($AutoSubmit)
         {
-            Write-Log -Message "Uploading the package [$ZipPath] since it was provided." -Level Verbose
-            Set-SubmissionPackage -ZipPath $ZipPath -UploadUrl $uploadUrl -NoStatus:$NoStatus
-        }
-        elseif (!$AutoCommit)
-        {
-            Write-Log -Message @(
-                "Your next step is to upload the package using:",
-                "  Upload-SubmissionPackage -ZipPath <package> -UploadUrl `"$uploadUrl`"")
-        }
-
-        if ($AutoCommit)
-        {
-            if ($stopwatch.Elapsed.TotalSeconds -gt $script:accessTokenTimeoutSeconds)
-            {
-                # The package upload probably took a long time.
-                # There's a high likelihood that the token will be considered expired when we call
-                # into Complete-ApplicationSubmission ... so, we'll send in a $null value and
-                # let it acquire a new one.
-                $AccessToken = $null
-            }
-
-            Write-Log -Message "Commiting the submission since -AutoCommit was requested." -Level Verbose
-            Complete-ApplicationSubmission -AppId $AppId -SubmissionId $submissionId -AccessToken $AccessToken -NoStatus:$NoStatus
+            Write-Log -Message "Submitting the submission since -AutoSubmit was requested." -Level Verbose
+            Submit-Submission @commonParams -Auto
         }
         else
         {
             Write-Log -Message @(
                 "When you're ready to commit, run this command:",
-                "  Commit-ApplicationSubmission -AppId $AppId -SubmissionId $submissionId")
+                "  Submit-Submission -ProductId $ProductId -SubmissionId $submissionId")
         }
 
         # Record the telemetry for this event.
         $stopwatch.Stop()
         $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
         $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::AppId = $AppId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $submissionId
             [StoreBrokerTelemetryProperty]::ZipPath = (Get-PiiSafeString -PlainText $ZipPath)
-            [StoreBrokerTelemetryProperty]::AutoCommit = $AutoCommit
+            [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
+            [StoreBrokerTelemetryProperty]::AutoSubmit = $AutoSubmit
             [StoreBrokerTelemetryProperty]::Force = $Force
             [StoreBrokerTelemetryProperty]::PackageRolloutPercentage = $PackageRolloutPercentage
             [StoreBrokerTelemetryProperty]::IsMandatoryUpdate = [bool]$IsMandatoryUpdate
             [StoreBrokerTelemetryProperty]::AddPackages = $AddPackages
+            [StoreBrokerTelemetryProperty]::ReplacePackages = $ReplacePackages
+            [StoreBrokerTelemetryProperty]::UpdatePackages = $UpdatePackages
+            [StoreBrokerTelemetryProperty]::RedundantPackagesToKeep = $RedundantPackagesToKeep
             [StoreBrokerTelemetryProperty]::UpdateListings = $UpdateListings
             [StoreBrokerTelemetryProperty]::UpdatePublishModeAndVisibility = $UpdatePublishModeAndVisibility
             [StoreBrokerTelemetryProperty]::UpdatePricingAndAvailability = $UpdatePricingAndAvailability
@@ -255,16 +331,25 @@ function Update-Submission
             [StoreBrokerTelemetryProperty]::UpdateNotesForCertification = $UpdateNotesForCertification
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-            }
+        }
 
-        Set-TelemetryEvent -EventName Update-ApplicationSubmission -Properties $telemetryProperties -Metrics $telemetryMetrics
+        Set-TelemetryEvent -EventName Update-Submission -Properties $telemetryProperties -Metrics $telemetryMetrics
 
-        return $submissionId, $uploadUrl
+        return
     }
     catch
     {
         Write-Log -Exception $_ -Level Error
         throw
+    }
+    finally
+    {
+        if ($isContentPathTemporary -and (-not [String]::IsNullOrWhiteSpace($ContentPath)))
+        {
+            Write-Log -Message "Deleting temporary content directory: $ContentPath" -Level Verbose -Indent $indentLevel
+            $null = Remove-Item -Force -Recurse $ContentPath -ErrorAction SilentlyContinue
+            Write-Log -Message "Deleting temporary directory complete." -Level Verbose -Indent $indentLevel
+        }
     }
 }
 
@@ -399,9 +484,7 @@ function Patch-Listings
         [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
         [string] $ContentPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all internal helpers only operate on a Contentpath
 
-        [Parameter(Mandatory)]
-        [Alias('LangCode')]
-        [string] $LanguageCode,
+        [switch] $UpdateListings,
 
         [switch] $UpdateTrailers,
 
@@ -448,26 +531,34 @@ function Patch-Listings
             continue
         }
 
-        # Updating the existing Listing submission with the user's supplied content
-        $listing.shortTitle = $suppliedListing.shortTitle
-        $listing.voiceTitle = $suppliedListing.voiceTitle
-        $listing.releaseNotes = $suppliedListing.releaseNotes
-        $listing.keywords = $suppliedListing.keywords
-        $listing.trademark = $suppliedListing.copyrightAndTrademarkInfo
-        $listing.licenseTerm = $suppliedListing.licenseTerms
-        $listing.features = $suppliedListing.features
-        $listing.recommendedHardware = $suppliedListing.minimumHardware
-        $listing.devStudio = $suppliedListing.devStudio
-        #TODO: $listing.shouldOverridePackageLogos = ???
-        $listing.title = $suppliedListing.title
-        $listing.description = $suppliedListing.description
-        $listing.shortDescription = $suppliedListing.shortDescription
+        if ($UpdateListings)
+        {
+            # Updating the existing Listing submission with the user's supplied content
+            $listing.shortTitle = $suppliedListing.shortTitle
+            $listing.voiceTitle = $suppliedListing.voiceTitle
+            $listing.releaseNotes = $suppliedListing.releaseNotes
+            $listing.keywords = $suppliedListing.keywords
+            $listing.trademark = $suppliedListing.copyrightAndTrademarkInfo
+            $listing.licenseTerm = $suppliedListing.licenseTerms
+            $listing.features = $suppliedListing.features
+            $listing.recommendedHardware = $suppliedListing.minimumHardware
+            $listing.devStudio = $suppliedListing.devStudio
+            #TODO: $listing.shouldOverridePackageLogos = ???
+            $listing.title = $suppliedListing.title
+            $listing.description = $suppliedListing.description
+            $listing.shortDescription = $suppliedListing.shortDescription
 
-        $langCode = $listing.languageCode
-        $clonedLangCodes.Add($langCode)
+            # TODO: Not currently supported by the v2 object model
+            # suppliedListing.websiteUrl
+            # suppliedListing.privacyPolicy
+            # suppliedListing.supportContact
 
-        $null = Set-Listing @params -Object $listing
-        $null = Patch-ListingImages @params -LanguageCode $langCode
+            $langCode = $listing.languageCode
+            $clonedLangCodes.Add($langCode)
+
+            $null = Set-Listing @params -Object $listing
+            $null = Patch-ListingImages @params -LanguageCode $langCode
+        }
 
         if ($UpdateTrailers)
         {
@@ -485,24 +576,32 @@ function Patch-Listings
                 $suppliedListing = $SubmissionData.listings.$langCode.baselisting
                 if (-not $clonedLangCodes.Contains($langCode))
                 {
-                    $listingParams = $params.PSObject.Copy() # Get a new instance, not a reference
-                    $listingParams['LanguageCode'] = $langCode
-                    $listingParams['ShortTitle'] = $suppliedListing.shortTitle
-                    $listingParams['VoiceTitle'] = $suppliedListing.voiceTitle
-                    $listingParams['ReleaseNotes'] = $suppliedListing.releaseNotes
-                    $listingParams['Keywords'] = $suppliedListing.keywords
-                    $listingParams['Trademark'] = $suppliedListing.copyrightAndTrademarkInfo
-                    $listingParams['LicenseTerm'] = $suppliedListing.licenseTerms
-                    $listingParams['Features'] = $suppliedListing.features
-                    $listingParams['RecommendedHardware'] = $suppliedListing.minimumHardware
-                    $listingParams['DevStudio'] = $suppliedListing.devStudio
-                    #TODO: $listingParams['shouldOverridePackageLogos'] = ???
-                    $listingParams['Title'] = $suppliedListing.title
-                    $listingParams['Description'] = $suppliedListing.description
-                    $listingParams['ShortDescription'] = $suppliedListing.shortDescription
+                    if ($UpdateListings)
+                    {
+                        $listingParams = $params.PSObject.Copy() # Get a new instance, not a reference
+                        $listingParams['LanguageCode'] = $langCode
+                        $listingParams['ShortTitle'] = $suppliedListing.shortTitle
+                        $listingParams['VoiceTitle'] = $suppliedListing.voiceTitle
+                        $listingParams['ReleaseNotes'] = $suppliedListing.releaseNotes
+                        $listingParams['Keywords'] = $suppliedListing.keywords
+                        $listingParams['Trademark'] = $suppliedListing.copyrightAndTrademarkInfo
+                        $listingParams['LicenseTerm'] = $suppliedListing.licenseTerms
+                        $listingParams['Features'] = $suppliedListing.features
+                        $listingParams['RecommendedHardware'] = $suppliedListing.minimumHardware
+                        $listingParams['DevStudio'] = $suppliedListing.devStudio
+                        #TODO: $listingParams['shouldOverridePackageLogos'] = ???
+                        $listingParams['Title'] = $suppliedListing.title
+                        $listingParams['Description'] = $suppliedListing.description
+                        $listingParams['ShortDescription'] = $suppliedListing.shortDescription
 
-                    $null = New-Listing @listingParams
-                    $null = Patch-ListingImages @params -LanguageCode $langCode
+                        # TODO: Not currently supported by the v2 object model
+                        # suppliedListing.websiteUrl
+                        # suppliedListing.privacyPolicy
+                        # suppliedListing.supportContact
+    
+                        $null = New-Listing @listingParams
+                        $null = Patch-ListingImages @params -LanguageCode $langCode
+                    }
 
                     if ($UpdateTrailers)
                     {
@@ -514,8 +613,16 @@ function Patch-Listings
     Write-Log -Message 'Now removing listings for languages that were cloned by the submission but don''t have current user data.' -Level Verbose -Indent $indentLevel
     foreach ($langCode in $listingsToDelete)
     {
-        $null = Remove-Listing @params -LanguageCode $langCode
-        $null = Patch-ListingImages @params -LanguageCode $langCode -RemoveOnly
+        if ($UpdateListings)
+        {
+            $null = Remove-Listing @params -LanguageCode $langCode
+            $null = Patch-ListingImages @params -LanguageCode $langCode -RemoveOnly
+        }
+
+        if ($UpdateTrailers)
+        {
+            $null = Patch-ListingVideos @params -LanguageCode $langCode -RemoveOnly
+        }
     }
 
     # Record the telemetry for this event.
@@ -609,7 +716,6 @@ function Patch-ListingImages
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
         [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
         [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
         [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
         [StoreBrokerTelemetryProperty]::RemoveOnly = $RemoveOnly
@@ -714,8 +820,9 @@ function Patch-ListingVideos
     $telemetryProperties = @{
         [StoreBrokerTelemetryProperty]::ProductId = $ProductId
         [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
         [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
+        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+        [StoreBrokerTelemetryProperty]::RemoveOnly = $RemoveOnly
         [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
@@ -724,336 +831,136 @@ function Patch-ListingVideos
     return
 }
 
-function Patch-Submission
+# Internal helper
+# Operates on an existing submissionId
+function Patch-Properties
 {
-<#
-    .SYNOPSIS
-        Modifies a cloned application submission by copying the specified data from the
-        provided "new" submission.  Returns the final, patched submission JSON.
-
-    .DESCRIPTION
-        Modifies a cloned application submission by copying the specified data from the
-        provided "new" submission.  Returns the final, patched submission JSON.
-
-        The Git repo for this module can be found here: http://aka.ms/StoreBroker
-
-    .PARAMETER ClonedSubmisson
-        The JSON that was returned by the Store API when the application submission was cloned.
-
-    .PARAMETER NewSubmission
-        The JSON for the new/updated application submission.  The only parts from this submission
-        that will be copied to the final, patched submission will be those specified by the
-        switches.
-
-    .PARAMETER TargetPublishMode
-        Indicates how the submission will be published once it has passed certification.
-        The value specified here takes precendence over the value from NewSubmission if
-        -UpdatePublishModeAndVisibility is specified.  If -UpdatePublishModeAndVisibility
-        is not specified and the value 'Default' is used, this submission will simply use the
-        value from the previous submission.
-
-    .PARAMETER TargetPublishDate
-        Indicates when the submission will be published once it has passed certification.
-        Specifying a value here is only valid when TargetPublishMode is set to 'SpecificDate'.
-        The value specified here takes precendence over the value from NewSubmission if
-        -UpdatePublishModeAndVisibility is specified.  If -UpdatePublishModeAndVisibility
-        is not specified and the value 'Default' is used, this submission will simply use the
-        value from the previous submission.  Users should provide this in local time and it
-        will be converted automatically to UTC.
-
-    .PARAMETER Visibility
-        Indicates the store visibility of the app once the submission has been published.
-        The value specified here takes precendence over the value from NewSubmission if
-        -UpdatePublishModeAndVisibility is specified.  If -UpdatePublishModeAndVisibility
-        is not specified and the value 'Default' is used, this submission will simply use the
-        value from the previous submission.
-
-    .PARAMETER PackageRolloutPercentage
-        If specified, this submission will use gradual package rollout, setting their
-        initial rollout percentage to be the indicated amount.
-
-    .PARAMETER IsMandatoryUpdate
-        Indicates whether you want to treat the packages in this submission as mandatory
-        for self-installing app updates.
-
-    .PARAMETER MandatoryUpdateEffectiveDate
-        The date and time when the packages in this submission become mandatory. It is
-        not required to provide a value for this when using IsMandatoryUpdate, however
-        this value will be ignored if specified and IsMandatoryUpdate is not also provided.
-        Users should provide this in local time and it will be converted automatically to UTC.
-
-    .PARAMETER AddPackages
-        Causes the packages that are listed in JsonPath to be added to the package listing
-        in the final, patched submission.  This switch is mutually exclusive with ReplacePackages.
-
-    .PARAMETER ReplacePackages
-        Causes any existing packages in the cloned submission to be removed and only the packages
-        that are listed in JsonPath will be in the final, patched submission.
-        This switch is mutually exclusive with AddPackages.
-
-    .PARAMETER UpdateListings
-        Replaces the listings array in the final, patched submission with the listings array
-        from NewSubmission.  Ensures that the images originally part of each listing in the
-        ClonedSubmission are marked as "PendingDelete" in the final, patched submission.
-
-    .PARAMETER UpdatePublishModeAndVisibility
-        Updates fields under the "Publish Mode and Visibility" category in the PackageTool config file.
-        Updates the following fields using values from JsonPath: targetPublishMode,
-        targetPublishDate, and visibility.
-
-    .PARAMETER UpdatePricingAndAvailability
-        Updates fields under the "Pricing and Availability" category in the PackageTool config file.
-        Updates the following fields using values from JsonPath: targetPublishMode,
-        targetPublishDate, visibility, pricing, allowTargetFutureDeviceFamilies,
-        allowMicrosoftDecideAppAvailabilityToFutureDeviceFamilies, and enterpriseLicensing.
-
-    .PARAMETER UpdateAppProperties
-        Updates fields under the "App Properties" category in the PackageTool config file.
-        Updates the following fields using values from JsonPath: applicationCategory,
-        hardwarePreferences, hasExternalInAppProducts, meetAccessibilityGuidelines,
-        canInstallOnRemovableMedia, automaticBackupEnabled, and isGameDvrEnabled.
-
-    .PARAMETER UpdateGamingOptions
-        Updates fields under the "Ganming Options" category in the PackageTool config file.
-        Updates the following fields using values from JsonPath under gamingOptions:
-        genres, isLocalMultiplayer, isLocalCooperative, isOnlineMultiplayer, isOnlineCooperative,
-        localMultiplayerMinPlayers, localMultiplayerMaxPlayers, localCooperativeMinPlayers,
-        localCooperativeMaxPlayers, isBroadcastingPrivilegeGranted, isCrossPlayEnabled, and kinectDataForExternal.
-
-    .PARAMETER UpdateTrailers
-        Replaces the trailers array in the final, patched submission with the trailers array
-        from JsonPath.
-
-    .PARAMETER UpdateNotesForCertification
-        Updates the notesForCertification field using the value from JsonPath.
-
-    .EXAMPLE
-        $patchedSubmission = Prepare-ApplicationSubmission $clonedSubmission $jsonContent
-        Because no switches were specified, ($patchedSubmission -eq $clonedSubmission).
-
-    .EXAMPLE
-        $patchedSubmission = Prepare-ApplicationSubmission $clonedSubmission $jsonContent -AddPackages
-        $patchedSubmission will be identical to $clonedSubmission, however all of the packages that
-        were contained in $jsonContent will have also been added to the package array.
-
-    .EXAMPLE
-        $patchedSubmission = Prepare-ApplicationSubmission $clonedSubmission $jsonContent -AddPackages -UpdateListings
-        $patchedSubmission will be contain the listings and packages that were part of $jsonContent,
-        but the rest of the submission content will be identical to what had been in $clonedSubmission.
-        Additionally, any images that were part of listings from $clonedSubmission will still be
-        listed in $patchedSubmission, but their file status will have been changed to "PendingDelete".
-
-    .NOTES
-        This is an internal-only helper method.
-#>
-
-    [CmdletBinding(DefaultParametersetName="AddPackages")]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseApprovedVerbs", "", Justification="Internal-only helper method.  Best description for purpose.")]
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [PSCustomObject] $ClonedSubmission,
+        [string] $ProductId,
 
         [Parameter(Mandatory)]
-        [PSCustomObject] $NewSubmission,
+        [string] $SubmissionId,
+
+        [Parameter(Mandatory)]
+        [PSCustomObject] $SubmissionData,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    $indentLevel = 4
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    $params = @{
+        'ProductId' = $ProductId
+        'SubmissionId' = $SubmissionId
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
+
+    $property = Get-Property @params
+
+    [System.Collections.ArrayList]$split = $SubmissionData.applicationCategory -split '_'
+    $category = $split[0]
+    $split.RemoveAt(0)
+    $subCategory = $split
+    if ($subCategory.Count -eq 0)
+    {
+        $subCategory.Add('NotSet')
+    }
+
+    $property.category = $category
+    $property.subcategories = (ConvertTo-Json -InputObject $subCategory)
+
+    $null = Set-Property @params -Object $property
+
+    # Record the telemetry for this event.
+    $stopwatch.Stop()
+    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    Set-TelemetryEvent -EventName Patch-Properties -Properties $telemetryProperties -Metrics $telemetryMetrics
+    return
+}
+
+# Internal helper
+# Operates on an existing submissionId
+function Patch-Details
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [Parameter(Mandatory)]
+        [PSCustomObject] $SubmissionData,
+
+        [switch] $UpdatePublishModeAndVisibility,
 
         [ValidateSet('Default', 'Immediate', 'Manual', 'SpecificDate')]
         [string] $TargetPublishMode = $script:keywordDefault,
 
         [DateTime] $TargetPublishDate,
 
-        [ValidateSet('Default', 'Public', 'Private', 'Hidden')]
-        [string] $Visibility = $script:keywordDefault,
+        [switch] $UpdateNotesForCertification,
 
-        [ValidateRange(0, 100)]
-        [double] $PackageRolloutPercentage = -1,
+        [string] $ClientRequestId,
 
-        [switch] $IsMandatoryUpdate,
+        [string] $CorrelationId,
 
-        [DateTime] $MandatoryUpdateEffectiveDate,
+        [string] $AccessToken,
 
-        [Parameter(ParameterSetName="AppPackages")]
-        [switch] $AddPackages,
-
-        [Parameter(ParameterSetName="ReplacePackages")]
-        [switch] $ReplacePackages,
-
-        [switch] $UpdateListings,
-
-        [switch] $UpdatePublishModeAndVisibility,
-
-        [switch] $UpdatePricingAndAvailability,
-
-        [switch] $UpdateAppProperties,
-
-        [switch] $UpdateGamingOptions,
-
-        [switch] $UpdateTrailers,
-
-        [switch] $UpdateNotesForCertification
+        [switch] $NoStatus
     )
 
-    Write-Log -Message "Patching the content of the submission." -Level Verbose
+    $indentLevel = 4
 
-    # Our method should have zero side-effects -- we don't want to modify any parameter
-    # that was passed-in to us.  To that end, we'll create a deep copy of the ClonedSubmisison,
-    # and we'll modify that throughout this function and that will be the value that we return
-    # at the end.
-    $PatchedSubmission = DeepCopy-Object $ClonedSubmission
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-    # We use a ValidateRange attribute to ensure a valid percentage, but then use -1 as a default
-    # value to indicate when the user hasn't specified a value (and thus, does not want to use
-    # this feature).
-    if ($PackageRolloutPercentage -ge 0)
-    {
-        $PatchedSubmission.packageDeliveryOptions.packageRollout.isPackageRollout = $true
-        $PatchedSubmission.packageDeliveryOptions.packageRollout.packageRolloutPercentage = $PackageRolloutPercentage
-
-        Write-Log -Level Warning -Message @(
-            "Your rollout selections apply to all of your packages, but will only apply to your customers running OS",
-            "versions that support package flights (Windows.Desktop build 10586 or later; Windows.Mobile build 10586.63",
-            "or later, and Xbox), including any customers who get the app via Store-managed licensing via the",
-            "Windows Store for Business.  When using gradual package rollout, customers on earlier OS versions will not",
-            "get packages from the latest submission until you finalize the package rollout.")
+    $params = @{
+        'ProductId' = $ProductId
+        'SubmissionId' = $SubmissionId
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
     }
 
-    $PatchedSubmission.packageDeliveryOptions.isMandatoryUpdate = [bool]$IsMandatoryUpdate
-    if ($null -ne $MandatoryUpdateEffectiveDate)
-    {
-        if ($IsMandatoryUpdate)
-        {
-            $PatchedSubmission.packageDeliveryOptions.mandatoryUpdateEffectiveDate = $MandatoryUpdateEffectiveDate.ToUniversalTime().ToString('o')
-        }
-        else
-        {
-            Write-Log -Message "MandatoryUpdateEffectiveDate specified without indicating IsMandatoryUpdate.  The value will be ignored." -Level Warning
-        }
-    }
-
-    if (($AddPackages -or $ReplacePackages) -and ($NewSubmission.applicationPackages.Count -eq 0))
-    {
-        $output = @()
-        $output += "Your submission doesn't contain any packages, so you cannot Add or Replace packages."
-        $output += "Please check your input settings to New-SubmissionPackage and ensure you're providing a value for AppxPath."
-        $output = $output -join [Environment]::NewLine
-        Write-Log -Message $output -Level Error
-        throw $output
-    }
-
-    # When updating packages, we'll simply add the new packages to the list of existing packages.
-    # At some point when the API provides more signals to us with regard to what platform/OS
-    # an existing package is for, we may want to mark "older" packages for the same platform
-    # as "PendingDelete" so as to not overly clutter the dev account with old packages.  For now,
-    # we'll leave any package maintenance to uses of the web portal.
-    if ($AddPackages)
-    {
-        $PatchedSubmission.applicationPackages += $NewSubmission.applicationPackages
-    }
-
-    # Caller wants to remove any existing packages in the cloned submission and only have the
-    # packages that are defined in the new submission.
-    if ($ReplacePackages)
-    {
-        $PatchedSubmission.applicationPackages | ForEach-Object { $_.fileStatus = $script:keywordPendingDelete }
-        $PatchedSubmission.applicationPackages += $NewSubmission.applicationPackages
-    }
-
-    # When updating the listings metadata, what we really want to do is just blindly replace
-    # the existing listings array with the new one.  We can't do that unfortunately though,
-    # as we need to mark the existing screenshots as "PendingDelete" so that they'll be deleted
-    # during the upload.  Otherwise, even though we don't include them in the updated JSON, they
-    # will still remain there in the Dev Portal.
-    if ($UpdateListings)
-    {
-        # Save off the original listings so that we can make changes to them without affecting
-        # other references
-        $existingListings = DeepCopy-Object $PatchedSubmission.listings
-
-        # Then we'll replace the patched submission's listings array (which had the old,
-        # cloned metadata), with the metadata from the new submission.
-        $PatchedSubmission.listings = DeepCopy-Object $NewSubmission.listings
-
-        # Now we'll update the screenshots in the existing listings
-        # to indicate that they should all be deleted. We'll also add
-        # all of these deleted images to the corresponding listing
-        # in the patched submission.
-        #
-        # Unless the Store team indicates otherwise, we assume that the server will handle
-        # deleting the images in regions that were part of the cloned submission, but aren't part
-        # of the patched submission that we provide. Otherwise, we'd have to create empty listing
-        # objects that would likely fail validation.
-        $existingListings |
-            Get-Member -Type NoteProperty |
-                ForEach-Object {
-                    $lang = $_.Name
-                    if ($null -ne $PatchedSubmission.listings.$lang.baseListing.images)
-                    {
-                        $existingListings.$lang.baseListing.images |
-                            ForEach-Object {
-                                $_.FileStatus = $script:keywordPendingDelete
-                                $PatchedSubmission.listings.$lang.baseListing.images += $_
-                            }
-                    }
-                }
-
-        # We also have to be sure to carry forward any "platform overrides" that the cloned
-        # submission had.  These platform overrides have listing information for previous OS
-        # releases like Windows 8.0/8.1 and Windows Phone 8.0/8.1.
-        #
-        # This has slightly different logic from the normal listings as we don't expect users
-        # to use StoreBroker to modify these values.  We will copy any platform override that
-        # exists from the cloned submission to the patched submission, provided that the patched
-        # submission has that language.  If a platform override entry already exists for a specific
-        # platform in the patched submission, we will just carry forward the previous images for
-        # that platformOverride and mark them as PendingDelete, just like we do for normal listings.
-        $existingListings |
-            Get-Member -Type NoteProperty |
-                ForEach-Object {
-                    $lang = $_.Name
-
-                    # We're only bringing over platformOverrides for languages that we still have
-                    # in the patched submission.
-                    if ($null -ne $PatchedSubmission.listings.$lang.baseListing)
-                    {
-                        $existingListings.$lang.platformOverrides |
-                            Get-Member -Type NoteProperty |
-                                ForEach-Object {
-                                    $platform = $_.Name
-
-                                    if ($null -eq $PatchedSubmission.listings.$lang.platformOverrides.$platform)
-                                    {
-                                        # If the override doesn't exist in the patched submission, just
-                                        # bring the whole thing over.
-                                        $PatchedSubmission.listings.$lang.platformOverrides |
-                                            Add-Member -Type NoteProperty -Name $platform -Value $($existingListings.$lang.platformOverrides.$platform)
-                                    }
-                                    else
-                                    {
-                                        # The PatchedSubmission has an entry for this platform.
-                                        # We'll only copy over the images from the cloned submission
-                                        # and mark them all as PendingDelete.
-                                        $existingListings.$lang.platformOverrides.$platform.images |
-                                            ForEach-Object {
-                                                $_.FileStatus = $script:keywordPendingDelete
-                                                $PatchedSubmission.listings.$lang.platformOverrides.$platform.images += $_
-                                            }
-                                    }
-                                }
-                    }
-                }
-
-    }
-
-    # For the last four switches, simply copy the field if it is a scalar, or
-    # DeepCopy-Object if it is an object.
+    $detail = Get-ProductDetail @params
 
     if ($UpdatePublishModeAndVisibility)
     {
-        $PatchedSubmission.targetPublishMode = Get-ProperEnumCasing -EnumValue ($NewSubmission.targetPublishMode)
-        $PatchedSubmission.targetPublishDate = $NewSubmission.targetPublishDate
-        $PatchedSubmission.visibility = Get-ProperEnumCasing -EnumValue ($NewSubmission.visibility)
+        $detail.isManualPublish = ($SubmissionData.targetPublishMode -eq $script:keywordManual)
+        $detail.releaseTimeInUtc = $SubmissionData.targetPublishDate
+
+        # TODO: There is no equivalent of changing to "Immediate" from a specific date/time,
+        # so, we'll hack that by changing it to now which will be the past (and hence immediate)
+        # by the time this gets submitted.
+        if ($SubmissionData.targetPublishMode -eq $script:keywordImmediate)
+        {
+            $detail.releaseTimeInUtc = (Get-Date).ToUniversalTime().ToString('o')
+        }
     }
 
-    # If users pass in a different value for any of the publish/visibility values at the commandline,
+    # If users pass in a different value for any of the publish/values at the commandline,
     # they override those coming from the config.
     if ($TargetPublishMode -ne $script:keywordDefault)
     {
@@ -1064,7 +971,15 @@ function Patch-Submission
             throw $output
         }
 
-        $PatchedSubmission.targetPublishMode = Get-ProperEnumCasing -EnumValue $TargetPublishMode
+        $detail.isManualPublish = ($SubmissionData.targetPublishMode -eq $script:keywordManual)
+
+        # TODO: There is no equivalent of changing to "Immediate" from a specific date/time,
+        # so, we'll hack that by changing it to now which will be the past (and hence immediate)
+        # by the time this gets submitted.
+        if ($SubmissionData.targetPublishMode -eq $script:keywordImmediate)
+        {
+            $detail.releaseTimeInUtc = (Get-Date).ToUniversalTime().ToString('o')
+        }
     }
 
     if ($null -ne $TargetPublishDate)
@@ -1079,85 +994,176 @@ function Patch-Submission
         $PatchedSubmission.targetPublishDate = $TargetPublishDate.ToUniversalTime().ToString('o')
     }
 
-    if ($Visibility -ne $script:keywordDefault)
-    {
-        $PatchedSubmission.visibility = Get-ProperEnumCasing -EnumValue $Visibility
-    }
-
-    if ($UpdatePricingAndAvailability)
-    {
-        $PatchedSubmission.pricing = DeepCopy-Object $NewSubmission.pricing
-        $PatchedSubmission.allowTargetFutureDeviceFamilies = DeepCopy-Object $NewSubmission.allowTargetFutureDeviceFamilies
-        $PatchedSubmission.allowMicrosoftDecideAppAvailabilityToFutureDeviceFamilies = $NewSubmission.allowMicrosoftDecideAppAvailabilityToFutureDeviceFamilies
-        $PatchedSubmission.enterpriseLicensing = $NewSubmission.enterpriseLicensing
-    }
-
-    if ($UpdateAppProperties)
-    {
-        $PatchedSubmission.applicationCategory = $NewSubmission.applicationCategory
-        $PatchedSubmission.hardwarePreferences = $NewSubmission.hardwarePreferences
-        $PatchedSubmission.hasExternalInAppProducts = $NewSubmission.hasExternalInAppProducts
-        $PatchedSubmission.meetAccessibilityGuidelines = $NewSubmission.meetAccessibilityGuidelines
-        $PatchedSubmission.canInstallOnRemovableMedia = $NewSubmission.canInstallOnRemovableMedia
-        $PatchedSubmission.automaticBackupEnabled = $NewSubmission.automaticBackupEnabled
-        $PatchedSubmission.isGameDvrEnabled = $NewSubmission.isGameDvrEnabled
-    }
-
-    if ($UpdateGamingOptions)
-    {
-        # It's possible that an existing submission object may not have this property at all.
-        # Make sure it's there before continuing.
-        if ($null -eq $PatchedSubmission.gamingOptions)
-        {
-            $PatchedSubmission | Add-Member -Type NoteProperty -Name 'gamingOptions' -Value $null
-        }
-
-        if ($null -eq $NewSubmission.gamingOptions)
-        {
-            $output = @()
-            $output += "You selected to update the Gaming Options for this submission, but it appears you don't have"
-            $output += "that section in your config file.  You should probably re-generate your config file with"
-            $output += "New-StoreBrokerConfigFile, transfer any modified properties to that new config file, and then"
-            $output += "re-generate your StoreBroker payload with New-SubmissionPackage."
-            $output = $output -join [Environment]::NewLine
-            Write-Log -Message $output -Level Error
-            throw $output
-        }
-
-        # Gaming options is an array with a single item, but it's important that we ensure that
-        # PowerShell doesn't convert that to just be a single object, so we force it back into
-        # an array.
-        $PatchedSubmission.gamingOptions = DeepCopy-Object -Object (, $NewSubmission.gamingOptions)
-    }
-
-    if ($UpdateTrailers)
-    {
-        # It's possible that an existing submission object may not have this property at all.
-        # Make sure it's there before continuing.
-        if ($null -eq $PatchedSubmission.trailers)
-        {
-            $PatchedSubmission | Add-Member -Type NoteProperty -Name 'trailers' -Value $null
-        }
-
-        # Trailers has to be an array, so it's important that in the cases when we have 0 or 1
-        # trailers, we don't let PowerShell convert it away from an array to a single object.
-        $PatchedSubmission.trailers = DeepCopy-Object -Object (, $NewSubmission.trailers)
-    }
-
     if ($UpdateNotesForCertification)
     {
-        $PatchedSubmission.notesForCertification = $NewSubmission.notesForCertification
+        $details.certificationNotes = $SubmissionData.notesForCertification
     }
 
-    # To better assist with debugging, we'll store exactly the original and modified JSON submission bodies.
-    $tempFile = [System.IO.Path]::GetTempFileName() # New-TemporaryFile requires PS 5.0
-    ($ClonedSubmission | ConvertTo-Json -Depth $script:jsonConversionDepth) | Set-Content -Path $tempFile -Encoding UTF8
-    Write-Log -Message "The original cloned JSON content can be found here: [$tempFile]" -Level Verbose
+    $null = Set-ProductDetail @params -Object $detail
 
-    $tempFile = [System.IO.Path]::GetTempFileName() # New-TemporaryFile requires PS 5.0
-    ($PatchedSubmission | ConvertTo-Json -Depth $script:jsonConversionDepth) | Set-Content -Path $tempFile -Encoding UTF8
-    Write-Log -Message "The patched JSON content can be found here: [$tempFile]" -Level Verbose
+    # Record the telemetry for this event.
+    $stopwatch.Stop()
+    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::UpdatePublishModeAndVisibility = $UpdatePublishModeAndVisibility
+        [StoreBrokerTelemetryProperty]::TargetPublishMode = $TargetPublishMode
+        [StoreBrokerTelemetryProperty]::UpdateNotesForCertification = $UpdateNotesForCertification
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
 
-    return $PatchedSubmission
+    Set-TelemetryEvent -EventName Patch-Details -Properties $telemetryProperties -Metrics $telemetryMetrics
+    return
 }
 
+# Internal helper
+# Operates on an existing submissionId
+function Patch-ProductAvailability
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [Parameter(Mandatory)]
+        [PSCustomObject] $SubmissionData,
+
+        [switch] $UpdatePublishModeAndVisibility,
+
+        [ValidateSet('Default', 'Public', 'Private', 'Hidden', 'StopSelling')]
+        [string] $Visibility = $script:keywordDefault,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    $indentLevel = 4
+
+    if (($Visibility -eq 'Default') -and (-not $UpdatePublishModeAndVisibility))
+    {
+        return
+    }
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    $params = @{
+        'ProductId' = $ProductId
+        'SubmissionId' = $SubmissionId
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
+
+    $availability = Get-ProductAvailability @params
+
+    if ($UpdatePublishModeAndVisibility)
+    {
+        $availability.visibility = $jsonContent.visibility
+    }
+
+    # If users pass in a different value for any of the publish/values at the commandline,
+    # they override those coming from the config.
+    if ($Visibility -ne 'Default')
+    {
+        $availability.visibility = $Visibility
+    }
+
+    # Hidden (API v1) == StopSelling (API v2)
+    if ($availability.visibility -eq 'Hidden')
+    {
+        $availability.visibility = 'StopSelling'
+    }
+
+    $null = Set-ProductAvailability @params -Object $availability
+
+    # Record the telemetry for this event.
+    $stopwatch.Stop()
+    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::UpdatePublishModeAndVisibility = $UpdatePublishModeAndVisibility
+        [StoreBrokerTelemetryProperty]::Visbility = $Visibility
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    Set-TelemetryEvent -EventName Patch-ProductAvailability -Properties $telemetryProperties -Metrics $telemetryMetrics
+    return
+}
+
+
+# Internal helper
+# Operates on an existing submissionId
+function Patch-SubmissionRollout
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [int] $Percentage = -1,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    $indentLevel = 4
+
+    if ($Percentage -le 0)
+    {
+        return
+    }
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    $params = @{
+        'ProductId' = $ProductId
+        'SubmissionId' = $SubmissionId
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
+
+    $rollout = Get-SubmissionRollout @params
+
+    $rollout.state = 'Initialized'
+    $rollout.percentage = $Percentage
+    $rollout.enabled = $true
+
+    $null = Set-SubmissionRollout @params -Object $rollout
+
+    # Record the telemetry for this event.
+    $stopwatch.Stop()
+    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::Percentage = $Percentage
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    Set-TelemetryEvent -EventName Patch-SubmissionRollout -Properties $telemetryProperties -Metrics $telemetryMetrics
+    return
+}

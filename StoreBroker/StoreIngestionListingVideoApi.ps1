@@ -37,13 +37,13 @@ function Get-ListingVideo
 
         [string] $VideoId,
 
+        [switch] $SinglePage,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
 
         [string] $AccessToken,
-
-        [switch] $SinglePage,
 
         [switch] $NoStatus
     )

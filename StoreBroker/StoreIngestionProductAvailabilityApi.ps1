@@ -21,13 +21,13 @@ function Get-ProductAvailability
 
         [string] $ProductAvailabilityId,
 
+        [switch] $SinglePage,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
 
         [string] $AccessToken,
-
-        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -104,13 +104,13 @@ function New-ProductAvailability
         [ValidateSet('Public', 'Private', 'StopSelling')]
         [string] $Visibility,
 
+        [switch] $SinglePage,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
 
         [string] $AccessToken,
-
-        [switch] $SinglePage,
 
         [switch] $NoStatus
     )

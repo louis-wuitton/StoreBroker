@@ -681,7 +681,7 @@ function New-TemporaryDirectory
     $tempFolderPath = Join-Path -Path $env:TEMP -ChildPath $guid
 
     Write-Log -Message "Creating temporary directory: $tempFolderPath" -Level Verbose
-    New-Item -ItemType directory -Path $tempFolderPath
+    New-Item -ItemType Directory -Path $tempFolderPath
 }
 
 function Send-SBMailMessage

@@ -18,13 +18,13 @@ function Get-ProductProperty
 
         [string] $PropertyId,
 
+        [switch] $SinglePage,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
 
         [string] $AccessToken,
-
-        [switch] $SinglePage,
 
         [switch] $NoStatus
     )

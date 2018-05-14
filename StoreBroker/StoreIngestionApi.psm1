@@ -36,6 +36,7 @@ $script:lastAccessTokenExpirationDate = Get-Date
 # Common keywords in the API Model used by StoreBroker
 $script:keywordSpecificDate = 'SpecificDate'
 $script:keywordManual = 'Manual'
+$script:keywordImmediate = 'Immediate'
 $script:keywordDefault = 'Default'
 $script:keywordNoAction = 'NoAction'
 $script:keywordPendingDelete = 'PendingDelete'
@@ -51,19 +52,6 @@ $script:headerMSRequestId = 'MS-RequestId'
 # responses
 $script:headerMSClientRequestId = 'MS-Client-RequestId'
 $script:headerMSCorrelationId = 'MS-CorrelationId'
-
-# Warning that is referenced in multiple places throughout the module.
-# {0} will be replaced in context with the relevant command.
-$script:manualPublishWarning = @"
-PLEASE NOTE: Due to the nature of how the Store API works, you won't see any of your changes in the
-Dev Portal until your submission has entered into certification.  It doesn't have to *complete*
-certification for you to see your changes, but it does have to enter certification first.
-If it's important for you to verify your changes in the Dev Portal prior to publishing,
-consider publishing with the `"$script:keywordManual`" targetPublishMode by setting that value in your
-config file and then additionally specifying the -UpdatePublishModeAndVisibility switch
-when calling {0}, or by specifying the
--TargetPublishMode $script:keywordManual parameter when calling {0}.
-"@
 
 Add-Type -TypeDefinition @"
    public enum StoreBrokerResourceType

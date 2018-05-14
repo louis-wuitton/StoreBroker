@@ -28,14 +28,14 @@ function Get-Product
         [ValidateSet('Application', 'AvatarItem', 'Bundle', 'Consumable', 'ManagedConsumable', 'Durable', 'DurableWithBits', 'Subscription', 'SeasonPass', 'InternetOfThings')]
         [string[]] $Type = @('Application', 'AvatarItem', 'Bundle', 'InternetOfThings'),
 
+        [Parameter(ParameterSetName="Search")]
+        [switch] $SinglePage,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
 
         [string] $AccessToken,
-
-        [Parameter(ParameterSetName="Search")]
-        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -303,13 +303,13 @@ function Get-ProductRelated
         [ValidateSet('AddOnChild', 'AddOnParent', 'AvailableInBundle', 'SellableBy')]
         [string] $Type,
 
+        [switch] $SinglePage,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
 
         [string] $AccessToken,
-
-        [switch] $SinglePage,
 
         [switch] $NoStatus
     )

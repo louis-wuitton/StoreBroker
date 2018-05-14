@@ -73,14 +73,14 @@ function Get-Submission
         [Parameter(ParameterSetName="Known")]
         [switch] $Validation,
 
+        [Parameter(ParameterSetName="Search")]
+        [switch] $SinglePage,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
 
         [string] $AccessToken,
-
-        [Parameter(ParameterSetName="Search")]
-        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -213,11 +213,11 @@ function New-Submission
         [ValidateSet('NoAction', 'Complete', 'RollBack')]
         [string] $ExistingPackageRolloutAction = $script:keywordNoAction,
         
+        [switch] $Force,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
-
-        [switch] $Force,
 
         [string] $AccessToken,
 
@@ -699,13 +699,13 @@ function Get-SubmissionReport
         [Parameter(Mandatory)]
         [string] $SubmissionId,
 
+        [switch] $SinglePage,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
 
         [string] $AccessToken,
-
-        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
@@ -748,13 +748,13 @@ function Submit-Submission
         [Parameter(Mandatory)]
         [string] $SubmissionId,
 
+        [switch] $Auto,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
 
         [string] $AccessToken,
-
-        [switch] $Auto,
 
         [switch] $NoStatus
     )

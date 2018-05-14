@@ -23,13 +23,13 @@ function Get-ProductPackage
 
         [string] $FeatureGroupId,
 
+        [switch] $SinglePage,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
 
         [string] $AccessToken,
-
-        [switch] $SinglePage,
 
         [switch] $NoStatus
     )
