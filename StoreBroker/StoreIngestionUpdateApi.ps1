@@ -162,6 +162,17 @@ function Update-Submission
         throw $newLineOutput
     }
 
+    if ($UpdateGamingOptions)
+    {
+        $message = @(
+            'Gaming Options support has not been made available in v2 of the API.',
+            'To make updates to Gaming Options for the time being, please use the Dev Portal.',
+            'To quickly get to this product in the Dev Portal, you can use:'
+            "   Open-DevPortal -AppId $AppId")
+        Write-Log -Message $message -Level Error
+        throw $message
+    }
+
     # Identify potentially incorrect usage of this method by checking to see if no modification
     # switch was provided by the user
     if ((-not $AddPackages) -and

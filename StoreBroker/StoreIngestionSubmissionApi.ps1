@@ -9,6 +9,13 @@ Add-Type -TypeDefinition @"
        resourceType,
        revisionToken,
        sandboxId,
+       target
+   }
+"@
+
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerSubmissionTargetProperty
+   {
        scope
    }
 "@
@@ -236,7 +243,6 @@ function New-Submission
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
 
-    # TODO: Get force working once flight is implemented
     if ($Force -or ($ExistingPackageRolloutAction -ne $script:keywordNoAction))
     {
         Write-Log -Message "Force creation requested. Removing any pending submission." -Level Verbose
@@ -316,16 +322,21 @@ function New-Submission
     # Convert the input into a Json body.
     $global:hashBody = @{}
     $hashBody[[StoreBrokerSubmissionProperty]::resourceType] = [StoreBrokerResourceType]::Submission
-    $hashBody[[StoreBrokerSubmissionProperty]::scope] = $Scope
+    #$hashBody['scope'] = $Scope
+    # $hashBody[[StoreBrokerSubmissionProperty]::target] = @{
+    #     [StoreBrokerSubmissionTargetProperty]::scope = $Scope
+    # }
 
     if (-not [String]::IsNullOrWhiteSpace($FlightId))
     {
         $hashBody[[StoreBrokerSubmissionProperty]::flightId] = $FlightId
+        #$hashBody[[StoreBrokerSubmissionProperty]::target]['flight'] = $FlightId
     }
 
     if (-not [String]::IsNullOrWhiteSpace($SandboxId))
     {
         $hashBody[[StoreBrokerSubmissionProperty]::sandboxId] = $SandboxId
+        #$hashBody[[StoreBrokerSubmissionProperty]::target]['sandbox'] = $SandboxId
     }
 
     $body = Get-JsonBody -InputObject $hashBody
