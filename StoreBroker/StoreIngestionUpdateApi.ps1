@@ -1,5 +1,9 @@
 # Copyright (C) Microsoft Corporation.  All rights reserved.
 
+# Used as the default value of a string parameter to be able to track if a user passed-in a new
+# value or not.
+$script:valueNotUpdatedToken = "[StoreBroker_Value_Was_Not_Updated]"
+
 function Update-Submission
 {
     [CmdletBinding(
@@ -58,6 +62,8 @@ function Update-Submission
         [Parameter(ParameterSetName="UpdatePackages")]
         [int] $RedundantPackagesToKeep = 1,
 
+        [string] $CertificationNotes = $script:valueNotUpdatedToken,
+
         [switch] $UpdateListings,
 
         [switch] $UpdatePublishModeAndVisibility,
@@ -70,7 +76,8 @@ function Update-Submission
 
         [switch] $UpdateTrailers,
 
-        [switch] $UpdateNotesForCertification,
+        [Alias('UpdateNotesForCertification')]
+        [switch] $UpdateCertificationNotes,
 
         [string] $ClientRequestId,
 
@@ -172,7 +179,8 @@ function Update-Submission
         (-not $UpdateAppProperties) -and
         (-not $UpdateGamingOptions) -and
         (-not $UpdateTrailers) -and
-        (-not $UpdateNotesForCertification))
+        (-not $UpdateCertificationNotes) -and
+        ($CertificationNotes -eq $script:valueNotUpdatedToken))
     {
         Write-Log -Level Warning -Message @(
             "You have not specified any `"modification`" switch for updating the submission.",
@@ -250,7 +258,8 @@ function Update-Submission
             $detailsParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
             $detailsParams.Add('SubmissionData', $jsonSubmission)
             $detailsParams.Add('UpdatePublishModeAndVisibility', $UpdatePublishModeAndVisibility)
-            $detailsParams.Add('UpdateNotesForCertification', $UpdateNotesForCertification)
+            $detailsParams.Add('UpdateCertificationNotes', $UpdateCerificationNotes)
+            $detailsParams.Add('CertificationNotes', $CertificationNotes)
             $detailsParams.Add('TargetPublishMode', $TargetPublishMode)
             if ($null -ne $TargetPublishDate) { $detailsParams.Add("TargetPublishDate", $TargetPublishDate) }
             $null = Patch-Details @detailsParams # TODO: This API currently fails.  Should comment out while testing.
@@ -349,7 +358,8 @@ function Update-Submission
             [StoreBrokerTelemetryProperty]::UpdateGamingOptions = $UpdateGamingOptions
             [StoreBrokerTelemetryProperty]::UpdateTrailers = $UpdateTrailers
             [StoreBrokerTelemetryProperty]::UpdateAppProperties = $UpdateAppProperties
-            [StoreBrokerTelemetryProperty]::UpdateNotesForCertification = $UpdateNotesForCertification
+            [StoreBrokerTelemetryProperty]::UpdateCertificationNotes = $UpdateCertificationNotes
+            [StoreBrokerTelemetryProperty]::ProvidedCertificationNotes = (-not [String]::IsNullOrWhiteSpace($CertificationNotes))
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -937,7 +947,10 @@ function Patch-Details
 
         [DateTime] $TargetPublishDate,
 
-        [switch] $UpdateNotesForCertification,
+        [string] $CertificationNotes = $script:valueNotUpdatedToken,
+
+        [Alias('UpdateNotesForCertification')]
+        [switch] $UpdateCertificationNotes,
 
         [string] $ClientRequestId,
 
@@ -977,7 +990,7 @@ function Patch-Details
         }
     }
 
-    # If users pass in a different value for any of the publish/values at the commandline,
+    # If the user passes in a different value for any of the publish/values at the commandline,
     # they override those coming from the config.
     if ($TargetPublishMode -ne $script:keywordDefault)
     {
@@ -1011,9 +1024,16 @@ function Patch-Details
         $PatchedSubmission.targetPublishDate = $TargetPublishDate.ToUniversalTime().ToString('o')
     }
 
-    if ($UpdateNotesForCertification)
+    if ($UpdateCertificationNotes)
     {
         $details.certificationNotes = $SubmissionData.notesForCertification
+    }
+
+    # If the user explicitly passes in CertificationNotes at the commandline, it will override
+    # the value that might have come from the config file/SubmissionData.
+    if ($CertificationNotes -ne $script:valueNotUpdatedToken)
+    {
+        $details.certificationNotes = $CertificationNotes
     }
 
     $null = Set-SubmissionDetail @params -Object $detail
@@ -1026,7 +1046,8 @@ function Patch-Details
         [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
         [StoreBrokerTelemetryProperty]::UpdatePublishModeAndVisibility = $UpdatePublishModeAndVisibility
         [StoreBrokerTelemetryProperty]::TargetPublishMode = $TargetPublishMode
-        [StoreBrokerTelemetryProperty]::UpdateNotesForCertification = $UpdateNotesForCertification
+        [StoreBrokerTelemetryProperty]::UpdateCertificationNotes = $UpdateCertificationNotes
+        [StoreBrokerTelemetryProperty]::ProvidedCertificationNotes = (-not [String]::IsNullOrWhiteSpace($CertificationNotes))
         [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
         [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
     }
