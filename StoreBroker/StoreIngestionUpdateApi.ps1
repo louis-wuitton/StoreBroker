@@ -253,7 +253,7 @@ function Update-Submission
             $detailsParams.Add('UpdateNotesForCertification', $UpdateNotesForCertification)
             $detailsParams.Add('TargetPublishMode', $TargetPublishMode)
             if ($null -ne $TargetPublishDate) { $detailsParams.Add("TargetPublishDate", $TargetPublishDate) }
-            $null = Patch-Details @detailsParams
+            $null = Patch-Details @detailsParams # TODO: This API currently fails.  Should comment out while testing.
 
             $null = Patch-ProductAvailability @commonParams -SubmissionData $jsonSubmission -UpdatePublishModeAndVisibility:$UpdatePublishModeAndVisibility -Visibility $Visibility
 
@@ -573,12 +573,12 @@ function Patch-Listings
             $clonedLangCodes.Add($langCode)
 
             $null = Set-Listing @params -Object $listing
-            $null = Patch-ListingImages @params -LanguageCode $langCode
+            $null = Patch-ListingImages @params -LanguageCode $langCode -SubmissionData $SubmissionData -ContentPath $ContentPath
         }
 
         if ($UpdateTrailers)
         {
-            $null = Patch-ListingVideos @params -LanguageCode $langCode
+            $null = Patch-ListingVideos @params -LanguageCode $langCode -SubmissionData $SubmissionData -ContentPath $ContentPath
         }
     }
 
@@ -616,12 +616,12 @@ function Patch-Listings
                         # suppliedListing.supportContact
 
                         $null = New-Listing @listingParams
-                        $null = Patch-ListingImages @params -LanguageCode $langCode
+                        $null = Patch-ListingImages @params -LanguageCode $langCode -SubmissionData $SubmissionData -ContentPath $ContentPath
                     }
 
                     if ($UpdateTrailers)
                     {
-                        $null = Patch-ListingVideos @params -LanguageCode $langCode
+                        $null = Patch-ListingVideos @params -LanguageCode $langCode -SubmissionData $SubmissionData -ContentPath $ContentPath
                     }
                 }
             }
@@ -632,12 +632,12 @@ function Patch-Listings
         if ($UpdateListings)
         {
             $null = Remove-Listing @params -LanguageCode $langCode
-            $null = Patch-ListingImages @params -LanguageCode $langCode -RemoveOnly
+            $null = Patch-ListingImages @params -LanguageCode $langCode -SubmissionData $SubmissionData -ContentPath $ContentPath -RemoveOnly
         }
 
         if ($UpdateTrailers)
         {
-            $null = Patch-ListingVideos @params -LanguageCode $langCode -RemoveOnly
+            $null = Patch-ListingVideos @params -LanguageCode $langCode -SubmissionData $SubmissionData -ContentPath $ContentPath -RemoveOnly
         }
     }
 
@@ -719,7 +719,8 @@ function Patch-ListingImages
         foreach ($image in $SubmissionData.listings.$LanguageCode.baseListing.images)
         {
             # TODO: Determine if we should expose Orientation to the PDP and then here.
-            $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $image.imageType
+            # TODO: Howard -- debug here
+            $global:imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $image.imageType
             $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
             $imageSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
             $null = Set-ListingImage @params -Object $imageSubmission
