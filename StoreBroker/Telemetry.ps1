@@ -78,6 +78,7 @@ Add-Type -TypeDefinition @"
       UpdateGamingOptions,
       UpdateListings,
       UpdateNotesForCertification,
+      UpdatePackages,
       UpdatePricingAndAvailability,
       UpdateProperties,
       UpdatePublishMode,

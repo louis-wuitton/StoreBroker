@@ -115,6 +115,9 @@ function Update-Submission
         $jsonSubmission = [string](Get-Content $JsonPath -Encoding UTF8) | ConvertFrom-Json
     }
 
+    $product = Get-Product @commonParams -ProductId $ProductId
+    $appId = ($product.externalIds | Where-Object { $_.type -eq 'StoreId' }).value
+
     # Extra layer of validation to protect users from trying to submit a payload to the wrong product
     $jsonProductId = $jsonSubmission.productId
     if ([String]::IsNullOrWhiteSpace($jsonProductId))
@@ -131,11 +134,20 @@ function Update-Submission
             "and then diff the new config file against your current one to see the requested productId change.")
 
         # May be an older json file that still uses the AppId.  If so, do the conversion to check that way.
-        $appId = $jsonSubmission.appId
-        if (-not ([String]::IsNullOrWhiteSpace($appId)))
+        if (-not ([String]::IsNullOrWhiteSpace($jsonSubmission.appId)))
         {
-            $product = Get-Product -AppId $appId @commonParams
             $jsonProductId = $product.id
+
+            if ($jsonSubmission.appId -ne $appId)
+            {
+                $output = @()
+                $output += "The AppId [$($jsonSubmission.appId))] in the submission content [$JsonPath] is not for the intended ProductId [$ProductId]."
+                $output += "You either entered the wrong ProductId at the commandline, or you're referencing the wrong submission content to upload."
+
+                $newLineOutput = ($output -join [Environment]::NewLine)
+                Write-Log -Message $newLineOutput -Level Error
+                throw $newLineOutput
+            }
         }
     }
 
@@ -170,12 +182,8 @@ function Update-Submission
     }
 
     $commonParams['ProductId'] = $ProductId
-
     try
     {
-        $product = Get-Product @commonParams
-        $appId = ($product.externalIds | Where-Object { $_.type -eq 'StoreId' }).value
-
         if ([System.String]::IsNullOrEmpty($SubmissionId))
         {
             $submission = New-Submission @commonParams -ExistingPackageRolloutAction $ExistingPackageRolloutAction -Force:$Force
@@ -247,7 +255,7 @@ function Update-Submission
             if ($null -ne $TargetPublishDate) { $detailsParams.Add("TargetPublishDate", $TargetPublishDate) }
             $null = Patch-Details @detailsParams
 
-            $null = Patch-ProductAvailability $commonParams -SubmissionData $jsonSubmission -UpdatePublishModeAndVisibility:$UpdatePublishModeAndVisibility -Visibility $Visibility
+            $null = Patch-ProductAvailability @commonParams -SubmissionData $jsonSubmission -UpdatePublishModeAndVisibility:$UpdatePublishModeAndVisibility -Visibility $Visibility
 
             if ($UpdatePricingAndAvailability)
             {
@@ -349,11 +357,6 @@ function Update-Submission
         Set-TelemetryEvent -EventName Update-Submission -Properties $telemetryProperties -Metrics $telemetryMetrics
 
         return
-    }
-    catch
-    {
-        Write-Log -Exception $_ -Level Error
-        throw
     }
     finally
     {
