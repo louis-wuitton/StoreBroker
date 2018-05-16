@@ -47,7 +47,6 @@ function Update-Submission
 
         [DateTime] $MandatoryUpdateEffectiveDate,
 
-        [ValidateScript({if ([System.String]::IsNullOrEmpty($SubmissionId) -or !$_) { $true } else { throw "Can't use -Force and supply a SubmissionId." }})]
         [switch] $Force,
 
         [Parameter(ParameterSetName="AddPackages")]
@@ -94,6 +93,13 @@ function Update-Submission
     if ((-not [String]::IsNullOrWhiteSpace($ZipPath)) -and (-not [String]::IsNullOrWhiteSpace($ContentPath)))
     {
         $message = "You should specify either ZipPath OR ContentPath.  Not both."
+        Write-Log -Message $message -Level Error
+        throw $message
+    }
+
+    if ($Force -and (-not [System.String]::IsNullOrEmpty($SubmissionId)))
+    {
+        $message = "You can't specify Force AND supply a SubmissionId."
         Write-Log -Message $message -Level Error
         throw $message
     }
@@ -248,7 +254,10 @@ function Update-Submission
                 $packageParams.Add('ContentPath', $ContentPath)
                 if ($AddPackages) { $packageParams.Add('AddPackages', $AddPackages) }
                 if ($ReplacePackages) { $packageParams.Add('ReplacePackages', $ReplacePackages) }
-                if ($UpdatePackages) { $packageParams.Add('UpdatePackages', $UpdatePackages); $packageParams.Add('RedundantPackagesToKeep', $RedundantPackagesToKeep) }
+                if ($UpdatePackages) {
+                    $packageParams.Add('UpdatePackages', $UpdatePackages)
+                    $packageParams.Add('RedundantPackagesToKeep', $RedundantPackagesToKeep)
+                }
                 $null = Patch-ProductPackages @packageParams
             }
 
@@ -615,28 +624,34 @@ function Patch-Listings
                 {
                     if ($UpdateListings)
                     {
-                        $listingParams = $params.PSObject.Copy() # Get a new instance, not a reference
-                        $listingParams['LanguageCode'] = $langCode
-                        $listingParams['ShortTitle'] = $suppliedListing.shortTitle
-                        $listingParams['VoiceTitle'] = $suppliedListing.voiceTitle
-                        $listingParams['ReleaseNotes'] = $suppliedListing.releaseNotes
-                        $listingParams['Keywords'] = $suppliedListing.keywords
-                        $listingParams['Trademark'] = $suppliedListing.copyrightAndTrademarkInfo
-                        $listingParams['LicenseTerm'] = $suppliedListing.licenseTerms
-                        $listingParams['Features'] = $suppliedListing.features
-                        $listingParams['RecommendedHardware'] = $suppliedListing.minimumHardware
-                        $listingParams['DevStudio'] = $suppliedListing.devStudio
-                        #TODO: $listingParams['shouldOverridePackageLogos'] = ???
-                        $listingParams['Title'] = $suppliedListing.title
-                        $listingParams['Description'] = $suppliedListing.description
-                        $listingParams['ShortDescription'] = $suppliedListing.shortDescription
+                        # TODO: It seems that we can't directly POST a listing with all its values,
+                        # but instead must create a thin listing, and then PUT the updates.
+                        $listing = New-Listing @params -LanguageCode $langCode
+
+                        # Updating the new Listing submission with the user's supplied content
+                        $listing.shortTitle = $suppliedListing.shortTitle
+                        $listing.voiceTitle = $suppliedListing.voiceTitle
+                        $listing.releaseNotes = $suppliedListing.releaseNotes
+                        $listing.keywords = $suppliedListing.keywords
+                        $listing.trademark = $suppliedListing.copyrightAndTrademarkInfo
+                        $listing.licenseTerm = $suppliedListing.licenseTerms
+                        $listing.features = $suppliedListing.features
+                        $listing.recommendedHardware = $suppliedListing.minimumHardware
+                        $listing.devStudio = $suppliedListing.devStudio
+                        #TODO: $listing.shouldOverridePackageLogos = ???
+                        $listing.title = $suppliedListing.title
+                        $listing.description = $suppliedListing.description
+                        $listing.shortDescription = $suppliedListing.shortDescription
 
                         # TODO: Not currently supported by the v2 object model
                         # suppliedListing.websiteUrl
                         # suppliedListing.privacyPolicy
                         # suppliedListing.supportContact
 
-                        $null = New-Listing @listingParams
+                        $langCode = $listing.languageCode
+                        $clonedLangCodes.Add($langCode)
+
+                        $null = Set-Listing @params -Object $listing
                         $null = Patch-ListingImages @params -LanguageCode $langCode -SubmissionData $SubmissionData -ContentPath $ContentPath
                     }
 
@@ -740,9 +755,12 @@ function Patch-ListingImages
         foreach ($image in $SubmissionData.listings.$LanguageCode.baseListing.images)
         {
             # TODO: Determine if we should expose Orientation to the PDP and then here.
-            # TODO: Howard -- debug here
-            $global:imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $image.imageType
+            $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $image.imageType
             $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
+
+            # TODO: Remove this hack once the ListingImage is returned back with a state property
+            Add-Member -InputObject $imageSubmission -Type NoteProperty -Name ([StoreBrokerListingImageProperty]::state.ToString()) -Value ([StoreBrokerFileState]::Uploaded.ToString())
+            
             $imageSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
             $null = Set-ListingImage @params -Object $imageSubmission
         }

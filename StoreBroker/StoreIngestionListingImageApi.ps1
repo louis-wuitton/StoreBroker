@@ -313,7 +313,7 @@ function Set-ListingImage
 
         [Parameter(
             Mandatory,
-            arameterSetName="Individual")]
+            ParameterSetName="Individual")]
         [ValidateSet('PendingUpload', 'Uploaded')]
         [string] $State,
 

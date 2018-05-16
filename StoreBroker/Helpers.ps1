@@ -988,7 +988,6 @@ function Get-HttpWebResponseContent
     [CmdletBinding()]
     [OutputType([String])]
     param(
-        [Parameter(Mandatory)]
         [System.Net.HttpWebResponse] $WebResponse
     )
 
@@ -998,7 +997,7 @@ function Get-HttpWebResponseContent
     {
         $content = $null
 
-        if ($WebResponse.ContentLength -gt 0)
+        if (($null -ne $WebResponse) -and ($WebResponse.ContentLength -gt 0))
         {
             $stream = $WebResponse.GetResponseStream()
             $encoding = [System.Text.Encoding]::UTF8

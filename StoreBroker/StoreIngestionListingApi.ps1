@@ -281,6 +281,7 @@ function New-Listing
     }
 
     $body = Get-JsonBody -InputObject $hashBody
+    Write-Log -Message "Body: $body" -Level Verbose
 
     $params = @{
         "UriFragment" = "products/$ProductId/listings`?" + ($getParams -join '&')
