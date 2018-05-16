@@ -1062,3 +1062,29 @@ function Get-JsonBody
 
     return ConvertTo-Json -InputObject (Convert-EnumToString -InputObject $InputObject) -Depth $script:jsonConversionDepth
 }
+
+function Set-PSObjectProperty
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(
+            Mandatory,
+            ValueFromPipeline)]
+        [PSObject] $InputObject,
+
+        [Parameter(Mandatory)]
+        [string] $Name,
+
+        [Parameter(Mandatory)]
+        $Value
+    )
+
+    if ($null -eq (Get-Member -InputObject $InputObject -type NoteProperty -Name $Name))
+    {
+        Add-Member -InputObject $InputObject -Type NoteProperty -Name $Name -Value $Value
+    }
+    else
+    {
+        $InputObject.$Name = $Value
+    }
+}

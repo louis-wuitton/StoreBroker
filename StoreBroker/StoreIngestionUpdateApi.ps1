@@ -566,7 +566,7 @@ function Patch-Listings
     [System.Collections.ArrayList]$listingsToDelete = @()
     [System.Collections.ArrayList]$clonedLangCodes = @()
 
-    # First we delete all of the existing images
+    # First we update all of the language listings that were already cloned and exist in our input.
     Write-Log -Message 'Updating the cloned listings with information supplied by user data.' -Level Verbose -Indent $indentLevel
     foreach ($listing in $currentListings)
     {
@@ -629,19 +629,19 @@ function Patch-Listings
                         $listing = New-Listing @params -LanguageCode $langCode
 
                         # Updating the new Listing submission with the user's supplied content
-                        $listing.shortTitle = $suppliedListing.shortTitle
-                        $listing.voiceTitle = $suppliedListing.voiceTitle
-                        $listing.releaseNotes = $suppliedListing.releaseNotes
-                        $listing.keywords = $suppliedListing.keywords
-                        $listing.trademark = $suppliedListing.copyrightAndTrademarkInfo
-                        $listing.licenseTerm = $suppliedListing.licenseTerms
-                        $listing.features = $suppliedListing.features
-                        $listing.recommendedHardware = $suppliedListing.minimumHardware
-                        $listing.devStudio = $suppliedListing.devStudio
+                        Set-PSObjectProperty -InputObject $listing -Name shortTitle -Value $suppliedListing.shortTitle
+                        Set-PSObjectProperty -InputObject $listing -Name voiceTitle -Value $suppliedListing.voiceTitle
+                        Set-PSObjectProperty -InputObject $listing -Name releaseNotes -Value $suppliedListing.releaseNotes
+                        Set-PSObjectProperty -InputObject $listing -Name keywords -Value $suppliedListing.keywords
+                        Set-PSObjectProperty -InputObject $listing -Name trademark -Value $suppliedListing.trademark
+                        Set-PSObjectProperty -InputObject $listing -Name licenseTerm -Value $suppliedListing.licenseTerm
+                        Set-PSObjectProperty -InputObject $listing -Name features -Value $suppliedListing.features
+                        Set-PSObjectProperty -InputObject $listing -Name recommendedHardware -Value $suppliedListing.recommendedHardware
+                        Set-PSObjectProperty -InputObject $listing -Name minimumHardware -Value $suppliedListing.minimumHardware
+                        Set-PSObjectProperty -InputObject $listing -Name devStudio -Value $suppliedListing.devStudio
                         #TODO: $listing.shouldOverridePackageLogos = ???
-                        $listing.title = $suppliedListing.title
-                        $listing.description = $suppliedListing.description
-                        $listing.shortDescription = $suppliedListing.shortDescription
+                        Set-PSObjectProperty -InputObject $listing -Name title -Value $suppliedListing.title
+                        Set-PSObjectProperty -InputObject $listing -Name shortDescription -Value $suppliedListing.shortDescription
 
                         # TODO: Not currently supported by the v2 object model
                         # suppliedListing.websiteUrl
