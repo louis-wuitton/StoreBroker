@@ -483,11 +483,10 @@ function Patch-ProductPackages
     }
 
     # Regardless of which method we're following, the last thing that we'll do is get these new
-    # associated with this submission
+    # packages associated with this submission.
     foreach ($package in $SubmissionData.applicationPackages)
     {
-        $params['FileName'] = (Split-Path -Path $package.fileName -Leaf)
-        $packageSubmission = New-ProductPackage @params
+        $packageSubmission = New-ProductPackage @params -FileName (Split-Path -Path $package.fileName -Leaf)
         $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $package.fileName) -SasUri $packageSubmission.fileSasUri -NoStatus:$NoStatus
         $packageSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
         $null = Set-ProductPackage @params -Object $packageSubmission
@@ -573,7 +572,7 @@ function Patch-Listings
         $suppliedListing = $SubmissionData.listings.($listing.languageCode).baseListing
         if ($null -eq $suppliedListing)
         {
-            $listingsToDelete.Add($listing.languageCode)
+            $null = $listingsToDelete.Add($listing.languageCode)
             continue
         }
 
@@ -600,7 +599,7 @@ function Patch-Listings
             # suppliedListing.supportContact
 
             $langCode = $listing.languageCode
-            $clonedLangCodes.Add($langCode)
+            $null = $clonedLangCodes.Add($langCode)
 
             $null = Set-Listing @params -Object $listing
             $null = Patch-ListingImages @params -LanguageCode $langCode -SubmissionData $SubmissionData -ContentPath $ContentPath
@@ -649,8 +648,6 @@ function Patch-Listings
                         # suppliedListing.supportContact
 
                         $langCode = $listing.languageCode
-                        $clonedLangCodes.Add($langCode)
-
                         $null = Set-Listing @params -Object $listing
                         $null = Patch-ListingImages @params -LanguageCode $langCode -SubmissionData $SubmissionData -ContentPath $ContentPath
                     }
@@ -760,7 +757,7 @@ function Patch-ListingImages
 
             # TODO: Remove this hack once the ListingImage is returned back with a state property
             Add-Member -InputObject $imageSubmission -Type NoteProperty -Name ([StoreBrokerListingImageProperty]::state.ToString()) -Value ([StoreBrokerFileState]::Uploaded.ToString())
-            
+
             $imageSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
             $null = Set-ListingImage @params -Object $imageSubmission
         }
@@ -932,7 +929,7 @@ function Patch-Properties
     $subCategory = $split
     if ($subCategory.Count -eq 0)
     {
-        $subCategory.Add('NotSet')
+        $null = $subCategory.Add('NotSet')
     }
 
     $property.category = $category

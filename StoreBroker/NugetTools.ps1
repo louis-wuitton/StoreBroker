@@ -130,7 +130,7 @@ function Get-NugetPackage
 
             if ($PSCmdlet.ShouldProcess($jobName, "Wait-JobWithAnimation"))
             {
-                Wait-JobWithAnimation -JobName $jobName -Description "Retrieving nuget package: $PackageName"
+                Wait-JobWithAnimation -Name $jobName -Description "Retrieving nuget package: $PackageName"
             }
 
             if ($PSCmdlet.ShouldProcess($jobName, "Receive-Job"))

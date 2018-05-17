@@ -345,7 +345,7 @@ function New-Submission
     $params = @{
         "UriFragment" = "products/$ProductId/submissions`?" + ($getParams -join '&')
         "Method" = 'Post'
-        "Description" = "Creating a new submision for product: $ProductId"
+        "Description" = "Creating a new submission for product: $ProductId"
         "Body" = $body
         "ClientRequestId" = $ClientRequestId
         "CorrelationId" = $CorrelationId

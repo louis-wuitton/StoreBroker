@@ -519,7 +519,7 @@ function Get-AccessToken
 
                 if ($PSCmdlet.ShouldProcess($jobName, "Wait-JobWithAnimation"))
                 {
-                    Wait-JobWithAnimation -JobName $jobName -Description "Getting access token"
+                    Wait-JobWithAnimation -Name $jobName -Description "Getting access token"
                 }
 
                 if ($PSCmdlet.ShouldProcess($jobName, "Receive-Job"))
@@ -899,7 +899,7 @@ function Set-StoreFile
 
                 if ($PSCmdlet.ShouldProcess($jobName, "Wait-JobWithAnimation"))
                 {
-                    Wait-JobWithAnimation -JobName $jobName -Description "Uploading $FilePath"
+                    Wait-JobWithAnimation -Name $jobName -Description "Uploading $FilePath"
                 }
 
                 if ($PSCmdlet.ShouldProcess($jobName, "Receive-Job"))
@@ -1094,7 +1094,7 @@ function Get-StoreFile
 
                 if ($PSCmdlet.ShouldProcess($jobName, "Wait-JobWithAnimation"))
                 {
-                    Wait-JobWithAnimation -JobName $jobName -Description "Downloading content to $FilePath"
+                    Wait-JobWithAnimation -Name $jobName -Description "Downloading content to $FilePath"
                 }
 
                 if ($PSCmdlet.ShouldProcess($jobName, "Receive-Job"))
@@ -1976,7 +1976,7 @@ function Invoke-SBRestMethod
 
                     if ($PSCmdlet.ShouldProcess($jobName, "Wait-JobWithAnimation"))
                     {
-                        Wait-JobWithAnimation -JobName $jobName -Description $Description
+                        Wait-JobWithAnimation -Name $jobName -Description $Description
                     }
 
                     if ($PSCmdlet.ShouldProcess($jobName, "Receive-Job"))

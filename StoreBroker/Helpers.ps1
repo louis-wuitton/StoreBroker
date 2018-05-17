@@ -104,8 +104,15 @@ function Wait-JobWithAnimation
 
         The Git repo for this module can be found here: http://aka.ms/StoreBroker
 
-    .PARAMETER jobName
-        The name of the job that we are waiting to complete.
+    .PARAMETER Name
+        The name of the job(s) that we are waiting to complete.
+
+    .PARAMETER Description
+        The text displayed next to the spinning cursor, explaining what the job is doing.
+
+    .PARAMETER StopAllOnAnyFailure
+        Will call Stop-Job on any jobs still Running if any of the specified jobs entered
+        the Failed state.
 
     .EXAMPLE
         Wait-JobWithAnimation Job1
@@ -119,10 +126,16 @@ function Wait-JobWithAnimation
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory)]
-        [string] $JobName,
+        [string[]] $Name,
 
-        [string] $Description = ""
+        [string] $Description = "",
+
+        [switch] $StopAllOnAnyFailure
     )
+
+    [System.Collections.ArrayList]$runningJobs = $Name
+    $allJobsCompleted = $true
+    $hasFailedJob = $false
 
     $animationFrames = '|','/','-','\'
     $framesPerSecond = 9
@@ -134,14 +147,49 @@ function Wait-JobWithAnimation
     }
 
     $iteration = 0
-    while (((Get-Job -Name $JobName).state -eq 'Running'))
+    while ($runningJobs.Count -gt 0)
     {
+        # We'll run into issues if we try to modify the same collection we're iterating over
+        $jobsToCheck = $runningJobs.ToArray()
+        foreach ($jobName in $jobsToCheck)
+        {
+            $state = (Get-Job -Name $jobName).state
+            if ($state -ne 'Running')
+            {
+                $runningJobs.Remove($jobName)
+
+                if ($state -ne 'Completed')
+                {
+                    $allJobsCompleted = $false
+                }
+
+                if ($state -eq 'Failed')
+                {
+                    $hasFailedJob = $true
+                    if ($StopAllOnAnyFailure)
+                    {
+                        break
+                    }
+                }
+            }
+        }
+
+        if ($hasFailedJob -and $StopAllOnAnyFailure)
+        {
+            foreach ($jobName in $runningJobs)
+            {
+                Stop-Job -Name $jobName
+            }
+
+            $runingJobs.Clear()
+        }
+
         Write-InteractiveHost "`r$($animationFrames[$($iteration % $($animationFrames.Length))])  Elapsed: $([int]($iteration / $framesPerSecond)) second(s) $Description" -NoNewline -f Yellow
         Start-Sleep -Milliseconds ([int](1000/$framesPerSecond))
         $iteration++
     }
 
-    if ((Get-Job -Name $JobName).state -eq 'Completed')
+    if ($allJobsCompleted)
     {
         Write-InteractiveHost "`rDONE - Operation took $([int]($iteration / $framesPerSecond)) second(s) $Description" -NoNewline -f Green
 
@@ -1075,7 +1123,6 @@ function Set-PSObjectProperty
         [Parameter(Mandatory)]
         [string] $Name,
 
-        [Parameter(Mandatory)]
         $Value
     )
 
