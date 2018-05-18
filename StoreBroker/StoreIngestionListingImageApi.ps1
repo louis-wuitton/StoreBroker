@@ -73,14 +73,14 @@ function Get-ListingImage
         {
             $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/images/$ImageId`?" + ($getParams -join '&')
             $params["Method" ] = 'Get'
-            $params["Description"] =  "Getting listing image $ImageId for $ProductId"
+            $params["Description"] =  "Getting [$LanguageCode] listing image $ImageId for $ProductId"
 
             return Invoke-SBRestMethod @params
         }
         else
         {
             $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/images`?" + ($getParams -join '&')
-            $params["Description"] =  "Getting listing images for $ProductId"
+            $params["Description"] =  "Getting [$LanguageCode] listing images for $ProductId"
             $params["SinglePage" ] = $SinglePage
 
             return Invoke-SBRestMethodMultipleResult @params

@@ -73,8 +73,11 @@ function ConvertFrom-ExistingSubmission
         The output directory.
         This script will create two subfolders of OutPath:
            <OutPath>\PDPs\<Release>\
-           <OutPath>\Images\<Release>\
+           <OutPath>\Media\<Release>\
         Each of these sub-folders will have region-specific subfolders for their file content.
+
+    .PARAMETER DownloadMedia
+        Download the media content that is referenced by ListingImage and ListingVideo elements.
 
     .EXAMPLE
         ConvertFrom-ExistingSubmission -AppId 0ABCDEF12345 -Release "March Release" -OutPath "C:\NewPDPs"
@@ -116,6 +119,8 @@ function ConvertFrom-ExistingSubmission
         [Parameter(Mandatory)]
         [string] $OutPath,
 
+        [switch] $DownloadMedia,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -128,86 +133,93 @@ function ConvertFrom-ExistingSubmission
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-    if ([String]::IsNullOrWhiteSpace($CorrelationId))
+    try
     {
-        # We'll assign our own unique CorrelationId for this update request
-        # if one wasn't provided to us already.
-        $CorrelationId = "$((Get-Date).ToString("yyyyMMddssmm.ffff"))-ConvertFrom-ExistingSubmission"
-    }
-
-    $commonParams = @{
-        'ClientRequestId' = $ClientRequestId
-        'CorrelationId' = $CorrelationId
-        'AccessToken' = $AccessToken
-        'NoStatus' = $NoStatus
-    }
-
-    $OutPath = Resolve-UnverifiedPath -Path $OutPath
-
-    $product = $null
-    if ([String]::IsNullOrWhiteSpace($ProductId))
-    {
-        $product = Get-Product -AppId $AppId @commonParams
-        $ProductId = $product.id
-    }
-    else
-    {
-        $product = Get-Product -ProductId $ProductId @commonParams
-    }
-
-    $name = $product.Name
-
-    if ([String]::IsNullOrWhiteSpace($SubmissionId))
-    {
-        $submissions = Get-Submission -ProductId $ProductId -State Published @commonParams
-        if ($submissions.Count -eq 0)
+        if ([String]::IsNullOrWhiteSpace($CorrelationId))
         {
-            $message = "No published submissions for [$name] were found to convert."
-            Write-Log -Message $message -Level Error
-            throw $message
+            # We'll assign our own unique CorrelationId for this update request
+            # if one wasn't provided to us already.
+            $CorrelationId = "$((Get-Date).ToString("yyyyMMddssmm.ffff"))-ConvertFrom-ExistingSubmission"
         }
 
-        $SubmissionId = $submission[0].id
+        $commonParams = @{
+            'ClientRequestId' = $ClientRequestId
+            'CorrelationId' = $CorrelationId
+            'AccessToken' = $AccessToken
+            'NoStatus' = $NoStatus
+        }
+
+        $OutPath = Resolve-UnverifiedPath -Path $OutPath
+
+        $product = $null
+        if ([String]::IsNullOrWhiteSpace($ProductId))
+        {
+            $product = Get-Product -AppId $AppId @commonParams
+            $ProductId = $product.id
+        }
+        else
+        {
+            $product = Get-Product -ProductId $ProductId @commonParams
+        }
+
+        $name = $product.Name
+
+        if ([String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $submissions = Get-Submission -ProductId $ProductId -State Published @commonParams
+            if ($submissions.Count -eq 0)
+            {
+                $message = "No published submissions for [$name] were found to convert."
+                Write-Log -Message $message -Level Error
+                throw $message
+            }
+
+            $SubmissionId = $submissions[0].id
+        }
+
+        $properties = Get-ProductProperty -ProductId $ProductId -SubmissionId $SubmissionId @commonParams
+
+        $langAssetNames = @{}
+        $pdpsGenerated = 0
+        $listings = Get-Listing -ProductId $ProductId -SubmissionId $SubmissionId @commonParams
+        foreach ($listing in $listings)
+        {
+            $lang = $listing.languageCode
+            Write-Log -Message "Creating PDP for $lang" -Level Verbose
+            Write-Progress -Activity "Generating PDP" -Status $lang -PercentComplete $(($pdpsGenerated / $listings.Count) * 100)
+            try
+            {
+                $assetFileNames = ConvertFrom-Listing -ProductId $ProductId -SubmissionId $SubmissionId -Listing $listing -Properties $properties -Release $Release -PdpRootPath $OutPath -FileName $PdpFileName @commonParams
+                $langAssetNames[$lang] = $assetFileNames
+                $pdpsGenerated++
+            }
+            catch
+            {
+                Write-Log -Message "Error creating [$lang] PDP:" -Exception $_ -Level Error
+                throw
+            }
+        }
+
+        Write-Log -Message "PDP's have been created here: $OutPath"
+        Show-AssetFileNames -LangAssetNames $langAssetNames -Release $Release
+
+        # Record the telemetry for this event.
+        $stopwatch.Stop()
+        $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::AppId = $AppId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $submissionId
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        Set-TelemetryEvent -EventName ConvertFrom-ExistingSubmission -Properties $telemetryProperties -Metrics $telemetryMetrics
     }
-
-    $properties = Get-ProductProperty -ProductId $ProductId -SubmissionId $SubmissionId @commonParams
-
-    $langAssetNames = @{}
-    $pdpsGenerated = 0
-    $listings = Get-Listing -ProductId $ProductId -SubmissionId $SubmissionId @commonParams
-    foreach ($listing in $listings)
+    catch
     {
-        $lang = $listing.languageCode
-        Write-Log -Message "Creating PDP for $lang" -Level Verbose
-        Write-Progress -Activity "Generating PDP" -Status $lang -PercentComplete $(($pdpsGenerated / $listings.Count) * 100)
-        try
-        {
-            $assetFileNames = ConvertFrom-Listing -ProductId $ProductId -SubmissionId $SubmissionId -Listing $listing -Properties $properties -Release $Release -PdpRootPath $OutPath -FileName $PdpFileName @commonParams
-            $langAssetNames[$lang] = $assetFileNames
-            $pdpsGenerated++
-        }
-        catch
-        {
-            Write-Log -Message "Error creating [$lang] PDP:" -Exception $_ -Level Error
-            throw
-        }
+        throw
     }
-
-    Write-Log -Message "PDP's have been created here: $OutPath"
-    Show-AssetFileNames -LangAssetNames $langAssetNames -Release $Release -Submission $sub
-
-    # Record the telemetry for this event.
-    $stopwatch.Stop()
-    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::AppId = $AppId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $submissionId
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    Set-TelemetryEvent -EventName ConvertFrom-ExistingSubmission -Properties $telemetryProperties -Metrics $telemetryMetrics
 }
 
 function Add-ToElement
@@ -1462,9 +1474,6 @@ function ConvertFrom-Listing
         [Parameter(Mandatory)]
         [PSCustomObject] $Properties,
 
-        [Parameter(Mandatory)]
-        [string] $LanguageCode,
-
         [string] $Release,
 
         [Parameter(Mandatory)]
@@ -1482,62 +1491,69 @@ function ConvertFrom-Listing
         [switch] $NoStatus
     )
 
-    $commonParams = @{
-        'ProductId' = $ProductId
-        'SubmissionId' = $SubmissionId
-        'LanguageCode' = $LanguageCode
-        'ClientRequestId' = $ClientRequestId
-        'CorrelationId' = $CorrelationId
-        'AccessToken' = $AccessToken
-        'NoStatus' = $NoStatus
+    try
+    {
+        $commonParams = @{
+            'ProductId' = $ProductId
+            'SubmissionId' = $SubmissionId
+            'LanguageCode' = $Listing.languageCode
+            'ClientRequestId' = $ClientRequestId
+            'CorrelationId' = $CorrelationId
+            'AccessToken' = $AccessToken
+            'NoStatus' = $NoStatus
+        }
+
+        $images = Get-ListingImage @commonParams
+        $videos = Get-ListingVideo @commonParams
+
+        $xml = [xml]([String]::Format('<?xml version="1.0" encoding="utf-8"?>
+        <ProductDescription language="en-us"
+            xmlns="http://schemas.microsoft.com/appx/2012/ProductDescription"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xml:lang="{0}"
+            Release="{1}"/>', ($Listing.languageCode), $Release))
+
+        Add-AppStoreName -Xml $Xml -Listing $Listing
+        Add-Keywords -Xml $Xml -Listing $Listing
+        Add-Description -Xml $Xml -Listing $Listing
+        Add-ShortDescription -Xml $Xml -Listing $Listing
+        Add-ShortTitle -Xml $Xml -Listing $Listing
+        Add-SortTitle -Xml $Xml -Listing $Listing
+        Add-VoiceTitle -Xml $Xml -Listing $Listing
+        Add-DevStudio -Xml $Xml -Listing $Listing
+        Add-ReleaseNotes -Xml $Xml -Listing $Listing
+        $screenshotFileNames = Add-ScreenshotCaptions -Xml $xml -Images $images -LanguageCode ($Listing.languageCode)
+        $additionalAssetFileNames = Add-AdditionalAssets -Xml $xml -Images $images -LanguageCode ($Listing.languageCode)
+        $trailerFileNames = Add-Trailers -Xml $xml -Videos $videos -LanguageCode ($Listing.languageCode)
+        Add-AppFeatures -Xml $Xml -Listing $Listing
+        Add-RecommendedHardware -Xml $Xml -Listing $Listing
+        Add-MinimumHardware -Xml $Xml -Listing $Listing
+        Add-CopyrightAndTrademark -Xml $Xml -Listing $Listing
+        Add-AdditionalLicenseTerms -Xml $Xml -Listing $Listing
+        Add-WebsiteUrl -Xml $Xml -Properties $Properties
+        Add-SupportContact -Xml $Xml -Properties $Properties
+        Add-PrivacyPolicy -Xml $Xml -Properties $Properties
+
+        # Save XML object to file
+        $filePath = Ensure-PdpFilePath -PdpRootPath $PdpRootPath -Lang $LanguageCode -FileName $FileName
+        $xml.Save($filePath)
+
+        # Post-process the file to ensure CRLF (sometimes is only LF).
+        $content = Get-Content -Encoding UTF8 -Path $filePath
+        $content -join [Environment]::NewLine | Out-File -Force -Encoding utf8 -FilePath $filePath
+
+        # PowerShell likes to convert arrays of single items back to individual items.
+        # We need to ensure that we're definitely concatenting arrays together, and don't have
+        # any single items in there.  Therefore, we wrap each variable in an array to force it
+        # to be an array for merging purposes.
+        $mediaFileNames = @($screenshotFileNames) + @($additionalAssetFileNames) + @($trailerFileNames)
+
+        return $mediaFileNames
     }
-
-    $images = Get-ListingImage @commonParams
-    $videos = Get-ListingVideo @commonParams
-
-    $xml = [xml]([String]::Format('<?xml version="1.0" encoding="utf-8"?>
-    <ProductDescription language="en-us"
-        xmlns="http://schemas.microsoft.com/appx/2012/ProductDescription"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xml:lang="{0}"
-        Release="{1}"/>', ($Listing.languageCode), $Release))
-
-    Add-AppStoreName -Xml $Xml -Listing $Listing
-    Add-Keywords -Xml $Xml -Listing $Listing
-    Add-Description -Xml $Xml -Listing $Listing
-    Add-ShortDescription -Xml $Xml -Listing $Listing
-    Add-ShortTitle -Xml $Xml -Listing $Listing
-    Add-SortTitle -Xml $Xml -Listing $Listing
-    Add-VoiceTitle -Xml $Xml -Listing $Listing
-    Add-DevStudio -Xml $Xml -Listing $Listing
-    Add-ReleaseNotes -Xml $Xml -Listing $Listing
-    $screenshotFileNames = Add-ScreenshotCaptions -Xml $xml -Images $images -LanguageCode ($Listing.languageCode)
-    $additionalAssetFileNames = Add-AdditionalAssets -Xml $xml -Images $images $SubmissionId  -LanguageCode ($Listing.languageCode)
-    $trailerFileNames = Add-Trailers -Xml $xml -Videos $videos -LanguageCode ($Listing.languageCode)
-    Add-AppFeatures -Xml $Xml -Listing $Listing
-    Add-RecommendedHardware -Xml $Xml -Listing $Listing
-    Add-MinimumHardware -Xml $Xml -Listing $Listing
-    Add-CopyrightAndTrademark -Xml $Xml -Listing $Listing
-    Add-AdditionalLicenseTerms -Xml $Xml -Listing $Listing
-    Add-WebsiteUrl -Xml $Xml -Properties $Properties
-    Add-SupportContact -Xml $Xml -Properties $Properties
-    Add-PrivacyPolicy -Xml $Xml -Properties $Properties
-
-    # Save XML object to file
-    $filePath = Ensure-PdpFilePath -PdpRootPath $PdpRootPath -Lang $LanguageCode -FileName $FileName
-    $xml.Save($filePath)
-
-    # Post-process the file to ensure CRLF (sometimes is only LF).
-    $content = Get-Content -Encoding UTF8 -Path $filePath
-    $content -join [Environment]::NewLine | Out-File -Force -Encoding utf8 -FilePath $filePath
-
-    # PowerShell likes to convert arrays of single items back to individual items.
-    # We need to ensure that we're definitely concatenting arrays together, and don't have
-    # any single items in there.  Therefore, we wrap each variable in an array to force it
-    # to be an array for merging purposes.
-    $mediaFileNames = @($screenshotFileNames) + @($additionalAssetFileNames) + @($trailerFileNames)
-
-    return $mediaFileNames
+    catch
+    {
+        throw
+    }
 }
 
 function Ensure-PdpFilePath
@@ -1618,10 +1634,7 @@ function Show-AssetFileNames
         [Parameter(Mandatory)]
         [hashtable] $LangAssetNames,
 
-        [string] $Release,
-
-        [Parameter(Mandatory)]
-        [PSCustomObject] $Submission
+        [string] $Release
     )
 
     # If there are no assets, nothing to do here
@@ -1684,15 +1697,9 @@ function Show-AssetFileNames
             "`t$($seenAssets -join `"`n`t`")")
     }
 
-    if ($Submission.trailers.Count -gt 0)
-    {
-        Write-Log -Level Warning -Message @(
-            "Your generated PDP files are missing the trailer screenshot filenames due to API limitations.",
-            "You will need to manually update the PDP with those filenames before the PDP's can be used.",
-            "",
-            "Additionally, you should review the generated PDP files and add the appropriate",
-            "`"FallbackLanguage`" attributes (review Documentation/PDP.md for more info)",
-            "so that trailers (and possibly trailer screenshots) can be easily shared across languages."
-        )
-    }
+    Write-Log -Level Warning -Message @(
+        "You should review the generated PDP files, and if you use the identical image/video files",
+        "across languages (meaning you don't localize them), add the appropriate `"FallbackLanguage`"",
+        "attributes (review Documentation/PDP.md for more info) so that those files can be easily shared across languages."
+    )
 }

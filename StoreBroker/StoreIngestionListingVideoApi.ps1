@@ -82,14 +82,14 @@ function Get-ListingVideo
         {
             $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/videos/$VideoId`?" + ($getParams -join '&')
             $params["Method" ] = 'Get'
-            $params["Description"] =  "Getting listing video $VideoId for $ProductId"
+            $params["Description"] =  "Getting [$LanguageCode] listing video $VideoId for $ProductId"
 
             return Invoke-SBRestMethod @params
         }
         else
         {
             $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/videos`?" + ($getParams -join '&')
-            $params["Description"] =  "Getting listing videos for $ProductId"
+            $params["Description"] =  "Getting [$LanguageCode] listing videos for $ProductId"
             $params["SinglePage" ] = $SinglePage
 
             return Invoke-SBRestMethodMultipleResult @params
