@@ -500,6 +500,8 @@ function Update-ListingImage
                 Add-Member -InputObject $imageSubmission -Type NoteProperty -Name ([StoreBrokerListingImageProperty]::state.ToString()) -Value ([StoreBrokerFileState]::Uploaded.ToString())
 
                 $imageSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
+                # TODO: Need to add caption as well (if one exists) once it's supported
+
                 $null = Set-ListingImage @params -Object $imageSubmission
             }
         }

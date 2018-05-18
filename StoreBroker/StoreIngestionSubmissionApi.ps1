@@ -384,7 +384,7 @@ function New-Submission
         }
 
         return (Invoke-SBRestMethod @params)
-        
+
     }
     catch
     {
@@ -1191,6 +1191,7 @@ function Update-Submission
     )
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
     $isContentPathTemporary = $false
 
@@ -1225,9 +1226,7 @@ function Update-Submission
         throw $message
     }
 
-    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-
-    if ($null -eq $CorrelationId)
+    if ([String]::IsNullOrWhiteSpace($CorrelationId))
     {
         # We'll assign our own unique CorrelationId for this update request
         # if one wasn't provided to us already.
@@ -1310,7 +1309,7 @@ function Update-Submission
     if ((-not $AddPackages) -and
         (-not $ReplacePackages) -and
         (-not $UpdateListingText) -and
-        (-not $UpdateImagesAndCaptions) -and        
+        (-not $UpdateImagesAndCaptions) -and
         (-not $UpdatePublishModeAndVisibility) -and
         (-not $UpdatePricingAndAvailability) -and
         (-not $UpdateAppProperties) -and
