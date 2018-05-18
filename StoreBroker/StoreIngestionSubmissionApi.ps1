@@ -715,7 +715,7 @@ function Update-SubmissionDetail
         }
 
         $providedSubmissionData = ($null -ne $PSBoundParameters['SubmissionData'])
-        if ($providedSubmissionData -and
+        if ((-not $providedSubmissionData) -and
             ($UpdatePublishModeAndDateFromSubmissionData -or $UpdateCertificationNotesFromSubmissionData))
         {
             $message = 'Cannot request -UpdatePublishModeAndDateFromSubmissionData or -UpdateCertificationNotesFromSubmissionData without providing SubmissionData.'
@@ -1391,6 +1391,9 @@ function Update-Submission
                 $propertyParams.Add('SubmissionData', $jsonSubmission)
                 $propertyParams.Add('ContentPath', $ContentPath)
                 $propertyParams.Add('UpdateCategoryFromSubmissionData', $UpdateAppProperties)
+                # NOTE: This pairing seems odd, but is correct for now.  API v2 puts this _localizable_
+                # data in a non-localized property object
+                $propertyParams.Add('UpdateContactInfoFromSubmissionData', $UpdateListingText)
                 $null = Update-ProductProperty @commonParams -SubmissionData $jsonSubmission
 
                 # TODO: No equivalent for:

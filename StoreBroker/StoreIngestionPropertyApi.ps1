@@ -298,6 +298,8 @@ function Update-ProductProperty
 
         [switch] $UpdateCategoryFromSubmissionData,
 
+        [switch] $UpdateContactInfoFromSubmissionData,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -312,14 +314,14 @@ function Update-ProductProperty
     try
     {
         $providedSubmissionData = ($null -ne $PSBoundParameters['SubmissionData'])
-        if ($providedSubmissionData -and $UpdateCategoryFromSubmissionData)
+        if ((-not $providedSubmissionData) -and $UpdateCategoryFromSubmissionData)
         {
             $message = 'Cannot request -UpdateCategoryFromSubmissionData without providing SubmissionData.'
             Write-Log -Message $message -Level Error
             throw $message
         }
 
-        if (-not $UpdateCategoryFromSubmissionData)
+        if ((-not $UpdateCategoryFromSubmissionData) -and (-not $UpdateContactInfoFromSubmissionData))
         {
             Write-Log -Message 'No modification parameters provided.  Nothing to do.' -Level Verbose
             return
@@ -351,6 +353,26 @@ function Update-ProductProperty
 
             $property.category = $category
             $property.subcategories = (ConvertTo-Json -InputObject $subCategory)
+        }
+
+        if ($UpdateContactInfoFromSubmissionData)
+        {
+            $langCode = ($SubmissionData.listings |
+                Get-Member -type NoteProperty |
+                Select-Object -Property Name -First 1).Name
+
+            if ([String]::IsNullOrWhiteSpace($langCode))
+            {
+                $message = "Provided SubmissionData does not have any Listing information. Contact info exists within the Listing information."
+                Write-Log -Message $message -Level Error
+                throw $message
+            }
+
+            Write-Log -Message "Using the [$langCode] listing data for updating this product's support contact info." -Level Verbose
+            $listing = $SubmissionData.listings.$langCode.baseListing
+            $property.supportContact = $listing.supportContact
+            $property.privatePolicyUri = $listing.privacyPolicy
+            $property.websiteUri = $listing.websiteUrl
         }
 
         $null = Set-Property @params -Object $property

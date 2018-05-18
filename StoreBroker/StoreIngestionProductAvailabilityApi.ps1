@@ -333,7 +333,7 @@ function Update-ProductAvailability
     try
     {
         $providedSubmissionData = ($null -ne $PSBoundParameters['SubmissionData'])
-        if ($providedSubmissionData -and $UpdateVisibilityFromSubmissionData)
+        if ((-not $providedSubmissionData) -and $UpdateVisibilityFromSubmissionData)
         {
             $message = 'Cannot request -UpdateVisibilityFromSubmissionData without providing SubmissionData.'
             Write-Log -Message $message -Level Error

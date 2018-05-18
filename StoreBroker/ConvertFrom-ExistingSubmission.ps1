@@ -144,30 +144,32 @@ function ConvertFrom-ExistingSubmission
         $SubmissionId = $submission[0].id
     }
 
+    $properties = Get-ProductProperty -ProductId $ProductId -SubmissionId $SubmissionId
+
     #######################################
     # TODO: Continue update from this point.
     #######################################
 
     $langAssetNames = @{}
-    $langs = ($sub.listings | Get-Member -type NoteProperty)
     $pdpsGenerated = 0
-    $langs |
-        ForEach-Object {
-            $lang = $_.Name
-            Write-Log -Message "Creating PDP for $lang" -Level Verbose
-            Write-Progress -Activity "Generating PDP" -Status $lang -PercentComplete $(($pdpsGenerated / $langs.Count) * 100)
-            try
-            {
-                $assetFileNames = ConvertFrom-Listing -Submission $sub -Listing ($sub.listings.$lang.baseListing) -Lang $lang -Release $Release -PdpRootPath $OutPath -FileName $PdpFileName
-                $langAssetNames[$lang] = $assetFileNames
-                $pdpsGenerated++
-            }
-            catch
-            {
-                Write-Log -Message "Error creating [$lang] PDP:" -Exception $_ -Level Error
-                throw
-            }
+    $listings = Get-Listing -ProductId $ProductId -SubmissionId $SubmissionId
+    foreach ($listing in $listings)
+    {
+        $lang = $listing.languageCode
+        Write-Log -Message "Creating PDP for $lang" -Level Verbose
+        Write-Progress -Activity "Generating PDP" -Status $lang -PercentComplete $(($pdpsGenerated / $listings.Count) * 100)
+        try
+        {
+            $assetFileNames = ConvertFrom-Listing -Listing $listing -Properties $properties -Release $Release -PdpRootPath $OutPath -FileName $PdpFileName
+            $langAssetNames[$lang] = $assetFileNames
+            $pdpsGenerated++
         }
+        catch
+        {
+            Write-Log -Message "Error creating [$lang] PDP:" -Exception $_ -Level Error
+            throw
+        }
+    }
 
     Write-Log -Message "PDP's have been created here: $OutPath"
     Show-AssetFileNames -LangAssetNames $langAssetNames -Release $Release -Submission $sub
@@ -940,7 +942,7 @@ function Add-Trailers
     .PARAMETER Submission
         Ths submission object that was used to generate the set of PDP files.
 
-    .PARAMETER Lang
+    .PARAMETER LanguageCode
         The language / region code for the PDP (e.g. "en-us")
 
     .OUTPUTS
@@ -955,7 +957,7 @@ function Add-Trailers
         [PSCustomObject] $Submission,
 
         [Parameter(Mandatory)]
-        [string] $Lang
+        [string] $LanguageCode
     )
 
     $assetFileNames = @()
@@ -977,8 +979,8 @@ function Add-Trailers
     {
         foreach ($language in ($trailer.trailerAssets | Get-Member -Type NoteProperty))
         {
-            $langCode = $language.Name
-            if ($langCode -ne $Lang)
+            $lang = $language.Name
+            if ($lang -ne $LanguageCode)
             {
                 continue
             }
@@ -988,9 +990,9 @@ function Add-Trailers
             # There's an entry for this trailer, for this language, so add it to the PDP
             $trailerFileName = Split-Path -Path ($trailer.videoFileName) -Leaf
             $assetFileNames += $trailerFileName
-            $title = $trailer.trailerAssets.$langCode.title
-            $screenshotDescription = $trailer.trailerAssets.$langCode.imageList[0].description
-            $screenshotFileName = Split-Path -Path ($trailer.trailerAssets.$langCode.imageList[0].fileName) -Leaf
+            $title = $trailer.trailerAssets.$lang.title
+            $screenshotDescription = $trailer.trailerAssets.$lang.imageList[0].description
+            $screenshotFileName = Split-Path -Path ($trailer.trailerAssets.$lang.imageList[0].fileName) -Leaf
             if (-not [String]::IsNullOrWhiteSpace($screenshotFileName))
             {
                 # The API doesn't seem to always return the screenshot filename.
@@ -1274,20 +1276,20 @@ function Add-WebsiteUrl
     .PARAMETER Xml
         The XmlDocument to modify.
 
-    .PARAMETER Listing
-        The base listing from the submission for a specific Lang.
+    .PARAMETER Properties
+        Product properties that contain localizable resources that go into the PDP files.
 #>
     param(
         [Parameter(Mandatory)]
         [System.Xml.XmlDocument] $Xml,
 
         [Parameter(Mandatory)]
-        [PSCustomObject] $Listing
+        [PSCustomObject] $Properties
     )
 
     $elementName = "WebsiteURL"
     $elementNode = Ensure-RootChild -Xml $Xml -Element $elementName
-    $elementNode.InnerText = $Listing.websiteUrl
+    $elementNode.InnerText = $properties.websiteUri
 
     # Add comment to parent
     $maxChars = 2048
@@ -1309,20 +1311,20 @@ function Add-SupportContact
     .PARAMETER Xml
         The XmlDocument to modify.
 
-    .PARAMETER Listing
-        The base listing from the submission for a specific Lang.
+    .PARAMETER Properties
+        Product properties that contain localizable resources that go into the PDP files.
 #>
     param(
         [Parameter(Mandatory)]
         [System.Xml.XmlDocument] $Xml,
 
         [Parameter(Mandatory)]
-        [PSCustomObject] $Listing
+        [PSCustomObject] $Properties
     )
 
     $elementName = "SupportContactInfo"
     $elementNode = Ensure-RootChild -Xml $Xml -Element $elementName
-    $elementNode.InnerText = $Listing.supportContact
+    $elementNode.InnerText = $Properties.supportContact
 
     # Add comment to parent
     $maxChars = 2048
@@ -1344,20 +1346,20 @@ function Add-PrivacyPolicy
     .PARAMETER Xml
         The XmlDocument to modify.
 
-    .PARAMETER Listing
-        The base listing from the submission for a specific Lang.
+    .PARAMETER Properties
+        Product properties that contain localizable resources that go into the PDP files.
 #>
     param(
         [Parameter(Mandatory)]
         [System.Xml.XmlDocument] $Xml,
 
         [Parameter(Mandatory)]
-        [PSCustomObject] $Listing
+        [PSCustomObject] $Properties
     )
 
     $elementName = "PrivacyPolicyURL"
     $elementNode = Ensure-RootChild -Xml $Xml -Element $elementName
-    $elementNode.InnerText = $Listing.privacyPolicy
+    $elementNode.InnerText = $Properties.privatePolicyUri
 
     # Add comment to parent
     $maxChars = 2048
@@ -1375,16 +1377,13 @@ function ConvertFrom-Listing
 <#
     .SYNOPSIS
         Converts a base listing for an existing submission into a PDP file that conforms with
-        the March 2016 PDP schema.
-
-    .PARAMETER Submission
-        The submission object that was used to generate the set of PDP files.
+        the StoreBroker PDP schema.
 
     .PARAMETER Listing
-        The base listing from the submission for the indicated Lang.
+        The base listing from the submission for the indicated LanguageCode.
 
-    .PARAMETER Lang
-        The language / region code for the PDP (e.g. "en-us")
+    .PARAMETER Properties
+        Product properties that contain localizable resources that go into the PDP files.
 
     .PARAMETER Release
         The release to use.  This value will be placed in each new PDP.
@@ -1414,9 +1413,11 @@ function ConvertFrom-Listing
         [PSCustomObject] $Listing,
 
         [Parameter(Mandatory)]
-        [string] $Lang,
+        [PSCustomObject] $Properties,
 
         [Parameter(Mandatory)]
+        [string] $LanguageCode,
+
         [string] $Release,
 
         [Parameter(Mandatory)]
@@ -1431,7 +1432,7 @@ function ConvertFrom-Listing
         xmlns="http://schemas.microsoft.com/appx/2012/ProductDescription"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xml:lang="{0}"
-        Release="{1}"/>', $Lang, $Release))
+        Release="{1}"/>', ($Listing.languageCode), $Release))
 
     Add-AppStoreName -Xml $Xml -Listing $Listing
     Add-Keywords -Xml $Xml -Listing $Listing
@@ -1442,20 +1443,20 @@ function ConvertFrom-Listing
     Add-VoiceTitle -Xml $Xml -Listing $Listing
     Add-DevStudio -Xml $Xml -Listing $Listing
     Add-ReleaseNotes -Xml $Xml -Listing $Listing
-    $screenshotFileNames = Add-ScreenshotCaptions -Xml $xml -Listing $Listing
-    $additionalAssetFileNames = Add-AdditionalAssets -Xml $xml -Listing $Listing
-    $trailerFileNames = Add-Trailers -Xml $xml -Submission $Submission -Lang $Lang
+    $screenshotFileNames = Add-ScreenshotCaptions -Xml $xml -LanguageCode ($Listing.languageCode)
+    $additionalAssetFileNames = Add-AdditionalAssets -Xml $xml -LanguageCode ($Listing.languageCode)
+    $trailerFileNames = Add-Trailers -Xml $xml -LanguageCode ($Listing.languageCode)
     Add-AppFeatures -Xml $Xml -Listing $Listing
     Add-RecommendedHardware -Xml $Xml -Listing $Listing
     Add-MinimumHardware -Xml $Xml -Listing $Listing
     Add-CopyrightAndTrademark -Xml $Xml -Listing $Listing
     Add-AdditionalLicenseTerms -Xml $Xml -Listing $Listing
-    Add-WebsiteUrl -Xml $Xml -Listing $Listing
-    Add-SupportContact -Xml $Xml -Listing $Listing
-    Add-PrivacyPolicy -Xml $Xml -Listing $Listing
+    Add-WebsiteUrl -Xml $Xml -Properties $Properties
+    Add-SupportContact -Xml $Xml -Properties $Properties
+    Add-PrivacyPolicy -Xml $Xml -Properties $Properties
 
     # Save XML object to file
-    $filePath = Ensure-PdpFilePath -PdpRootPath $PdpRootPath -Lang $Lang -FileName $FileName
+    $filePath = Ensure-PdpFilePath -PdpRootPath $PdpRootPath -Lang $LanguageCode -FileName $FileName
     $xml.Save($filePath)
 
     # Post-process the file to ensure CRLF (sometimes is only LF).
@@ -1485,7 +1486,7 @@ function Ensure-PdpFilePath
     .PARAMETER PdpRootPath
         The root / base path that all of the language sub-folders will go for the PDP files.
 
-    .PARAMETER Lang
+    .PARAMETER LanguageCode
         The language / region code for the PDP (e.g. "en-us")
 
     .PARAMETER FileName
@@ -1506,12 +1507,12 @@ function Ensure-PdpFilePath
         [Parameter(Mandatory)]
         [string] $PdpRootPath,
 
-        [string] $Lang,
+        [string] $LanguageCode,
 
         [string] $FileName
     )
 
-    $dropFolder = Join-Path -Path $PdpRootPath -ChildPath $Lang
+    $dropFolder = Join-Path -Path $PdpRootPath -ChildPath $LanguageCode
 
     if (-not (Test-Path -PathType Container -Path $dropFolder))
     {
@@ -1549,7 +1550,6 @@ function Show-AssetFileNames
         [Parameter(Mandatory)]
         [hashtable] $LangAssetNames,
 
-        [Parameter(Mandatory)]
         [string] $Release,
 
         [Parameter(Mandatory)]
@@ -1562,8 +1562,9 @@ function Show-AssetFileNames
         return
     }
 
+    $assetRoot = Join-Path -Path (Join-Path -Path '<MediaRootPath>' -ChildPath $Release) -ChildPath '<langCode>\...'
     Write-Log -Message @(
-        "You now need to find all of your assets and place them here: <ImagesRootPath>\$Release\<langcode>\...",
+        "You now need to find all of your assets and place them here: $assetRoot",
         "  where <ImagesRootPath> is the path defined in your config file,",
         "  and <langcode> is the same langcode for the directory of the PDP file referencing those assets.")
 
