@@ -514,7 +514,7 @@ function Set-SubmissionDetail
 
         # $null means leave as-is, empty string means clear it out.
         [Parameter(ParameterSetName="Individual")]
-        [string] $CertificationNotes = $null,
+        [string] $CertificationNotes,
 
         [Parameter(ParameterSetName="Individual")]
         [DateTime] $ReleaseDate,
@@ -555,15 +555,12 @@ function Set-SubmissionDetail
         $hashBody = @{}
         $hashBody[[StoreBrokerSubmissionProperty]::resourceType] = [StoreBrokerResourceType]::SubmissionDetail
 
-        if ($null -ne $ReleaseDate)
+        if ($null -ne $PSBoundParameters['ReleaseDate'])
         {
             $hashBody[[StoreBrokerSubmissionProperty]::releaseTimeInUtc] = $ReleaseDate.ToUniversalTime().ToString('o')
         }
 
-        # Very specifically choosing to NOT use [String]::IsNullOrWhiteSpace here, because
-        # we need a way to be able to clear these notes out.  So, a $null means do nothing,
-        # while empty string / whitespace means clear out the notes.
-        if ($null -ne $CertificationNotes)
+        if ($null -ne $PSBoundParameters['CertificationNotes'])
         {
             $hashBody[[StoreBrokerSubmissionProperty]::certificationNotes] = $CertificationNotes
         }
@@ -606,6 +603,154 @@ function Set-SubmissionDetail
     }
 
     return (Invoke-SBRestMethod @params)
+}
+
+function Update-SubmissionDetail
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [PSCustomObject] $SubmissionData,
+
+        [switch] $UpdatePublishModeAndDateFromSubmissionData,
+
+        [switch] $UpdateCertificationNotesFromSubmissionData,
+
+        [ValidateSet('Immediate', 'Manual', 'SpecificDate')]
+        [string] $TargetPublishMode,
+
+        [DateTime] $TargetPublishDate,
+
+        [string] $CertificationNotes,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    $providedSubmissionData = ($null -ne $PSBoundParameters['SubmissionData'])
+    if ($providedSubmissionData -and
+        ($UpdatePublishModeAndDateFromSubmissionData -or $UpdateCertificationNotesFromSubmissionData))
+    {
+        $message = 'Cannot request -UpdatePublishModeAndDateFromSubmissionData or -UpdateCertificationNotesFromSubmissionData without providing SubmissionData.'
+        Write-Log -Message $message -Level Error
+        throw $message
+    }
+
+    $providedTargetPublishMode = ($null -ne $PSBoundParameters['TargetPublishMode'])
+    $providedTargetPublishDate = ($null -ne $PSBoundParameters['TargetPublishDate'])
+    $providedCertificationNotes = ($null -ne $PSBoundParameters['CertificationNotes'])
+    if ((-not $providedTargetPublishMode) -and
+        (-not $providedTargetPublishDate) -and
+        (-not $providedCertificationNotes) -and
+        (-not $UpdatePublishModeAndDateFromSubmissionData) -and
+        (-not $UpdateCertificationNotesFromSubmissionData))
+    {
+        Write-Log -Message 'No modification parameters provided.  Nothing to do.' -Level Verbose
+        return
+    }
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    $params = @{
+        'ProductId' = $ProductId
+        'SubmissionId' = $SubmissionId
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
+
+    $detail = Get-SubmissionDetail @params
+
+    if ($UpdatePublishModeAndDateFromSubmissionData)
+    {
+        $detail.isManualPublish = ($SubmissionData.targetPublishMode -eq $script:keywordManual)
+        $detail.releaseTimeInUtc = $SubmissionData.targetPublishDate
+
+        # TODO: There is no equivalent of changing to "Immediate" from a specific date/time,
+        # so, we'll hack that by changing it to now which will be the past (and hence immediate)
+        # by the time this gets submitted.
+        if ($SubmissionData.targetPublishMode -eq $script:keywordImmediate)
+        {
+            $detail.releaseTimeInUtc = (Get-Date).ToUniversalTime().ToString('o')
+        }
+    }
+
+    # If the user passes in a different value for any of the publish/values at the commandline,
+    # they override those coming from the config.
+    if ($TargetPublishMode -ne $script:keywordDefault)
+    {
+        if (($TargetPublishMode -eq $script:keywordSpecificDate) -and (-not $providedTargetPublishDate))
+        {
+            $output = "TargetPublishMode was set to '$script:keywordSpecificDate' but TargetPublishDate was not specified."
+            Write-Log -Message $output -Level Error
+            throw $output
+        }
+
+        $detail.isManualPublish = ($SubmissionData.targetPublishMode -eq $script:keywordManual)
+
+        # TODO: There is no equivalent of changing to "Immediate" from a specific date/time,
+        # so, we'll hack that by changing it to now which will be the past (and hence immediate)
+        # by the time this gets submitted.
+        if ($SubmissionData.targetPublishMode -eq $script:keywordImmediate)
+        {
+            $detail.releaseTimeInUtc = (Get-Date).ToUniversalTime().ToString('o')
+        }
+    }
+
+    if ($providedTargetPublishDate)
+    {
+        if ($TargetPublishMode -ne $script:keywordSpecificDate)
+        {
+            $output = "A TargetPublishDate was specified, but the TargetPublishMode was [$TargetPublishMode],  not '$script:keywordSpecificDate'."
+            Write-Log -Message $output -Level Error
+            throw $output
+        }
+
+        $PatchedSubmission.targetPublishDate = $TargetPublishDate.ToUniversalTime().ToString('o')
+    }
+
+    if ($UpdateCertificationNotesFromSubmissionData)
+    {
+        $details.certificationNotes = $SubmissionData.notesForCertification
+    }
+
+    # If the user explicitly passes in CertificationNotes at the commandline, it will override
+    # the value that might have come from the config file/SubmissionData.
+    if ($providedCertificationNotes)
+    {
+        $details.certificationNotes = $CertificationNotes
+    }
+
+    $null = Set-SubmissionDetail @params -Object $detail
+
+    # Record the telemetry for this event.
+    $stopwatch.Stop()
+    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::UpdatePublishModeAndVisibility = $UpdatePublishModeAndVisibility
+        [StoreBrokerTelemetryProperty]::TargetPublishMode = $TargetPublishMode
+        [StoreBrokerTelemetryProperty]::UpdateCertificationNotes = $UpdateCertificationNotes
+        [StoreBrokerTelemetryProperty]::ProvidedCertificationNotes = $providedCertificationNotes
+        [StoreBrokerTelemetryProperty]::ProvidedSubmissionData = $providedSubmissionData
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    Set-TelemetryEvent -EventName Update-SubmissionDetail -Properties $telemetryProperties -Metrics $telemetryMetrics
+    return
 }
 
 # This is only relevant for sandboxes

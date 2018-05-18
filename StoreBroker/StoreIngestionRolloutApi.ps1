@@ -87,7 +87,8 @@ function Set-SubmissionRollout
         [string] $State = 'Initialized',
 
         [Parameter(ParameterSetName="Individual")]
-        [int] $Percentage = -1,
+        [ValidateRange(0, 100)]
+        [int] $Percentage,
 
         [Parameter(ParameterSetName="Individual")]
         [switch] $Enabled,
@@ -125,6 +126,12 @@ function Set-SubmissionRollout
         $hashBody[[StoreBrokerRolloutProperty]::resourceType] = [StoreBrokerResourceType]::Rollout
         $hashBody[[StoreBrokerRolloutProperty]::state] = $State
 
+        if ($null -ne $PSBoundParameters['Percentage'])
+        {
+            $hashBody[[StoreBrokerRolloutProperty]::percentage] = $Percentage
+            $telemetryProperties[[StoreBrokerTelemetryProperty]::Percentage] = $Percentage
+        }
+
         # We only set the value if the user explicitly provided a value for this parameter
         # (so for $false, they'd have to pass in -Enabled:$false).
         # Otherwise, there'd be no way to know when the user wants to simply keep the
@@ -143,16 +150,6 @@ function Set-SubmissionRollout
         {
             $hashBody[[StoreBrokerRolloutProperty]::isSeekEnabled] = $SeekEnabled
             $telemetryProperties[[StoreBrokerTelemetryProperty]::IsSeekEnabled] = $SeekEnabled
-        }
-
-        # Users aren't always going to want to change the percentage when calling this
-        # method, BUT users need to be able to set the percentage to 0 if they want.
-        # Therefore, we use a negative default value to catch when they haven't provided
-        # a value (and thus the percentage shouldn't be changed).
-        if ($Percentage -ge 0)
-        {
-            $hashBody[[StoreBrokerRolloutProperty]::percentage] = $Percentage
-            $telemetryProperties[[StoreBrokerTelemetryProperty]::Percentage] = $Percentage
         }
     }
 
@@ -195,4 +192,89 @@ function Set-SubmissionRollout
     }
 
     return $result
+}
+
+function Update-SubmissionRollout
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [ValidateSet('Initialized', 'Completed', 'RolledBack')]
+        [string] $State = 'Initialized',
+
+        [ValidateRange(0, 100)]
+        [int] $Percentage,
+
+        [switch] $Enabled,
+
+        [switch] $SeekEnabled,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    $params = @{
+        'ProductId' = $ProductId
+        'SubmissionId' = $SubmissionId
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
+
+    $rollout = Get-SubmissionRollout @params
+    $rollout.state = $State
+
+    if ($null -ne $PSBoundParameters['Percentage'])
+    {
+        $hashBody[[StoreBrokerRolloutProperty]::percentage] = $Percentage
+    }
+
+    # We only set the value if the user explicitly provided a value for this parameter
+    # (so for $false, they'd have to pass in -Enabled:$false).
+    # Otherwise, there'd be no way to know when the user wants to simply keep the
+    # existing value.
+    if ($null -ne $PSBoundParameters['Enabled'])
+    {
+        $hashBody[[StoreBrokerRolloutProperty]::isEnabled] = $Enabled
+    }
+
+    # We only set the value if the user explicitly provided a value for this parameter
+    # (so for $false, they'd have to pass in -SeekEnabled:$false).
+    # Otherwise, there'd be no way to know when the user wants to simply keep the
+    # existing value.
+    if ($null -ne $PSBoundParameters['SeekEnabled'])
+    {
+        $hashBody[[StoreBrokerRolloutProperty]::isSeekEnabled] = $SeekEnabled
+    }
+
+    $null = Set-SubmissionRollout @params -Object $rollout
+
+    # Record the telemetry for this event.
+    $stopwatch.Stop()
+    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::Percentage = $Percentage
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    Set-TelemetryEvent -EventName Update-SubmissionRollout -Properties $telemetryProperties -Metrics $telemetryMetrics
+    return
 }

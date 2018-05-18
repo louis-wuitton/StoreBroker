@@ -389,3 +389,98 @@ function Set-ListingImage
 
     return Invoke-SBRestMethod @params
 }
+
+function Update-ListingImage
+{
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Update")]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Update")]
+        [PSCustomObject] $SubmissionData,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Update")]
+        [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
+        [string] $ContentPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all internal helpers only operate on a Contentpath
+
+        [Parameter(Mandatory)]
+        [Alias('LangCode')]
+        [string] $LanguageCode,
+
+        [Parameter(ParameterSetName="RemoveOnly")]
+        [switch] $RemoveOnly,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    $params = @{
+        'ProductId' = $ProductId
+        'SubmissionId' = $SubmissionId
+        'LanguageCode' = $LanguageCode
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
+
+    $currentImages = Get-ListingImage @params
+
+    # First we delete all of the existing images
+    Write-Log -Message "Removing all [$LanguageCode] listing images." -Level Verbose
+    foreach ($image in $currentImages)
+    {
+        $null = Remove-ListingImage @params -ImageId $image.id
+    }
+
+    if (-not $RemoveOnly)
+    {
+        # Then we proceed with adding/uploading all of the current images
+        Write-Log -Message "Creating [$LanguageCode] listing images." -Level Verbose
+        foreach ($image in $SubmissionData.listings.$LanguageCode.baseListing.images)
+        {
+            # TODO: Determine if we should expose Orientation to the PDP and then here.
+            $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $image.imageType
+            $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
+
+            # TODO: Remove this hack once the ListingImage is returned back with a state property
+            Add-Member -InputObject $imageSubmission -Type NoteProperty -Name ([StoreBrokerListingImageProperty]::state.ToString()) -Value ([StoreBrokerFileState]::Uploaded.ToString())
+
+            $imageSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
+            $null = Set-ListingImage @params -Object $imageSubmission
+        }
+    }
+
+    # Record the telemetry for this event.
+    $stopwatch.Stop()
+    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
+        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+        [StoreBrokerTelemetryProperty]::RemoveOnly = $RemoveOnly
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    Set-TelemetryEvent -EventName Update-ListingImage -Properties $telemetryProperties -Metrics $telemetryMetrics
+    return
+}

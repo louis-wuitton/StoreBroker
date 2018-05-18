@@ -421,3 +421,111 @@ function Set-ListingVideo
 
     return Invoke-SBRestMethod @params
 }
+
+function Update-ListingVideo
+{
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Update")]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Update")]
+        [PSCustomObject] $SubmissionData,
+
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Update")]
+        [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
+        [string] $ContentPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all internal helpers only operate on a Contentpath
+
+        [Parameter(Mandatory)]
+        [Alias('LangCode')]
+        [string] $LanguageCode,
+
+        [Parameter(ParameterSetName="RemoveOnly")]
+        [switch] $RemoveOnly,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    $params = @{
+        'ProductId' = $ProductId
+        'SubmissionId' = $SubmissionId
+        'LanguageCode' = $LanguageCode
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
+
+    $currentVideos = Get-ListingVideo @params
+
+    # First we delete all of the existing videos
+    Write-Log -Message "Removing all [$LanguageCode] listing videos." -Level Verbose
+    foreach ($video in $currentVideos)
+    {
+        $null = Remove-ListingVideo @params -VideoId $video.id
+    }
+
+    if (-not $RemoveOnly)
+    {
+        # Then we proceed with adding/uploading all of the current videos
+        Write-Log -Message "Creating [$LanguageCode] listing videos." -Level Verbose
+        foreach ($trailer in $SubmissionData.trailerAssets)
+        {
+            $fileName = $trailer.videoFileName
+            $trailerAssets = $trailer.trailerAssets.$LanguageCode
+            if ($null -ne $trailerAssets)
+            {
+                $title = $trailerAssets.title
+                $thumbnailFileName = $trailerAssets.imageList[0].fileName
+                $thumbnailDescription = $trailerAssets.imageList[0].description
+
+                $videoParams = $params.PSObject.Copy() # Get a new instance, not a reference
+                $videoParams['FileName'] = (Split-Path -Path $fileName -Leaf)
+                $videoParams['ThumbnailFileName'] = (Split-Path -Path $thumbnailFileName -Leaf)
+                $videoParams['ThumbnailTitle'] = $title
+                $videoParams['ThumbnailDescription'] = $description
+                # TODO: $videoParams['ThumbnailOrientation'] = ???
+
+                $videoSubmission = New-ListingVideo @videoParams
+                $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $fileName) -SasUri $videoSubmission.fileSasUri -NoStatus:$NoStatus
+                $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $thumbnailFileName) -SasUri $videoSubmission.thumbnail.fileSasUri -NoStatus:$NoStatus
+                $videoSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
+                $videoSubmission.thumbnail.state = [StoreBrokerFileState]::Uploaded.ToString()
+                $null = Set-ListingVideo @params -Object $videoSubmission
+            }
+        }
+    }
+
+    # Record the telemetry for this event.
+    $stopwatch.Stop()
+    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
+        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+        [StoreBrokerTelemetryProperty]::RemoveOnly = $RemoveOnly
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    Set-TelemetryEvent -EventName Update-ListingVideo -Properties $telemetryProperties -Metrics $telemetryMetrics
+    return
+}

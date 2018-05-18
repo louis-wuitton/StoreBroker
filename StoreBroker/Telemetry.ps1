@@ -54,6 +54,7 @@ Add-Type -TypeDefinition @"
       ProductType,
       PropertyId,
       ProvidedCertificationNotes,
+      ProvidedSubmissionData,
       RedundantPackagesToKeep,
       RemoveOnly,
       ReplacePackages,

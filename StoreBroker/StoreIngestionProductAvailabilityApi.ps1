@@ -277,6 +277,96 @@ function Set-ProductAvailability
     return Invoke-SBRestMethod @params
 }
 
+function Update-ProductAvailability
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [PSCustomObject] $SubmissionData,
+
+        [switch] $UpdateVisibilityFromSubmissionData,
+
+        [ValidateSet('Public', 'Private', 'Hidden', 'StopSelling')]
+        [string] $Visibility,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    $providedSubmissionData = ($null -ne $PSBoundParameters['SubmissionData'])
+    if ($providedSubmissionData -and $UpdateVisibilityFromSubmissionData)
+    {
+        $message = 'Cannot request -UpdateVisibilityFromSubmissionData without providing SubmissionData.'
+        Write-Log -Message $message -Level Error
+        throw $message
+    }
+
+    $providedVisibility = ($null -ne $PSBoundParameters['Visibility'])
+    if ($providedVisibility -and (-not $UpdateVisibilityFromSubmissionData))
+    {
+        Write-Log -Message 'No modification parameters provided.  Nothing to do.' -Level Verbose
+        return
+    }
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    $params = @{
+        'ProductId' = $ProductId
+        'SubmissionId' = $SubmissionId
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
+
+    $availability = Get-ProductAvailability @params
+
+    if ($UpdateVisibilityFromSubmissionData)
+    {
+        $availability.visibility = $SubmissionData.visibility
+    }
+
+    # If users pass in a different value for any of the publish/values at the commandline,
+    # it overrides that which comes from the SubmissionData.
+    if ($providedVisibility)
+    {
+        $availability.visibility = $Visibility
+    }
+
+    # Hidden (API v1) == Private (API v2)
+    if ($availability.visibility -eq 'Hidden')
+    {
+        $availability.visibility = 'Private'
+    }
+
+    $null = Set-ProductAvailability @params -Object $availability
+
+    # Record the telemetry for this event.
+    $stopwatch.Stop()
+    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::ProvidedSubmissionData = ($null -ne $SubmissionData)
+        [StoreBrokerTelemetryProperty]::Visbility = $Visibility
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    Set-TelemetryEvent -EventName Patch-ProductAvailability -Properties $telemetryProperties -Metrics $telemetryMetrics
+    return
+}
+
 function New-Audience
 {
     [CmdletBinding(SupportsShouldProcess)]

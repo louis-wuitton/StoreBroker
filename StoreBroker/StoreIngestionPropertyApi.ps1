@@ -248,3 +248,85 @@ function Set-ProductProperty
 
     return Invoke-SBRestMethod @params
 }
+
+function Update-ProductProperty
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [PSCustomObject] $SubmissionData,
+
+        [switch] $UpdateCategoryFromSubmissionData,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    $providedSubmissionData = ($null -ne $PSBoundParameters['SubmissionData'])
+    if ($providedSubmissionData -and $UpdateCategoryFromSubmissionData)
+    {
+        $message = 'Cannot request -UpdateCategoryFromSubmissionData without providing SubmissionData.'
+        Write-Log -Message $message -Level Error
+        throw $message
+    }
+
+    if (-not $UpdateCategoryFromSubmissionData)
+    {
+        Write-Log -Message 'No modification parameters provided.  Nothing to do.' -Level Verbose
+        return
+    }
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    $params = @{
+        'ProductId' = $ProductId
+        'SubmissionId' = $SubmissionId
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
+
+    $property = Get-Property @params
+
+    if ($UpdateCategoryFromSubmissionData)
+    {
+        [System.Collections.ArrayList]$split = $SubmissionData.applicationCategory -split '_'
+        $category = $split[0]
+        $split.RemoveAt(0)
+        $subCategory = $split
+        if ($subCategory.Count -eq 0)
+        {
+            $null = $subCategory.Add('NotSet')
+        }
+
+        $property.category = $category
+        $property.subcategories = (ConvertTo-Json -InputObject $subCategory)
+    }
+
+    $null = Set-Property @params -Object $property
+
+    # Record the telemetry for this event.
+    $stopwatch.Stop()
+    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+    $telemetryProperties = @{
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+        [StoreBrokerTelemetryProperty]::ProvidedSubmissionData = ($null -ne $SubmissionData)
+        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    }
+
+    Set-TelemetryEvent -EventName Update-ProductProperty -Properties $telemetryProperties -Metrics $telemetryMetrics
+    return
+}

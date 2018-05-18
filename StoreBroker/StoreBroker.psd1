@@ -64,16 +64,19 @@
         'Delete-Listing',
         'Get-Listing',
         'Set-Listing',
+        'Update-Listing',
 
         'New-ListingImage',
         'Delete-ListingImage',
         'Get-ListingImage',
         'Set-ListingImage',
+        'Update-ListingImage',
 
         'New-ListingVideo',
         'Delete-ListingVideo',
         'Get-ListingVideo',
         'Set-ListingVideo',
+        'Update-ListingVideo',
 
         'Get-Product',
         'New-Product',
@@ -85,6 +88,7 @@
         'Get-Submission',
         'Get-SubmissionDetail',
         'Set-SubmissionDetail',
+        'Update-SubmissionDetail',
         'Get-SubmissionReport',
         'Get-SubmissionValidation',
         'Remove-Submission',
@@ -96,6 +100,7 @@
 
         'Get-SubmissionRollout',
         'Set-SubmissionRollout',
+        'Update-SubmissionRollout',
 
         'Remove-ProductPackage',
         'Get-ProductPackage',
@@ -109,11 +114,12 @@
         'Get-ProductProperty',
         'New-ProductProperty',
         'Set-ProductProperty',
+        'Update-ProductProperty',
 
         'Get-ProductAvailability',
         'New-ProductAvailability',
         'Set-ProductAvailability',
-
+        'Update-ProductAvailability',
 
         'Clear-StoreBrokerAuthentication',
         'Get-StoreFile',
