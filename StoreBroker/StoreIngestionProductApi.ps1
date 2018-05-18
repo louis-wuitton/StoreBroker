@@ -42,54 +42,69 @@ function Get-Product
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $singleQuery = (-not [String]::IsNullOrWhiteSpace($ProductId))
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::AppId = $AppId
-        [StoreBrokerTelemetryProperty]::SpecifiedType = ($Type.Count -gt 0)
-        [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $searchDescription = "Getting information for all products"
-    $getParams = @()
-    if (-not [String]::IsNullOrWhiteSpace($AppId))
+    try
     {
-        $getParams += "externalId=$AppId"
-        $searchDescription = "Getting product information for $AppId"
-    }
+        if ($null -ne $PSBoundParameters['Type'])
+        {
+            # The check is necessary, because if no value was provided, we'll get an empty string back
+            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
+            $Type = $Type | Get-ProperEnumCasing
+        }
 
-    $typesString = $Type -join ","
-    if (-not [String]::IsNullOrWhiteSpace($typesString))
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($ProductId))
+
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::AppId = $AppId
+            [StoreBrokerTelemetryProperty]::SpecifiedType = ($Type.Count -gt 0)
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        $searchDescription = "Getting information for all products"
+        $getParams = @()
+        if (-not [String]::IsNullOrWhiteSpace($AppId))
+        {
+            $getParams += "externalId=$AppId"
+            $searchDescription = "Getting product information for $AppId"
+        }
+
+        $typesString = $Type -join ","
+        if (-not [String]::IsNullOrWhiteSpace($typesString))
+        {
+            $getParams +=  "resourceTypes=$typesString"
+        }
+
+        $params = @{
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Get-Product"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "products/$ProductId"
+            $params["Method" ] = 'Get'
+            $params["Description"] =  "Getting product: $ProductId"
+
+            return Invoke-SBRestMethod @params
+        }
+        else
+        {
+            $params["UriFragment"] = 'products?' + ($getParams -join '&')
+            $params["Description"] =  $searchDescription
+            $params["SinglePage" ] = $SinglePage
+
+            return Invoke-SBRestMethodMultipleResult @params
+        }
+    }
+    catch
     {
-        $getParams +=  "resourceTypes=$typesString"
-    }
-
-    $params = @{
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Get-Product"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
-
-    if ($singleQuery)
-    {
-        $params["UriFragment"] = "products/$ProductId"
-        $params["Method" ] = 'Get'
-        $params["Description"] =  "Getting product: $ProductId"
-
-        return Invoke-SBRestMethod @params
-    }
-    else
-    {
-        $params["UriFragment"] = 'products?' + ($getParams -join '&')
-        $params["Description"] =  $searchDescription
-        $params["SinglePage" ] = $SinglePage
-
-        return Invoke-SBRestMethodMultipleResult @params
+        throw
     }
 }
 
@@ -133,40 +148,49 @@ function New-Product
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
-        [StoreBrokerTelemetryProperty]::Name = $Name
-        [StoreBrokerTelemetryProperty]::ResourceType = $Type
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $hashBody = $Object
-    if ($null -eq $hashBody)
+    try
     {
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody[[StoreBrokerProductProperty]::resourceType] = $Type
-        $hashBody[[StoreBrokerProductProperty]::name] = $Name
+        $Type = Get-ProperEnumCasing -Value $Type
+
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+            [StoreBrokerTelemetryProperty]::Name = $Name
+            [StoreBrokerTelemetryProperty]::ResourceType = $Type
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
+        {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody[[StoreBrokerProductProperty]::resourceType] = $Type
+            $hashBody[[StoreBrokerProductProperty]::name] = $Name
+        }
+
+        $body = Get-JsonBody -InputObject $hashBody
+
+        $params = @{
+            "UriFragment" = "products/"
+            "Method" = "Post"
+            "Description" = "Creating a new product called: $Name"
+            "Body" = $body
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "New-Product"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        return (Invoke-SBRestMethod @params)
     }
-
-    $body = Get-JsonBody -InputObject $hashBody
-
-    $params = @{
-        "UriFragment" = "products/"
-        "Method" = "Post"
-        "Description" = "Creating a new product called: $Name"
-        "Body" = $body
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "New-Product"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
+    catch
+    {
+        throw
     }
-
-    return (Invoke-SBRestMethod @params)
 }
 
 function Remove-Product
@@ -190,25 +214,32 @@ function Remove-Product
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
+    try
+    {
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
 
-    $params = @{
-        "UriFragment" = "products/$ProductId"
-        "Method" = "Delete"
-        "Description" = "Deleting product: $ProductId"
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Remove-Product"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
+        $params = @{
+            "UriFragment" = "products/$ProductId"
+            "Method" = "Delete"
+            "Description" = "Deleting product: $ProductId"
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Remove-Product"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
 
-    $null = Invoke-SBRestMethod @params
+        $null = Invoke-SBRestMethod @params
+    }
+    catch
+    {
+        throw
+    }
 }
 
 function Get-ProductPackageIdentity
@@ -230,25 +261,32 @@ function Get-ProductPackageIdentity
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::AppId = $AppId
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
+    try
+    {
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::AppId = $AppId
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
 
-    $params = @{
-        "UriFragment" = "products/$ProductId/packageIdentity"
-        "Method" = "Get"
-        "Description" = "Getting package identity for product: $ProductId"
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Get-ProductPackageIdentity"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
+        $params = @{
+            "UriFragment" = "products/$ProductId/packageIdentity"
+            "Method" = "Get"
+            "Description" = "Getting package identity for product: $ProductId"
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Get-ProductPackageIdentity"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
 
-    return Invoke-SBRestMethod @params
+        return Invoke-SBRestMethod @params
+    }
+    catch
+    {
+        throw
+    }
 }
 
 function Get-ProductStoreLink
@@ -270,25 +308,32 @@ function Get-ProductStoreLink
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::AppId = $AppId
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
+    try
+    {
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::AppId = $AppId
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
 
-    $params = @{
-        "UriFragment" = "products/$ProductId/storelink"
-        "Method" = "Get"
-        "Description" = "Getting store link for product: $ProductId"
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Get-ProductStoreLink"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
+        $params = @{
+            "UriFragment" = "products/$ProductId/storelink"
+            "Method" = "Get"
+            "Description" = "Getting store link for product: $ProductId"
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Get-ProductStoreLink"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
 
-    return Invoke-SBRestMethod @params
+        return Invoke-SBRestMethod @params
+    }
+    catch
+    {
+        throw
+    }
 }
 
 function Get-ProductRelated
@@ -316,26 +361,35 @@ function Get-ProductRelated
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::AppId = $AppId
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    try
+    {
+        $Type = Get-ProperEnumCasing -Value $Type
+
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::AppId = $AppId
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        $getParams = @()
+        $getParams += "relationshipType=$Type"
+
+        $params = @{
+            "UriFragment" = "products/$ProductId/related`?" + ($getParams -join '&')
+            "Description" = "Getting related products for product: $ProductId"
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Get-ProductRelated"
+            "TelemetryProperties" = $telemetryProperties
+            "SinglePage" = $SinglePage
+            "NoStatus" = $NoStatus
+        }
+
+        return Invoke-SBRestMethodMultipleResult @params
     }
-
-    $getParams = @()
-    $getParams += "relationshipType=$Type"
-
-    $params = @{
-        "UriFragment" = "products/$ProductId/related`?" + ($getParams -join '&')
-        "Description" = "Getting related products for product: $ProductId"
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Get-ProductRelated"
-        "TelemetryProperties" = $telemetryProperties
-        "SinglePage" = $SinglePage
-        "NoStatus" = $NoStatus
+    catch
+    {
+        throw
     }
-
-    return Invoke-SBRestMethodMultipleResult @params
 }

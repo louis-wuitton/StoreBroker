@@ -27,37 +27,44 @@ function Get-Group
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $singleQuery = (-not [String]::IsNullOrWhiteSpace($GroupId))
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $params = @{
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Get-Group"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
-
-    if ($singleQuery)
+    try
     {
-        $params["UriFragment"] = "groups/$GroupId"
-        $params["Method" ] = 'Get'
-        $params["Description"] = "Getting group $GroupId"
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($GroupId))
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
 
-        return Invoke-SBRestMethod @params
+        $params = @{
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Get-Group"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "groups/$GroupId"
+            $params["Method" ] = 'Get'
+            $params["Description"] = "Getting group $GroupId"
+
+            return Invoke-SBRestMethod @params
+        }
+        else
+        {
+            $params["UriFragment"] = "groups"
+            $params["Description"] = "Getting all groups"
+            $params["SinglePage" ] = $SinglePage
+
+            return Invoke-SBRestMethodMultipleResult @params
+        }
     }
-    else
+    catch
     {
-        $params["UriFragment"] = "groups"
-        $params["Description"] = "Getting all groups"
-        $params["SinglePage" ] = $SinglePage
-
-        return Invoke-SBRestMethodMultipleResult @params
+        throw
     }
 }
 
@@ -94,42 +101,49 @@ function New-Group
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $telemetryProperties = @{
-            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
-            [StoreBrokerTelemetryProperty]::Type = $Type
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Group)
-
-    $hashBody = $Object
-    if ($null -eq $hashBody)
+    try
     {
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody[[StoreBrokerGroupProperty]::resourceType] = [StoreBrokerResourceType]::Group
-        $hashBody[[StoreBrokerGroupProperty]::type] = $Type
-        $hashBody[[StoreBrokerGroupProperty]::name] = $Name
+        $telemetryProperties = @{
+                [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+                [StoreBrokerTelemetryProperty]::Type = $Type
+                [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+                [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Group)
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
+        {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody[[StoreBrokerGroupProperty]::resourceType] = [StoreBrokerResourceType]::Group
+            $hashBody[[StoreBrokerGroupProperty]::type] = $Type
+            $hashBody[[StoreBrokerGroupProperty]::name] = $Name
+        }
+
+        $body = Get-JsonBody -InputObject $hashBody
+        Write-Log -Message "Body: $body" -Level Verbose
+
+        $params = @{
+            "UriFragment" = "groups"
+            "Method" = 'Post'
+            "Description" = "Creating new group"
+            "Body" = $body
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "New-Group"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        return Invoke-SBRestMethod @params
     }
-
-    $body = Get-JsonBody -InputObject $hashBody
-    Write-Log -Message "Body: $body" -Level Verbose
-
-    $params = @{
-        "UriFragment" = "groups"
-        "Method" = 'Post'
-        "Description" = "Creating new group"
-        "Body" = $body
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "New-Group"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
+    catch
+    {
+        throw
     }
-
-    return Invoke-SBRestMethod @params
 }
 
 # NOTE: Only usable by Azure at present time.
@@ -175,47 +189,54 @@ function Set-Group
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    if ($null -ne $Object)
+    try
     {
-        $GroupId = $Object.id
+        if ($null -ne $Object)
+        {
+            $GroupId = $Object.id
+        }
+
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+            [StoreBrokerTelemetryProperty]::Type = $Type
+            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Group)
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
+        {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody[[StoreBrokerGroupProperty]::resourceType] = [StoreBrokerResourceType]::Group
+            $hashBody[[StoreBrokerGroupProperty]::revisionToken] = $RevisionToken
+            $hashBody[[StoreBrokerGroupProperty]::type] = $Type
+            $hashBody[[StoreBrokerGroupProperty]::name] = $Name
+        }
+
+        $body = Get-JsonBody -InputObject $hashBody
+        Write-Log -Message "Body: $body" -Level Verbose
+
+        $params = @{
+            "UriFragment" = "groups/$GroupId"
+            "Method" = 'Put'
+            "Description" = "Updating group $GroupId"
+            "Body" = $body
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Set-Group"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        return Invoke-SBRestMethod @params
     }
-
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
-        [StoreBrokerTelemetryProperty]::Type = $Type
-        [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Group)
-
-    $hashBody = $Object
-    if ($null -eq $hashBody)
+    catch
     {
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody[[StoreBrokerGroupProperty]::resourceType] = [StoreBrokerResourceType]::Group
-        $hashBody[[StoreBrokerGroupProperty]::revisionToken] = $RevisionToken
-        $hashBody[[StoreBrokerGroupProperty]::type] = $Type
-        $hashBody[[StoreBrokerGroupProperty]::name] = $Name
+        throw
     }
-
-    $body = Get-JsonBody -InputObject $hashBody
-    Write-Log -Message "Body: $body" -Level Verbose
-
-    $params = @{
-        "UriFragment" = "groups/$GroupId"
-        "Method" = 'Put'
-        "Description" = "Updating group $GroupId"
-        "Body" = $body
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Set-Group"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
-
-    return Invoke-SBRestMethod @params
 }

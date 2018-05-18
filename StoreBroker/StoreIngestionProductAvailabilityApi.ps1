@@ -34,46 +34,53 @@ function Get-ProductAvailability
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $singleQuery = (-not [String]::IsNullOrWhiteSpace($ProductAvailabilityId))
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::ProductAvailabilityId = $ProductAvailabilityId
-        [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $getParams = @()
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+    try
     {
-        $getParams += "submissionId=$SubmissionId"
-    }
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($ProductAvailabilityId))
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::ProductAvailabilityId = $ProductAvailabilityId
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
 
-    $params = @{
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Get-ProductAvailability"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
+        $getParams = @()
+        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $getParams += "submissionId=$SubmissionId"
+        }
 
-    if ($singleQuery)
+        $params = @{
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Get-ProductAvailability"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "products/$ProductId/ProductAvailability/$ProductAvailabilityId`?" + ($getParams -join '&')
+            $params["Method" ] = 'Get'
+            $params["Description"] =  "Getting product availability $ProductAvailabilityId for $ProductId"
+
+            return Invoke-SBRestMethod @params
+        }
+        else
+        {
+            $params["UriFragment"] = "products/$ProductId/productAvailabilities`?" + ($getParams -join '&')
+            $params["Description"] =  "Getting product availabilities for $ProductId"
+            $params["SinglePage" ] = $SinglePage
+
+            return Invoke-SBRestMethodMultipleResult @params
+        }
+    }
+    catch
     {
-        $params["UriFragment"] = "products/$ProductId/ProductAvailability/$ProductAvailabilityId`?" + ($getParams -join '&')
-        $params["Method" ] = 'Get'
-        $params["Description"] =  "Getting product availability $ProductAvailabilityId for $ProductId"
-
-        return Invoke-SBRestMethod @params
-    }
-    else
-    {
-        $params["UriFragment"] = "products/$ProductId/productAvailabilities`?" + ($getParams -join '&')
-        $params["Description"] =  "Getting product availabilities for $ProductId"
-        $params["SinglePage" ] = $SinglePage
-
-        return Invoke-SBRestMethodMultipleResult @params
+        throw
     }
 }
 
@@ -117,56 +124,65 @@ function New-ProductAvailability
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
-        [StoreBrokerTelemetryProperty]::HasAudience = ($null -ne $Audience)
-        [StoreBrokerTelemetryProperty]::Visiblity = $Visibility
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $getParams = @()
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+    try
     {
-        $getParams += "submissionId=$SubmissionId"
-    }
+        $Visibility = Get-ProperEnumCasing -Value $Visibility
 
-    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::ProductAvailability)
-
-    $hashBody = $Object
-    if ($null -eq $hashBody)
-    {
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody[[StoreBrokerProductAvailabilityProperty]::resourceType] = [StoreBrokerResourceType]::ProductAvailability
-        $hashBody[[StoreBrokerProductAvailabilityProperty]::visibility] = $Visibility
-
-        if ($null -ne $Audience)
-        {
-            $hashBody[[StoreBrokerProductAvailabilityProperty]::audience] = ConvertTo-Json -InputObject @($Audience)
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+            [StoreBrokerTelemetryProperty]::HasAudience = ($null -ne $Audience)
+            [StoreBrokerTelemetryProperty]::Visiblity = $Visibility
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
+
+        $getParams = @()
+        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $getParams += "submissionId=$SubmissionId"
+        }
+
+        Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::ProductAvailability)
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
+        {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody[[StoreBrokerProductAvailabilityProperty]::resourceType] = [StoreBrokerResourceType]::ProductAvailability
+            $hashBody[[StoreBrokerProductAvailabilityProperty]::visibility] = $Visibility
+
+            if ($null -ne $Audience)
+            {
+                $hashBody[[StoreBrokerProductAvailabilityProperty]::audience] = ConvertTo-Json -InputObject @($Audience)
+            }
+        }
+
+        $body = Get-JsonBody -InputObject $hashBody
+        Write-Log -Message "Body: $body" -Level Verbose
+
+
+        $params = @{
+            "UriFragment" = "products/$ProductId/productAvailabilities`?" + ($getParams -join '&')
+            "Method" = 'Post'
+            "Description" = "Creating new product availability for $ProductId"
+            "Body" = $body
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "New-ProductAvailability"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        return Invoke-SBRestMethod @params
     }
-
-    $body = Get-JsonBody -InputObject $hashBody
-    Write-Log -Message "Body: $body" -Level Verbose
-
-
-    $params = @{
-        "UriFragment" = "products/$ProductId/productAvailabilities`?" + ($getParams -join '&')
-        "Method" = 'Post'
-        "Description" = "Creating new product availability for $ProductId"
-        "Body" = $body
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "New-ProductAvailability"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
+    catch
+    {
+        throw
     }
-
-    return Invoke-SBRestMethod @params
 }
 
 function Set-ProductAvailability
@@ -217,64 +233,73 @@ function Set-ProductAvailability
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    if ($null -ne $Object)
+    try
     {
-        $ProductAvailabilityId = $Object.id
-    }
+        $Visibility = Get-ProperEnumCasing -Value $Visibility
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::ProductAvailabilityId = $ProductAvailabilityId
-        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
-        [StoreBrokerTelemetryProperty]::HasAudience = ($null -ne $Audience)
-        [StoreBrokerTelemetryProperty]::Visiblity = $Visibility
-        [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $getParams = @()
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
-    {
-        $getParams += "submissionId=$SubmissionId"
-    }
-
-    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::ProductAvailability)
-
-    $hashBody = $Object
-    if ($null -eq $hashBody)
-    {
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody[[StoreBrokerProductAvailabilityProperty]::resourceType] = [StoreBrokerResourceType]::ProductAvailability
-        $hashBody[[StoreBrokerProductAvailabilityProperty]::visibility] = $Visibility
-        $hashBody[[StoreBrokerProductAvailabilityProperty]::revisionToken] = $RevisionToken
-
-        if ($null -ne $Audience)
+        if ($null -ne $Object)
         {
-            $hashBody[[StoreBrokerProductAvailabilityProperty]::audience] = ConvertTo-Json -InputObject @($Audience)
+            $ProductAvailabilityId = $Object.id
         }
+
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::ProductAvailabilityId = $ProductAvailabilityId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+            [StoreBrokerTelemetryProperty]::HasAudience = ($null -ne $Audience)
+            [StoreBrokerTelemetryProperty]::Visiblity = $Visibility
+            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        $getParams = @()
+        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $getParams += "submissionId=$SubmissionId"
+        }
+
+        Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::ProductAvailability)
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
+        {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody[[StoreBrokerProductAvailabilityProperty]::resourceType] = [StoreBrokerResourceType]::ProductAvailability
+            $hashBody[[StoreBrokerProductAvailabilityProperty]::visibility] = $Visibility
+            $hashBody[[StoreBrokerProductAvailabilityProperty]::revisionToken] = $RevisionToken
+
+            if ($null -ne $Audience)
+            {
+                $hashBody[[StoreBrokerProductAvailabilityProperty]::audience] = ConvertTo-Json -InputObject @($Audience)
+            }
+        }
+
+        $body = Get-JsonBody -InputObject $hashBody
+        Write-Log -Message "Body: $body" -Level Verbose
+
+
+        $params = @{
+            "UriFragment" = "products/$ProductId/productAvailabilities/$ProductAvailabilityId`?" + ($getParams -join '&')
+            "Method" = 'Put'
+            "Description" = "Updating product availability $ProductAvailabilityId for $ProductId"
+            "Body" = $body
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Set-ProductAvailability"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        return Invoke-SBRestMethod @params
     }
-
-    $body = Get-JsonBody -InputObject $hashBody
-    Write-Log -Message "Body: $body" -Level Verbose
-
-
-    $params = @{
-        "UriFragment" = "products/$ProductId/productAvailabilities/$ProductAvailabilityId`?" + ($getParams -join '&')
-        "Method" = 'Put'
-        "Description" = "Updating product availability $ProductAvailabilityId for $ProductId"
-        "Body" = $body
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Set-ProductAvailability"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
+    catch
+    {
+        throw
     }
-
-    return Invoke-SBRestMethod @params
 }
 
 function Update-ProductAvailability
@@ -291,7 +316,7 @@ function Update-ProductAvailability
 
         [switch] $UpdateVisibilityFromSubmissionData,
 
-        [ValidateSet('Public', 'Private', 'Hidden', 'StopSelling')]
+        [ValidateSet('Public', 'Private', 'StopSelling')]
         [string] $Visibility,
 
         [string] $ClientRequestId,
@@ -303,68 +328,84 @@ function Update-ProductAvailability
         [switch] $NoStatus
     )
 
-    $providedSubmissionData = ($null -ne $PSBoundParameters['SubmissionData'])
-    if ($providedSubmissionData -and $UpdateVisibilityFromSubmissionData)
-    {
-        $message = 'Cannot request -UpdateVisibilityFromSubmissionData without providing SubmissionData.'
-        Write-Log -Message $message -Level Error
-        throw $message
-    }
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $providedVisibility = ($null -ne $PSBoundParameters['Visibility'])
-    if ($providedVisibility -and (-not $UpdateVisibilityFromSubmissionData))
+    try
     {
-        Write-Log -Message 'No modification parameters provided.  Nothing to do.' -Level Verbose
+        $providedSubmissionData = ($null -ne $PSBoundParameters['SubmissionData'])
+        if ($providedSubmissionData -and $UpdateVisibilityFromSubmissionData)
+        {
+            $message = 'Cannot request -UpdateVisibilityFromSubmissionData without providing SubmissionData.'
+            Write-Log -Message $message -Level Error
+            throw $message
+        }
+
+        $providedVisibility = ($null -ne $PSBoundParameters['Visibility'])
+        if ($providedVisibility)
+        {
+            # The check is necessary, because if no value was provided, we'll get an empty string back
+            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
+            $Visibility = Get-ProperEnumCasing -Value $Visibility
+
+            if (-not $UpdateVisibilityFromSubmissionData)
+            {
+                Write-Log -Message 'No modification parameters provided.  Nothing to do.' -Level Verbose
+                return
+            }
+        }
+
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+        $params = @{
+            'ProductId' = $ProductId
+            'SubmissionId' = $SubmissionId
+            'ClientRequestId' = $ClientRequestId
+            'CorrelationId' = $CorrelationId
+            'AccessToken' = $AccessToken
+            'NoStatus' = $NoStatus
+        }
+
+        $availability = Get-ProductAvailability @params
+
+        if ($UpdateVisibilityFromSubmissionData)
+        {
+            $availability.visibility = $SubmissionData.visibility
+        }
+
+        # If users pass in a different value for any of the publish/values at the commandline,
+        # it overrides that which comes from the SubmissionData.
+        if ($providedVisibility)
+        {
+            $availability.visibility = $Visibility
+        }
+
+        # Hidden (API v1) == Private (API v2)
+        if ($availability.visibility -eq 'Hidden')
+        {
+            $availability.visibility = 'Private'
+        }
+
+        $null = Set-ProductAvailability @params -Object $availability
+
+        # Record the telemetry for this event.
+        $stopwatch.Stop()
+        $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::ProvidedSubmissionData = ($null -ne $SubmissionData)
+            [StoreBrokerTelemetryProperty]::Visbility = $Visibility
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        Set-TelemetryEvent -EventName Patch-ProductAvailability -Properties $telemetryProperties -Metrics $telemetryMetrics
         return
     }
-
-    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-
-    $params = @{
-        'ProductId' = $ProductId
-        'SubmissionId' = $SubmissionId
-        'ClientRequestId' = $ClientRequestId
-        'CorrelationId' = $CorrelationId
-        'AccessToken' = $AccessToken
-        'NoStatus' = $NoStatus
-    }
-
-    $availability = Get-ProductAvailability @params
-
-    if ($UpdateVisibilityFromSubmissionData)
+    catch
     {
-        $availability.visibility = $SubmissionData.visibility
+        throw
     }
-
-    # If users pass in a different value for any of the publish/values at the commandline,
-    # it overrides that which comes from the SubmissionData.
-    if ($providedVisibility)
-    {
-        $availability.visibility = $Visibility
-    }
-
-    # Hidden (API v1) == Private (API v2)
-    if ($availability.visibility -eq 'Hidden')
-    {
-        $availability.visibility = 'Private'
-    }
-
-    $null = Set-ProductAvailability @params -Object $availability
-
-    # Record the telemetry for this event.
-    $stopwatch.Stop()
-    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::ProvidedSubmissionData = ($null -ne $SubmissionData)
-        [StoreBrokerTelemetryProperty]::Visbility = $Visibility
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    Set-TelemetryEvent -EventName Patch-ProductAvailability -Properties $telemetryProperties -Metrics $telemetryMetrics
-    return
 }
 
 function New-Audience

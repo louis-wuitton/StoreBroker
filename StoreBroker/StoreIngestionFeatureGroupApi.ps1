@@ -32,40 +32,47 @@ function Get-FeatureGroup
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $singleQuery = (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-        [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
+    try
+        {
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
 
-    $params = @{
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Get-FeatureGroup"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
+        $params = @{
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Get-FeatureGroup"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
 
-    if ($singleQuery)
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "products/$ProductId/featureGroups/$FeatureGroupId`?submissionId=$SubmissionId"
+            $params["Method" ] = 'Get'
+            $params["Description"] =  "Getting feature group: $FeatureGroupId for product: $ProductId"
+
+            return Invoke-SBRestMethod @params
+        }
+        else
+        {
+            $params["UriFragment"] = "products/$ProductId/featureGroups`?submissionId=$SubmissionId"
+            $params["Description"] =  "Getting feature groups for product: $ProductId"
+            $params["SinglePage" ] = $SinglePage
+
+            return Invoke-SBRestMethodMultipleResult @params
+        }
+    }
+    catch
     {
-        $params["UriFragment"] = "products/$ProductId/featureGroups/$FeatureGroupId`?submissionId=$SubmissionId"
-        $params["Method" ] = 'Get'
-        $params["Description"] =  "Getting feature group: $FeatureGroupId for product: $ProductId"
-
-        return Invoke-SBRestMethod @params
-    }
-    else
-    {
-        $params["UriFragment"] = "products/$ProductId/featureGroups`?submissionId=$SubmissionId"
-        $params["Description"] =  "Getting feature groups for product: $ProductId"
-        $params["SinglePage" ] = $SinglePage
-
-        return Invoke-SBRestMethodMultipleResult @params
+        throw
     }
 }
 
@@ -98,83 +105,90 @@ function New-FeatureGroup
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $getParams = @()
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+    try
     {
-        $getParams += "submissionId=$SubmissionId"
-    }
-
-    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::FeatureGroup)
-
-    $hashBody = $Object
-    if ($null -eq $hashBody)
-    {
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody[[StoreBrokerFeatureGroupProperty]::resourceType] = [StoreBrokerResourceType]::FeatureGroup
-
-        # TODO: Once I better understand this model
-    }
-
-    $body = Get-JsonBody -InputObject $hashBody
-
-    $uriFragment = "products/$ProductId/featureGroups`?" + ($getParams -join '&')
-    $description = "Creating new feature group for $ProductId"
-    $isbulkOperation = $Object.Count -gt 1
-    if ($isbulkOperation)
-    {
-        $uriFragment = "products/$ProductId/featureGroups/bulk`?" + ($getParams -join '&')
-        $description = "Bulk creating feature groups for $ProductId"
-    }
-
-    $params = @{
-        "UriFragment" = $uriFragment
-        "Method" = 'Post'
-        "Description" = $description
-        "Body" = $body
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "New-FeatureGroup"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
-
-    $result = Invoke-SBRestMethod @params
-    if ($isbulkOperation)
-    {
-        $finalResult = @()
-        $finalResult += $result.value
-
-        if ($null -ne $result.nextLink)
-        {
-            $params = @{
-                "UriFragment" = $result.nextLink
-                "Description" = "Getting remaining results"
-                "ClientRequestId" = $ClientRequestId
-                "CorrelationId" = $CorrelationId
-                "AccessToken" = $AccessToken
-                "TelemetryEventName" = "New-FeatureGroup"
-                "TelemetryProperties" = $telemetryProperties
-                "NoStatus" = $NoStatus
-            }
-
-            $finalResult += Invoke-SBRestMethodMultipleResult @params
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        return $finalResult
+        $getParams = @()
+        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $getParams += "submissionId=$SubmissionId"
+        }
+
+        Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::FeatureGroup)
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
+        {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody[[StoreBrokerFeatureGroupProperty]::resourceType] = [StoreBrokerResourceType]::FeatureGroup
+
+            # TODO: Once I better understand this model
+        }
+
+        $body = Get-JsonBody -InputObject $hashBody
+
+        $uriFragment = "products/$ProductId/featureGroups`?" + ($getParams -join '&')
+        $description = "Creating new feature group for $ProductId"
+        $isbulkOperation = $Object.Count -gt 1
+        if ($isbulkOperation)
+        {
+            $uriFragment = "products/$ProductId/featureGroups/bulk`?" + ($getParams -join '&')
+            $description = "Bulk creating feature groups for $ProductId"
+        }
+
+        $params = @{
+            "UriFragment" = $uriFragment
+            "Method" = 'Post'
+            "Description" = $description
+            "Body" = $body
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "New-FeatureGroup"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        $result = Invoke-SBRestMethod @params
+        if ($isbulkOperation)
+        {
+            $finalResult = @()
+            $finalResult += $result.value
+
+            if ($null -ne $result.nextLink)
+            {
+                $params = @{
+                    "UriFragment" = $result.nextLink
+                    "Description" = "Getting remaining results"
+                    "ClientRequestId" = $ClientRequestId
+                    "CorrelationId" = $CorrelationId
+                    "AccessToken" = $AccessToken
+                    "TelemetryEventName" = "New-FeatureGroup"
+                    "TelemetryProperties" = $telemetryProperties
+                    "NoStatus" = $NoStatus
+                }
+
+                $finalResult += Invoke-SBRestMethodMultipleResult @params
+            }
+
+            return $finalResult
+        }
+        else
+        {
+            return $result
+        }
     }
-    else
+    catch
     {
-        return $result
+        throw
     }
 }
 
@@ -205,33 +219,40 @@ function Remove-FeatureGroup
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $getParams = @()
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+    try
     {
-        $getParams += "submissionId=$SubmissionId"
-    }
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
 
-    $params = @{
-        "UriFragment" = "products/$ProductId/featureGroups/$FeatureGroupId`?" + ($getParams -join '&')
-        "Method" = "Delete"
-        "Description" = "Deleting feature group $FeaureGroupId for $ProductId"
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Remove-FeatureGroup"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
+        $getParams = @()
+        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $getParams += "submissionId=$SubmissionId"
+        }
 
-    $null = Invoke-SBRestMethod @params
+        $params = @{
+            "UriFragment" = "products/$ProductId/featureGroups/$FeatureGroupId`?" + ($getParams -join '&')
+            "Method" = "Delete"
+            "Description" = "Deleting feature group $FeaureGroupId for $ProductId"
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Remove-FeatureGroup"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        $null = Invoke-SBRestMethod @params
+    }
+    catch
+    {
+        throw
+    }
 }
 
 function Set-FeatureGroup
@@ -273,54 +294,61 @@ function Set-FeatureGroup
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    if ($null -ne $Object)
+    try
     {
-        $FeatureGroupId = $Object.id
-    }
+        if ($null -ne $Object)
+        {
+            $FeatureGroupId = $Object.id
+        }
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::FeatureGroupId = $GroupId
-        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
-        [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::FeatureGroupId = $GroupId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
 
-    $getParams = @()
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        $getParams = @()
+        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $getParams += "submissionId=$SubmissionId"
+        }
+
+        Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::FeatureGroup)
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
+        {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody[[StoreBrokerFeatureGroupProperty]::revisionToken] = $RevisionToken
+            $hashBody[[StoreBrokerFeatureGroupProperty]::resourceType] = [StoreBrokerResourceType]::FeatureGroup
+
+            # TODO: Once I better understand this model
+        }
+
+        $body = Get-JsonBody -InputObject $hashBody
+
+        $params = @{
+            "UriFragment" = "products/$ProductId/featureGroups/$FeatureGroupId`?" + ($getParams -join '&')
+            "Method" = 'Put'
+            "Description" = "Updating feature group $FeatureGroupId for $ProductId"
+            "Body" = $body
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Set-FeatureGroup"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        return Invoke-SBRestMethod @params
+    }
+    catch
     {
-        $getParams += "submissionId=$SubmissionId"
+        throw
     }
-
-    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::FeatureGroup)
-
-    $hashBody = $Object
-    if ($null -eq $hashBody)
-    {
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody[[StoreBrokerFeatureGroupProperty]::revisionToken] = $RevisionToken
-        $hashBody[[StoreBrokerFeatureGroupProperty]::resourceType] = [StoreBrokerResourceType]::FeatureGroup
-
-        # TODO: Once I better understand this model
-    }
-
-    $body = Get-JsonBody -InputObject $hashBody
-
-    $params = @{
-        "UriFragment" = "products/$ProductId/featureGroups/$FeatureGroupId`?" + ($getParams -join '&')
-        "Method" = 'Put'
-        "Description" = "Updating feature group $FeatureGroupId for $ProductId"
-        "Body" = $body
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Set-FeatureGroup"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
-
-    return Invoke-SBRestMethod @params
 }

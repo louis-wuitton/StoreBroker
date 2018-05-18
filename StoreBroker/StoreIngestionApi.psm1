@@ -1630,7 +1630,7 @@ param(
     Start-Process -FilePath $uri
 }
 
-function Get-ProperEnumCasing
+filter Get-ProperEnumCasing
 {
 <#
     .SYNOPSIS
@@ -1652,12 +1652,12 @@ function Get-ProperEnumCasing
         The enum value the user needs the proper casing for.
 
     .EXAMPLE
-        Get-ProperEnumCasing -EnumValue immediate
+        Get-ProperEnumCasing -Value immediate
 
         Returns "Immediate"
 
     .EXAMPLE
-        Get-ProperEnumCasing -EnumValue 'Un1kn0wn'
+        Get-ProperEnumCasing -Value 'Un1kn0wn'
 
         Returns the provided value "Un1kn0wn" since it's not a known Enum value.
 
@@ -1673,22 +1673,38 @@ function Get-ProperEnumCasing
         for where the enum value is being used.
 #>
     param(
-        [Parameter(Mandatory)]
-        [string] $EnumValue
+        [Parameter(ValueFromPipeline)]
+        [string] $Value
     )
 
-    switch ($EnumValue)
+    $enumValues = @(
+        'Public', 'Private', 'StopSelling',
+        'PendingUpload', 'Uploaded',
+        'Live', 'Preview',
+        'InProgress', 'Published',
+        'Immediate', 'Manual', 'SpecificDate',
+        'HeroImage414x180', 'HeroImage846x468', 'HeroImage558x756', 'HeroImage414x468', 'HeroImage558x558', 'HeroImage2400x1200',
+        'Screenshot', 'ScreenshotWXGA', 'ScreenshotHD720', 'ScreenshotWVGA',
+        'SmallMobileTile', 'SmallXboxLiveTile', 'LargeMobileTile', 'LargeXboxLiveTile', 'Tile',
+        'DesktopIcon', 'Icon', 'AchievementIcon', 'ChallengePromoIcon', 'RewardDisplayIcon', 'Icon150X150', 'Icon71X71',
+        'Doublewide', 'Panoramic', 'Square', 'MobileScreenshot', 'XboxScreenshot', 'PpiScreenshot', 'AnalogScreenshot',
+        'BoxArt', 'BrandedKeyArt', 'PosterArt', 'FeaturedPromotionalArt', 'SquareHeroArt', 'TitledHeroArt'        
+        'Application', 'AvatarItem', 'Bundle', 'Consumable', 'ManagedConsumable', 'Durable', 'DurableWithBits',
+        'Subscription', 'SeasonPass', 'InternetOfThings'
+        'ApplicationProperty', 'AddonProperty', 'BundleProperty', 'AvatarProperty', 'IoTProperty', 'AzureProperty'
+        'Initialized', 'Completed', 'RolledBack'
+    )
+
+    foreach ($enumValue in $enumValues)
     {
-        'Hidden'                    { return 'Hidden' }
-        'Immediate'                 { return 'Immediate' }
-        $script:keywordManual       { return $script:keywordManual }
-        'Public'                    { return 'Public' }
-        'Private'                   { return 'Private' }
-        $script:keywordSpecificDate { return $script:keywordSpecificDate }
+        if ($enumValue -eq $Value)
+        {
+            return $enumValue # This will return the proper-case version
+        }
     }
 
     # If we don't know the Enum value, we'll simply return the intiial value sent in.
-    return $EnumValue
+    return $Value
 }
 
 function Invoke-SBRestMethod

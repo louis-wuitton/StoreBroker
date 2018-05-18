@@ -31,46 +31,53 @@ function Get-ProductProperty
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $singleQuery = (-not [String]::IsNullOrWhiteSpace($PropertyId))
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::PropertyId = $PropertyId
-        [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $getParams = @()
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+    try
     {
-        $getParams += "submissionId=$SubmissionId"
-    }
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($PropertyId))
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::PropertyId = $PropertyId
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
 
-    $params = @{
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Get-ProductProperty"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
+        $getParams = @()
+        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $getParams += "submissionId=$SubmissionId"
+        }
 
-    if ($singleQuery)
+        $params = @{
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Get-ProductProperty"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "products/$ProductId/properties/$PropertyId`?" + ($getParams -join '&')
+            $params["Method" ] = 'Get'
+            $params["Description"] =  "Getting property $PropertyId for $ProductId"
+
+            return Invoke-SBRestMethod @params
+        }
+        else
+        {
+            $params["UriFragment"] = "products/$ProductId/properties`?" + ($getParams -join '&')
+            $params["Description"] =  "Getting properties for $ProductId"
+            $params["SinglePage" ] = $SinglePage
+
+            return Invoke-SBRestMethodMultipleResult @params
+        }
+    }
+    catch
     {
-        $params["UriFragment"] = "products/$ProductId/properties/$PropertyId`?" + ($getParams -join '&')
-        $params["Method" ] = 'Get'
-        $params["Description"] =  "Getting property $PropertyId for $ProductId"
-
-        return Invoke-SBRestMethod @params
-    }
-    else
-    {
-        $params["UriFragment"] = "products/$ProductId/properties`?" + ($getParams -join '&')
-        $params["Description"] =  "Getting properties for $ProductId"
-        $params["SinglePage" ] = $SinglePage
-
-        return Invoke-SBRestMethodMultipleResult @params
+        throw
     }
 }
 
@@ -106,51 +113,65 @@ function New-ProductProperty
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
-        [StoreBrokerTelemetryProperty]::ResourceType = $Type
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $getParams = @()
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+    try
     {
-        $getParams += "submissionId=$SubmissionId"
-    }
-
-    $hashBody = $Object
-    if ($null -eq $hashBody)
-    {
-        # Convert the input into a Json body.
-        $hashBody = @{}
-
-        # TODO: Not sure what I should really be doing here.
-        if (-not [String]::IsNullOrWhiteSpace($Type))
+        if ($null -ne $PSBoundParameters['Type'])
         {
-            $hashBody[[StoreBrokerProductPropertyProperty]::resourceType] = $Type
+            # The check is necessary, because if no value was provided, we'll get an empty string back
+            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
+            $Type = Get-ProperEnumCasing -Value $Type
         }
+
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+            [StoreBrokerTelemetryProperty]::ResourceType = $Type
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        $getParams = @()
+        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $getParams += "submissionId=$SubmissionId"
+        }
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
+        {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+
+            # TODO: Not sure what I should really be doing here.
+            if (-not [String]::IsNullOrWhiteSpace($Type))
+            {
+                $hashBody[[StoreBrokerProductPropertyProperty]::resourceType] = $Type
+            }
+        }
+
+        $body = Get-JsonBody -InputObject $hashBody
+        Write-Log -Message "Body: $body" -Level Verbose
+
+        $params = @{
+            "UriFragment" = "products/$ProductId/properties`?" + ($getParams -join '&')
+            "Method" = 'Post'
+            "Description" = "Creating new property for $ProductId"
+            "Body" = $body
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "New-ProductProperty"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        return Invoke-SBRestMethod @params
     }
-
-    $body = Get-JsonBody -InputObject $hashBody
-    Write-Log -Message "Body: $body" -Level Verbose
-
-    $params = @{
-        "UriFragment" = "products/$ProductId/properties`?" + ($getParams -join '&')
-        "Method" = 'Post'
-        "Description" = "Creating new property for $ProductId"
-        "Body" = $body
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "New-ProductProperty"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
+    catch
+    {
+        throw
     }
-
-    return Invoke-SBRestMethod @params
 }
 
 function Set-ProductProperty
@@ -194,59 +215,73 @@ function Set-ProductProperty
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    if ($null -ne $Object)
+    try
     {
-        $PropertyId = $Object.id
-    }
-
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::PropertyId = $PropertyId
-        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
-        [StoreBrokerTelemetryProperty]::ResourceType = $Type
-        [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $getParams = @()
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
-    {
-        $getParams += "submissionId=$SubmissionId"
-    }
-
-    $hashBody = $Object
-    if ($null -eq $hashBody)
-    {
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody[[StoreBrokerProductPropertyProperty]::revisionToken] = $RevisionToken
-
-        if (-not [String]::IsNullOrWhiteSpace($Type))
+        if ($null -ne $PSBoundParameters['Type'])
         {
-            # TODO: Not sure what I should really be doing here.
-            $hashBody[[StoreBrokerProductPropertyProperty]::resourceType] = $Type
+            # The check is necessary, because if no value was provided, we'll get an empty string back
+            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
+            $Type = Get-ProperEnumCasing -Value $Type
         }
+
+        if ($null -ne $Object)
+        {
+            $PropertyId = $Object.id
+        }
+
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::PropertyId = $PropertyId
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+            [StoreBrokerTelemetryProperty]::ResourceType = $Type
+            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        $getParams = @()
+        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $getParams += "submissionId=$SubmissionId"
+        }
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
+        {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody[[StoreBrokerProductPropertyProperty]::revisionToken] = $RevisionToken
+
+            if (-not [String]::IsNullOrWhiteSpace($Type))
+            {
+                # TODO: Not sure what I should really be doing here.
+                $hashBody[[StoreBrokerProductPropertyProperty]::resourceType] = $Type
+            }
+        }
+
+        $body = Get-JsonBody -InputObject $hashBody
+        Write-Log -Message "Body: $body" -Level Verbose
+
+        $params = @{
+            "UriFragment" = "products/$ProductId/properties/$PropertyId`?" + ($getParams -join '&')
+            "Method" = 'Put'
+            "Description" = "Updating property $PropertyId for $ProductId"
+            "Body" = $body
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Set-ProductProperty"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        return Invoke-SBRestMethod @params
     }
-
-    $body = Get-JsonBody -InputObject $hashBody
-    Write-Log -Message "Body: $body" -Level Verbose
-
-    $params = @{
-        "UriFragment" = "products/$ProductId/properties/$PropertyId`?" + ($getParams -join '&')
-        "Method" = 'Put'
-        "Description" = "Updating property $PropertyId for $ProductId"
-        "Body" = $body
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Set-ProductProperty"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
+    catch
+    {
+        throw
     }
-
-    return Invoke-SBRestMethod @params
 }
 
 function Update-ProductProperty
@@ -272,61 +307,70 @@ function Update-ProductProperty
         [switch] $NoStatus
     )
 
-    $providedSubmissionData = ($null -ne $PSBoundParameters['SubmissionData'])
-    if ($providedSubmissionData -and $UpdateCategoryFromSubmissionData)
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
+
+    try
     {
-        $message = 'Cannot request -UpdateCategoryFromSubmissionData without providing SubmissionData.'
-        Write-Log -Message $message -Level Error
-        throw $message
-    }
-
-    if (-not $UpdateCategoryFromSubmissionData)
-    {
-        Write-Log -Message 'No modification parameters provided.  Nothing to do.' -Level Verbose
-        return
-    }
-
-    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-
-    $params = @{
-        'ProductId' = $ProductId
-        'SubmissionId' = $SubmissionId
-        'ClientRequestId' = $ClientRequestId
-        'CorrelationId' = $CorrelationId
-        'AccessToken' = $AccessToken
-        'NoStatus' = $NoStatus
-    }
-
-    $property = Get-Property @params
-
-    if ($UpdateCategoryFromSubmissionData)
-    {
-        [System.Collections.ArrayList]$split = $SubmissionData.applicationCategory -split '_'
-        $category = $split[0]
-        $split.RemoveAt(0)
-        $subCategory = $split
-        if ($subCategory.Count -eq 0)
+        $providedSubmissionData = ($null -ne $PSBoundParameters['SubmissionData'])
+        if ($providedSubmissionData -and $UpdateCategoryFromSubmissionData)
         {
-            $null = $subCategory.Add('NotSet')
+            $message = 'Cannot request -UpdateCategoryFromSubmissionData without providing SubmissionData.'
+            Write-Log -Message $message -Level Error
+            throw $message
         }
 
-        $property.category = $category
-        $property.subcategories = (ConvertTo-Json -InputObject $subCategory)
+        if (-not $UpdateCategoryFromSubmissionData)
+        {
+            Write-Log -Message 'No modification parameters provided.  Nothing to do.' -Level Verbose
+            return
+        }
+
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+        $params = @{
+            'ProductId' = $ProductId
+            'SubmissionId' = $SubmissionId
+            'ClientRequestId' = $ClientRequestId
+            'CorrelationId' = $CorrelationId
+            'AccessToken' = $AccessToken
+            'NoStatus' = $NoStatus
+        }
+
+        $property = Get-Property @params
+
+        if ($UpdateCategoryFromSubmissionData)
+        {
+            [System.Collections.ArrayList]$split = $SubmissionData.applicationCategory -split '_'
+            $category = $split[0]
+            $split.RemoveAt(0)
+            $subCategory = $split
+            if ($subCategory.Count -eq 0)
+            {
+                $null = $subCategory.Add('NotSet')
+            }
+
+            $property.category = $category
+            $property.subcategories = (ConvertTo-Json -InputObject $subCategory)
+        }
+
+        $null = Set-Property @params -Object $property
+
+        # Record the telemetry for this event.
+        $stopwatch.Stop()
+        $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::ProvidedSubmissionData = ($null -ne $SubmissionData)
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        Set-TelemetryEvent -EventName Update-ProductProperty -Properties $telemetryProperties -Metrics $telemetryMetrics
+        return
     }
-
-    $null = Set-Property @params -Object $property
-
-    # Record the telemetry for this event.
-    $stopwatch.Stop()
-    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::ProvidedSubmissionData = ($null -ne $SubmissionData)
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    catch
+    {
+        throw
     }
-
-    Set-TelemetryEvent -EventName Update-ProductProperty -Properties $telemetryProperties -Metrics $telemetryMetrics
-    return
 }

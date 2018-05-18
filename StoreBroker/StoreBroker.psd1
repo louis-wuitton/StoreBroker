@@ -13,6 +13,7 @@
 
     # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
     NestedModules = @(
+        'ConvertFrom-ExistingSubmission.ps1',
         'Helpers.ps1',
         'NugetTools.ps1',
         'PackageTool.ps1',
@@ -31,7 +32,6 @@
         'StoreIngestionPropertyApi.ps1',
         'StoreIngestionRolloutApi.ps1',
         'StoreIngestionSubmissionApi.ps1',
-        'StoreIngestionUpdateApi.ps1',
 
 
         'Telemetry.ps1')
@@ -97,6 +97,7 @@
         'Submit-Submission',
         'Publish-Submission',
         'Push-Submission',
+        'Update-Submission',
 
         'Get-SubmissionRollout',
         'Set-SubmissionRollout',
@@ -106,6 +107,7 @@
         'Get-ProductPackage',
         'New-ProductPackage',
         'Set-ProductPackage',
+        'Update-ProductPackage',
 
         'Get-ProductPackageConfiguration',
         'New-ProductPackageConfiguration',
@@ -120,6 +122,8 @@
         'New-ProductAvailability',
         'Set-ProductAvailability',
         'Update-ProductAvailability',
+
+        'ConvertFrom-ExistingSubmission',
 
         'Clear-StoreBrokerAuthentication',
         'Get-StoreFile',

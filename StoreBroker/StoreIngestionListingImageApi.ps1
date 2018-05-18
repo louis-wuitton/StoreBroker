@@ -41,49 +41,56 @@ function Get-ListingImage
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $singleQuery = (-not [String]::IsNullOrWhiteSpace($ImageId))
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-        [StoreBrokerTelemetryProperty]::ImageId = $ImageId
-        [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $getParams = @()
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+    try
     {
-        $getParams += "submissionId=$SubmissionId"
-    }
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($ImageId))
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+            [StoreBrokerTelemetryProperty]::ImageId = $ImageId
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
 
-    $params = @{
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Get-ListingImage"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
+        $getParams = @()
+        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $getParams += "submissionId=$SubmissionId"
+        }
 
-    if ($singleQuery)
+        $params = @{
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Get-ListingImage"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/images/$ImageId`?" + ($getParams -join '&')
+            $params["Method" ] = 'Get'
+            $params["Description"] =  "Getting listing image $ImageId for $ProductId"
+
+            return Invoke-SBRestMethod @params
+        }
+        else
+        {
+            $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/images`?" + ($getParams -join '&')
+            $params["Description"] =  "Getting listing images for $ProductId"
+            $params["SinglePage" ] = $SinglePage
+
+            return Invoke-SBRestMethodMultipleResult @params
+        }
+    }
+    catch
     {
-        $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/images/$ImageId`?" + ($getParams -join '&')
-        $params["Method" ] = 'Get'
-        $params["Description"] =  "Getting listing image $ImageId for $ProductId"
-
-        return Invoke-SBRestMethod @params
+        throw
     }
-    else
-    {
-        $params["UriFragment"] = "products/$ProductId/listings/$LanguageCode/images`?" + ($getParams -join '&')
-        $params["Description"] =  "Getting listing images for $ProductId"
-        $params["SinglePage" ] = $SinglePage
-
-        return Invoke-SBRestMethodMultipleResult @params
-    }
-}
+ }
 
 function New-ListingImage
 {
@@ -138,86 +145,95 @@ function New-ListingImage
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-        [StoreBrokerTelemetryProperty]::Type = $Type
-        [StoreBrokerTelemetryProperty]::Orientation = $Orientation
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $getParams = @()
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+    try
     {
-        $getParams += "submissionId=$SubmissionId"
-    }
+        $Type = (Get-ProperEnumCasing -Value $Type)
 
-    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::ListingImage)
-
-    $hashBody = $Object
-    if ($null -eq $hashBody)
-    {
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody[[StoreBrokerListingImageProperty]::resourceType] = [StoreBrokerResourceType]::ListingImage
-        $hashBody[[StoreBrokerListingImageProperty]::fileName] = $FileName
-        $hashBody[[StoreBrokerListingImageProperty]::type] = $Type
-        $hashBody[[StoreBrokerListingImageProperty]::orientation] = $Orientation
-    }
-
-    $body = Get-JsonBody -InputObject $hashBody
-
-    $uriFragment = "products/$ProductId/listings/$LanguageCode/images`?" + ($getParams -join '&')
-    $description = "Creating new $LanguageCode listing image for $ProductId"
-    $isbulkOperation = $Object.Count -gt 1
-    if ($isbulkOperation)
-    {
-        $uriFragment = "products/$ProductId/listings/$LanguageCode/images/bulk`?" + ($getParams -join '&')
-        $description = "Bulk creating $LanguageCode listing images for $ProductId"
-    }
-
-    $params = @{
-        "UriFragment" = $uriFragment
-        "Method" = 'Post'
-        "Description" = $description
-        "Body" = $body
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "New-ListingImage"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
-
-    $result = Invoke-SBRestMethod @params
-    if ($isbulkOperation)
-    {
-        $finalResult = @()
-        $finalResult += $result.value
-
-        if ($null -ne $result.nextLink)
-        {
-            $params = @{
-                "UriFragment" = $result.nextLink
-                "Description" = "Getting remaining results"
-                "ClientRequestId" = $ClientRequestId
-                "CorrelationId" = $CorrelationId
-                "AccessToken" = $AccessToken
-                "TelemetryEventName" = "New-ListingImage"
-                "TelemetryProperties" = $telemetryProperties
-                "NoStatus" = $NoStatus
-            }
-
-            $finalResult += Invoke-SBRestMethodMultipleResult @params
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+            [StoreBrokerTelemetryProperty]::Type = $Type
+            [StoreBrokerTelemetryProperty]::Orientation = $Orientation
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        return $finalResult
+        $getParams = @()
+        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $getParams += "submissionId=$SubmissionId"
+        }
+
+        Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::ListingImage)
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
+        {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody[[StoreBrokerListingImageProperty]::resourceType] = [StoreBrokerResourceType]::ListingImage
+            $hashBody[[StoreBrokerListingImageProperty]::fileName] = $FileName
+            $hashBody[[StoreBrokerListingImageProperty]::type] = $Type
+            $hashBody[[StoreBrokerListingImageProperty]::orientation] = $Orientation
+        }
+
+        $body = Get-JsonBody -InputObject $hashBody
+
+        $uriFragment = "products/$ProductId/listings/$LanguageCode/images`?" + ($getParams -join '&')
+        $description = "Creating new $LanguageCode listing image for $ProductId"
+        $isbulkOperation = $Object.Count -gt 1
+        if ($isbulkOperation)
+        {
+            $uriFragment = "products/$ProductId/listings/$LanguageCode/images/bulk`?" + ($getParams -join '&')
+            $description = "Bulk creating $LanguageCode listing images for $ProductId"
+        }
+
+        $params = @{
+            "UriFragment" = $uriFragment
+            "Method" = 'Post'
+            "Description" = $description
+            "Body" = $body
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "New-ListingImage"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        $result = Invoke-SBRestMethod @params
+        if ($isbulkOperation)
+        {
+            $finalResult = @()
+            $finalResult += $result.value
+
+            if ($null -ne $result.nextLink)
+            {
+                $params = @{
+                    "UriFragment" = $result.nextLink
+                    "Description" = "Getting remaining results"
+                    "ClientRequestId" = $ClientRequestId
+                    "CorrelationId" = $CorrelationId
+                    "AccessToken" = $AccessToken
+                    "TelemetryEventName" = "New-ListingImage"
+                    "TelemetryProperties" = $telemetryProperties
+                    "NoStatus" = $NoStatus
+                }
+
+                $finalResult += Invoke-SBRestMethodMultipleResult @params
+            }
+
+            return $finalResult
+        }
+        else
+        {
+            return $result
+        }
     }
-    else
+    catch
     {
-        return $result
+        throw
     }
 }
 
@@ -252,34 +268,41 @@ function Remove-ListingImage
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-        [StoreBrokerTelemetryProperty]::ImageId = $ImageId
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $getParams = @()
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+    try
     {
-        $getParams += "submissionId=$SubmissionId"
-    }
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+            [StoreBrokerTelemetryProperty]::ImageId = $ImageId
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
 
-    $params = @{
-        "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId`?" + ($getParams -join '&')
-        "Method" = "Delete"
-        "Description" = "Deleting image $ImageId from the $LanguageCode listing for $ProductId"
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Remove-ListingImage"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
+        $getParams = @()
+        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $getParams += "submissionId=$SubmissionId"
+        }
 
-    $null = Invoke-SBRestMethod @params
+        $params = @{
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId`?" + ($getParams -join '&')
+            "Method" = "Delete"
+            "Description" = "Deleting image $ImageId from the $LanguageCode listing for $ProductId"
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Remove-ListingImage"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        $null = Invoke-SBRestMethod @params
+    }
+    catch
+    {
+        throw
+    }
 }
 
 function Set-ListingImage
@@ -336,58 +359,67 @@ function Set-ListingImage
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    if ($null -ne $Object)
+    try
     {
-        $ImageId = $Object.id
-    }
+        $State = (Get-ProperEnumCasing -Value $State)
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-        [StoreBrokerTelemetryProperty]::ImageId = $ImageId
-        [StoreBrokerTelemetryProperty]::State = $State
-        [StoreBrokerTelemetryProperty]::Orientation = $Orientation
-        [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
+        if ($null -ne $Object)
+        {
+            $ImageId = $Object.id
+        }
 
-    $getParams = @()
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+            [StoreBrokerTelemetryProperty]::ImageId = $ImageId
+            [StoreBrokerTelemetryProperty]::State = $State
+            [StoreBrokerTelemetryProperty]::Orientation = $Orientation
+            [StoreBrokerTelemetryProperty]::RevisionToken = $RevisionToken
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        $getParams = @()
+        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $getParams += "submissionId=$SubmissionId"
+        }
+
+        Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::ListingImage)
+
+        $hashBody = $Object
+        if ($null -eq $hashBody)
+        {
+            # Convert the input into a Json body.
+            $hashBody = @{}
+            $hashBody[[StoreBrokerListingImageProperty]::revisionToken] = $RevisionToken
+            $hashBody[[StoreBrokerListingImageProperty]::resourceType] = [StoreBrokerResourceType]::ListingImage
+            $hashBody[[StoreBrokerListingImageProperty]::orientation] = $Orientation
+            $hashBody[[StoreBrokerListingImageProperty]::state] = $State
+        }
+
+        $body = Get-JsonBody -InputObject $hashBody
+
+        $params = @{
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId`?" + ($getParams -join '&')
+            "Method" = 'Put'
+            "Description" = "Updating listing image $ImageId for $ProductId"
+            "Body" = $body
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Set-ListingImage"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        return Invoke-SBRestMethod @params
+    }
+    catch
     {
-        $getParams += "submissionId=$SubmissionId"
+        throw
     }
-
-    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::ListingImage)
-
-    $hashBody = $Object
-    if ($null -eq $hashBody)
-    {
-        # Convert the input into a Json body.
-        $hashBody = @{}
-        $hashBody[[StoreBrokerListingImageProperty]::revisionToken] = $RevisionToken
-        $hashBody[[StoreBrokerListingImageProperty]::resourceType] = [StoreBrokerResourceType]::ListingImage
-        $hashBody[[StoreBrokerListingImageProperty]::orientation] = $Orientation
-        $hashBody[[StoreBrokerListingImageProperty]::state] = $State
-    }
-
-    $body = Get-JsonBody -InputObject $hashBody
-
-    $params = @{
-        "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId`?" + ($getParams -join '&')
-        "Method" = 'Put'
-        "Description" = "Updating listing image $ImageId for $ProductId"
-        "Body" = $body
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Set-ListingImage"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
-
-    return Invoke-SBRestMethod @params
 }
 
 function Update-ListingImage
@@ -429,58 +461,67 @@ function Update-ListingImage
         [switch] $NoStatus
     )
 
-    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $params = @{
-        'ProductId' = $ProductId
-        'SubmissionId' = $SubmissionId
-        'LanguageCode' = $LanguageCode
-        'ClientRequestId' = $ClientRequestId
-        'CorrelationId' = $CorrelationId
-        'AccessToken' = $AccessToken
-        'NoStatus' = $NoStatus
-    }
-
-    $currentImages = Get-ListingImage @params
-
-    # First we delete all of the existing images
-    Write-Log -Message "Removing all [$LanguageCode] listing images." -Level Verbose
-    foreach ($image in $currentImages)
+    try
     {
-        $null = Remove-ListingImage @params -ImageId $image.id
-    }
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-    if (-not $RemoveOnly)
-    {
-        # Then we proceed with adding/uploading all of the current images
-        Write-Log -Message "Creating [$LanguageCode] listing images." -Level Verbose
-        foreach ($image in $SubmissionData.listings.$LanguageCode.baseListing.images)
-        {
-            # TODO: Determine if we should expose Orientation to the PDP and then here.
-            $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $image.imageType
-            $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
-
-            # TODO: Remove this hack once the ListingImage is returned back with a state property
-            Add-Member -InputObject $imageSubmission -Type NoteProperty -Name ([StoreBrokerListingImageProperty]::state.ToString()) -Value ([StoreBrokerFileState]::Uploaded.ToString())
-
-            $imageSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
-            $null = Set-ListingImage @params -Object $imageSubmission
+        $params = @{
+            'ProductId' = $ProductId
+            'SubmissionId' = $SubmissionId
+            'LanguageCode' = $LanguageCode
+            'ClientRequestId' = $ClientRequestId
+            'CorrelationId' = $CorrelationId
+            'AccessToken' = $AccessToken
+            'NoStatus' = $NoStatus
         }
-    }
 
-    # Record the telemetry for this event.
-    $stopwatch.Stop()
-    $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
-        [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
-        [StoreBrokerTelemetryProperty]::RemoveOnly = $RemoveOnly
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
+        $currentImages = Get-ListingImage @params
 
-    Set-TelemetryEvent -EventName Update-ListingImage -Properties $telemetryProperties -Metrics $telemetryMetrics
-    return
+        # First we delete all of the existing images
+        Write-Log -Message "Removing all [$LanguageCode] listing images." -Level Verbose
+        foreach ($image in $currentImages)
+        {
+            $null = Remove-ListingImage @params -ImageId $image.id
+        }
+
+        if (-not $RemoveOnly)
+        {
+            # Then we proceed with adding/uploading all of the current images
+            Write-Log -Message "Creating [$LanguageCode] listing images." -Level Verbose
+            foreach ($image in $SubmissionData.listings.$LanguageCode.baseListing.images)
+            {
+                # TODO: Determine if we should expose Orientation to the PDP and then here.
+                $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $image.imageType
+                $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
+
+                # TODO: Remove this hack once the ListingImage is returned back with a state property
+                Add-Member -InputObject $imageSubmission -Type NoteProperty -Name ([StoreBrokerListingImageProperty]::state.ToString()) -Value ([StoreBrokerFileState]::Uploaded.ToString())
+
+                $imageSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
+                $null = Set-ListingImage @params -Object $imageSubmission
+            }
+        }
+
+        # Record the telemetry for this event.
+        $stopwatch.Stop()
+        $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
+            [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
+            [StoreBrokerTelemetryProperty]::RemoveOnly = $RemoveOnly
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        Set-TelemetryEvent -EventName Update-ListingImage -Properties $telemetryProperties -Metrics $telemetryMetrics
+        return
+    }
+    catch
+    {
+        throw
+    }
 }

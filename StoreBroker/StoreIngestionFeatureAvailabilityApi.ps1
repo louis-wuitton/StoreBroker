@@ -40,59 +40,66 @@ function Get-FeatureAvailability
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $singleQuery = (-not [String]::IsNullOrWhiteSpace($FeatureAvailabilityId))
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::FeatureAvailabilityId = $FeatureAvailabilityId
-        [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
-        [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-        [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
-        [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
-        [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-    }
-
-    $getParams = @()
-    $getParams += "marketStates=$IncludeMarketStates"
-    $getParams += "trial=$IncludeTrial"
-    $getParams += "pricing=$IncludePricing"
-
-    if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+    try
     {
-        $getParams += "submissionId=$SubmissionId"
-    }
+        $singleQuery = (-not [String]::IsNullOrWhiteSpace($FeatureAvailabilityId))
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::FeatureAvailabilityId = $FeatureAvailabilityId
+            [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
+            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
+            [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
+            [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
 
-    if (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
+        $getParams = @()
+        $getParams += "marketStates=$IncludeMarketStates"
+        $getParams += "trial=$IncludeTrial"
+        $getParams += "pricing=$IncludePricing"
+
+        if (-not [String]::IsNullOrWhiteSpace($SubmissionId))
+        {
+            $getParams += "submissionId=$SubmissionId"
+        }
+
+        if (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
+        {
+            $getParams += "featureGroupId=$FeatureGroupId"
+        }
+
+        $params = @{
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Get-FeatureAvailability"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        if ($singleQuery)
+        {
+            $params["UriFragment"] = "products/$ProductId/featureavailabilities/$FeatureAvailabilityId`?" + ($getParams -join '&')
+            $params["Method" ] = 'Get'
+            $params["Description"] =  "Getting feature availability $FeatureAvailabilityId for $ProductId"
+
+            return Invoke-SBRestMethod @params
+        }
+        else
+        {
+            $params["UriFragment"] = "products/$ProductId/featureAvailabilities`?" + ($getParams -join '&')
+            $params["Description"] =  "Getting feature availability for $ProductId"
+            $params["SinglePage" ] = $SinglePage
+
+            return Invoke-SBRestMethodMultipleResult @params
+        }
+    }
+    catch
     {
-        $getParams += "featureGroupId=$FeatureGroupId"
-    }
-
-    $params = @{
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Get-FeatureAvailability"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
-
-    if ($singleQuery)
-    {
-        $params["UriFragment"] = "products/$ProductId/featureavailabilities/$FeatureAvailabilityId`?" + ($getParams -join '&')
-        $params["Method" ] = 'Get'
-        $params["Description"] =  "Getting feature availability $FeatureAvailabilityId for $ProductId"
-
-        return Invoke-SBRestMethod @params
-    }
-    else
-    {
-        $params["UriFragment"] = "products/$ProductId/featureAvailabilities`?" + ($getParams -join '&')
-        $params["Description"] =  "Getting feature availability for $ProductId"
-        $params["SinglePage" ] = $SinglePage
-
-        return Invoke-SBRestMethodMultipleResult @params
+        throw
     }
 }
 
@@ -133,36 +140,43 @@ function New-FeatureAvailability
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-        [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
-        [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
-        [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
-        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    try
+    {
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
+            [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
+            [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::FeatureAvailability)
+
+        $body = Get-JsonBody -InputObject $Object
+
+        $params = @{
+            "UriFragment" = "products/$ProductId/featureavailabilities"
+            "Method" = 'Post'
+            "Description" = "Creating new feature availability for $ProductId"
+            "Body" = $body
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "New-FeatureAvailability"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        return Invoke-SBRestMethod @params
     }
-
-    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::FeatureAvailability)
-
-    $body = Get-JsonBody -InputObject $Object
-
-    $params = @{
-        "UriFragment" = "products/$ProductId/featureavailabilities"
-        "Method" = 'Post'
-        "Description" = "Creating new feature availability for $ProductId"
-        "Body" = $body
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "New-FeatureAvailability"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
+    catch
+    {
+        throw
     }
-
-    return Invoke-SBRestMethod @params
 }
 
 function Set-FeatureAvailability
@@ -207,40 +221,47 @@ function Set-FeatureAvailability
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
-    if ($null -ne $Object)
+    try
     {
-        $FeatureAvailabilityId = $Object.id
+        if ($null -ne $Object)
+        {
+            $FeatureAvailabilityId = $Object.id
+        }
+
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
+            [StoreBrokerTelemetryProperty]::FeatureAvailabilityId = $FeatureAvailabilityId
+            [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
+            [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
+            [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
+            [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::FeatureAvailability)
+
+        $body = Get-JsonBody -InputObject $Object
+
+        $params = @{
+            "UriFragment" = "products/$ProductId/featureavailabilities/$FeatureAvailabilityId`?" + ($getParams -join '&')
+            "Method" = 'Put'
+            "Description" = "Updating feature availability $FeatureAvailabilityId for $ProductId"
+            "Body" = $body
+            "ClientRequestId" = $ClientRequestId
+            "CorrelationId" = $CorrelationId
+            "AccessToken" = $AccessToken
+            "TelemetryEventName" = "Set-FeatureAvailability"
+            "TelemetryProperties" = $telemetryProperties
+            "NoStatus" = $NoStatus
+        }
+
+        return Invoke-SBRestMethod @params
     }
-
-    $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-        [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-        [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-        [StoreBrokerTelemetryProperty]::FeatureAvailabilityId = $FeatureAvailabilityId
-        [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
-        [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
-        [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
-        [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
-        [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-        [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+    catch
+    {
+        throw
     }
-
-    Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::FeatureAvailability)
-
-    $body = Get-JsonBody -InputObject $Object
-
-    $params = @{
-        "UriFragment" = "products/$ProductId/featureavailabilities/$FeatureAvailabilityId`?" + ($getParams -join '&')
-        "Method" = 'Put'
-        "Description" = "Updating feature availability $FeatureAvailabilityId for $ProductId"
-        "Body" = $body
-        "ClientRequestId" = $ClientRequestId
-        "CorrelationId" = $CorrelationId
-        "AccessToken" = $AccessToken
-        "TelemetryEventName" = "Set-FeatureAvailability"
-        "TelemetryProperties" = $telemetryProperties
-        "NoStatus" = $NoStatus
-    }
-
-    return Invoke-SBRestMethod @params
 }
