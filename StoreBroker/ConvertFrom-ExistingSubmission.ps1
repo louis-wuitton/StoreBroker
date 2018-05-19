@@ -21,20 +21,38 @@ $script:ScreenshotAttributeMap = @{
     "XboxScreenshot"       = "XboxImage"
     "PpiScreenshot"        = "SurfaceHubImage"
     "AnalogScreenshot"     = "HoloLensImage"}
-
-# TODO: This will need to be updated for v2 assets once the new types are understood
+ 
 $script:AdditionalAssetNames = @(
-    'StoreLogo9x16',
-    'StoreLogoSquare',
+    'PosterArt',
+    'BoxArt',
     'Icon',
-    'PromotionalArt16x9',
-    'PromotionalArtwork2400X1200',
-    'XboxBrandedKeyArt',
-    'XboxTitledHeroArt',
-    'XboxFeaturedPromotionalArt',
-    'SquareIcon358X358',
-    'BackgroundImage1000X800',
-    'PromotionalArtwork414X180')
+    'SquareHeroArt',
+    'HeroImage2400x1200',
+    'BrandedKeyArt',
+    'TitledHeroArt',
+    'FeaturedPromotionalArt',
+    'Square',
+    'Panoramic',
+    'HeroImage414x180',
+    'HeroImage846x468',
+    'HeroImage558x756',
+    'HeroImage414x468',
+    'HeroImage558x558',
+    'ScreenshotWXGA',
+    'ScreenshotHD720',
+    'ScreenshotWVGA',
+    'SmallMobileTile',
+    'SmallXboxLiveTile',
+    'LargeMobileTile',
+    'LargeXboxLiveTile',
+    'Tile',
+    'DesktopIcon',
+    'AchievementIcon',
+    'ChallengePromoIcon',
+    'RewardDisplayIcon',
+    'Icon150X150',
+    'Icon71X71',
+    'Doublewide')
 
 function ConvertFrom-ExistingSubmission
 {
@@ -189,7 +207,7 @@ function ConvertFrom-ExistingSubmission
             Write-Progress -Activity "Generating PDP" -Status $lang -PercentComplete $(($pdpsGenerated / $listings.Count) * 100)
             try
             {
-                $assetFileNames = ConvertFrom-Listing -ProductId $ProductId -SubmissionId $SubmissionId -Listing $listing -Properties $properties -Release $Release -PdpRootPath $OutPath -FileName $PdpFileName @commonParams
+                $assetFileNames = ConvertFrom-Listing -ProductId $ProductId -SubmissionId $SubmissionId -Listing $listing -Properties $properties -Release $Release -OutPath $OutPath -FileName $PdpFileName -DownloadMedia:$DownloadMedia @commonParams
                 $langAssetNames[$lang] = $assetFileNames
                 $pdpsGenerated++
             }
@@ -787,7 +805,7 @@ function Add-ScreenshotCaptions
         The language code for the PDP that the screenshots/captions are for.
 
     .OUTPUTS
-        [String[]] Array of image names that the captions reference
+        [PSCustomObject[]] Array of image objects that the captions reference
 #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseSingularNouns", "", Justification="This is the existing name of the section within the PDP.")]
     param(
@@ -801,7 +819,7 @@ function Add-ScreenshotCaptions
         [string] $LanguageCode
     )
 
-    $imageNames = @()
+    $assets = @()
 
     # Group the images together by captions (so that we only have one caption element for the
     # same caption text)
@@ -853,7 +871,15 @@ function Add-ScreenshotCaptions
         {
             $imageName = $captionImageMap.$caption[$screenshotType]
             $child.SetAttribute($script:ScreenshotAttributeMap[$screenshotType], $imageName)
-            $imageNames += $imageName
+
+            $properties = @{           
+                fileName     = $imageName
+                languageCode = $LanguageCode
+                fileSasUri   = $image.fileSasUri
+            }
+
+            $asset = New-Object PSObject -Property $properties
+            $assets += $asset
         }
 
         $elementNode.AppendChild($child) | Out-Null
@@ -866,7 +892,15 @@ function Add-ScreenshotCaptions
         $imageName = $image.Values[0]
         $child.SetAttribute($script:ScreenshotAttributeMap[$image.Keys[0]], $imageName)
         $elementNode.AppendChild($child) | Out-Null
-        $imageNames += $imageName
+
+        $properties = @{           
+            fileName     = $imageName
+            languageCode = $LanguageCode
+            fileSasUri   = $image.fileSasUri
+        }
+
+        $asset = New-Object PSObject -Property $properties
+        $assets += $asset
     }
 
     # Add comments to parent
@@ -898,7 +932,7 @@ function Add-ScreenshotCaptions
 
     Add-ToChildren @paramSet
 
-    return $imageNames
+    return $assets
 }
 
 
@@ -918,7 +952,7 @@ function Add-AdditionalAssets
         The language code for the PDP that the additional assets are for.
 
     .OUTPUTS
-        [String[]] Array of image names that the elements reference
+        [PSCustomObject[]] Array of image objects
 #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseSingularNouns", "", Justification = "This is the existing name of the section within the PDP.")]
     param(
@@ -932,7 +966,7 @@ function Add-AdditionalAssets
         [string] $LanguageCode
     )
 
-    $imageNames = @()
+    $assets = @()
 
     # Create AdditionalAssets node if it does not exist
     $elementName = "AdditionalAssets"
@@ -951,7 +985,14 @@ function Add-AdditionalAssets
             continue
         }
 
-        $imageNames += $imageName
+        $properties = @{           
+            fileName     = $imageName
+            languageCode = $LanguageCode
+            fileSasUri   = $image.fileSasUri
+        }
+
+        $asset = New-Object PSObject -Property $properties
+        $assets += $asset
 
         $child = $Xml.CreateElement($imageType, $xml.productDescription.NamespaceURI)
         $child.SetAttribute('FileName', $imageName)
@@ -959,34 +1000,24 @@ function Add-AdditionalAssets
     }
 
     # Add comments to parent
-    $paramSets = @()
-    $paramSets += @{
-        "Element" = $elementNode;
-        "Comment" = " Valid elements: StoreLogo9x16, StoreLogoSquare, Icon (use this value for the 1:1 300x300 pixels logo), "
-    }
+    $comments = @(
+        " Valid elements:",
+        "   HeroImage414x180, HeroImage846x468, HeroImage558x756, HeroImage414x468, HeroImage558x558, HeroImage2400x1200,",
+        "   ScreenshotWXGA, ScreenshotHD720, ScreenshotWVGA, Doublewide, Panoramic, Square,",
+        "   SmallMobileTile, SmallXboxLiveTile, LargeMobileTile, LargeXboxLiveTile, Tile,",
+        "   DesktopIcon, Icon (use this value for the 1:1 300x300 pixels logo), AchievementIcon,",
+        "   ChallengePromoIcon, RewardDisplayIcon, Icon150X150, Icon71X71,",
+        "   BoxArt, BrandedKeyArt, PosterArt, FeaturedPromotionalArt, SquareHeroArt, TitledHeroArt",           
+        " There is no content for any of these elements, just a single attribute called FileName. "
+    )
 
-    $paramSets += @{
-        "Element" = $elementNode;
-        "Comment" = " PromotionalArt16x9, PromotionalArtwork2400X1200, XboxBrandedKeyArt, XboxTitledHeroArt, XboxFeaturedPromotionalArt, "
-    }
-
-    $paramSets += @{
-        "Element" = $elementNode;
-        "Comment" = " SquareIcon358X358, BackgroundImage1000X800, PromotionalArtwork414X180 "
-    }
-
-    $paramSets += @{
-        "Element" = $elementNode;
-        "Comment" = " There is no content for any of these elements, just a single attribute called FileName. "
-    }
-
-    [array]::Reverse($paramSets) # Reverse the array to ensure that they appear in this order
-    foreach ($paramSet in $paramSets)
+    [array]::Reverse($comments) # Reverse the array to ensure that they appear in this order
+    foreach ($comment in $comments)
     {
-        Add-ToElement @paramSet
+        Add-ToElement -Element $elementNode -Comment $comment
     }
 
-    return $imageNames
+    return $assets
 }
 
 function Add-Trailers
@@ -1005,7 +1036,7 @@ function Add-Trailers
         The language code for the PDP that the trailers are for.
 
     .OUTPUTS
-        [String[]] Array of asset names (trailers and screenshots) that are referenced
+        [PSCustomObject[]] Array of video (trailer) and image (thumbnail) objects
 #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseSingularNouns", "", Justification = "This is the existing name of the section within the PDP.")]
     param(
@@ -1019,7 +1050,7 @@ function Add-Trailers
         [string] $LanguageCode
     )
 
-    $assetFileNames = @()
+    $assets = @()
 
     # Create ScreenshotCaptions node if it does not exist
     $elementName = "Trailers"
@@ -1040,7 +1071,17 @@ function Add-Trailers
 
         # There's an entry for this trailer, for this language, so add it to the PDP
         $trailerFileName = Split-Path -Path ($trailer.fileName) -Leaf
-        $assetFileNames += $trailerFileName
+        $properties = @{           
+            fileName     = $trailerFileName
+            languageCode = $LanguageCode
+            fileSasUri   = $trailer.fileSasUri
+        }
+
+        $asset = New-Object PSObject -Property $properties
+        $assets += $asset
+
+
+
         $title = $trailer.thumbnail.title
         $screenshotDescription = $trailer.thumbnail.description
         $screenshotFileName = Split-Path -Path ($trailer.thumbnail.fileName) -Leaf
@@ -1049,7 +1090,14 @@ function Add-Trailers
             # The API doesn't seem to always return the screenshot filename.
             # We'll guard against that by only adding the value to our asset array
             # if there's a value.
-            $assetFileNames += $screenshotFileName
+            $properties = @{           
+                fileName     = $screenshotFileName
+                languageCode = $LanguageCode
+                fileSasUri   = $trailer.thumbnail.fileSasUri
+            }
+
+            $asset = New-Object PSObject -Property $properties
+            $assets += $asset    
         }
 
         $trailerElement = $Xml.CreateElement("Trailer", $xml.productDescription.NamespaceURI)
@@ -1092,7 +1140,7 @@ function Add-Trailers
         Add-ToElement @paramSet
     }
 
-    return $assetFileNames
+    return $assets
 }
 
 function Add-AppFeatures
@@ -1445,11 +1493,14 @@ function ConvertFrom-Listing
         The release to use.  This value will be placed in each new PDP.
         Some examples could be "1601" for a January 2016 release, "March 2016", or even just "1".
 
-    .PARAMETER PdpRootPath
-        The root / base path that all of the language sub-folders will go for the PDP files.
+    .PARAMETER OutPath
+        The root / base path that the PDP and Media sub-folders will be placed in.
 
     .PARAMETER FileName
         The name of the PDP file that will be generated.
+
+    .PARAMETER DownloadMedia
+        Download the media content that is referenced by ListingImage and ListingVideo elements.
 
     .OUTPUTS
         [String[]] Array of media asset file names that are referenced
@@ -1477,10 +1528,12 @@ function ConvertFrom-Listing
         [string] $Release,
 
         [Parameter(Mandatory)]
-        [string] $PdpRootPath,
+        [string] $OutPath,
 
         [Parameter(Mandatory)]
         [string] $FileName,
+
+        [switch] $DownloadMedia,
 
         [string] $ClientRequestId,
 
@@ -1503,6 +1556,8 @@ function ConvertFrom-Listing
             'NoStatus' = $NoStatus
         }
 
+        $languageCode = $Listing.languageCode
+
         $images = Get-ListingImage @commonParams
         $videos = Get-ListingVideo @commonParams
 
@@ -1511,7 +1566,7 @@ function ConvertFrom-Listing
             xmlns="http://schemas.microsoft.com/appx/2012/ProductDescription"
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             xml:lang="{0}"
-            Release="{1}"/>', ($Listing.languageCode), $Release))
+            Release="{1}"/>', $languageCode, $Release))
 
         Add-AppStoreName -Xml $Xml -Listing $Listing
         Add-Keywords -Xml $Xml -Listing $Listing
@@ -1522,9 +1577,9 @@ function ConvertFrom-Listing
         Add-VoiceTitle -Xml $Xml -Listing $Listing
         Add-DevStudio -Xml $Xml -Listing $Listing
         Add-ReleaseNotes -Xml $Xml -Listing $Listing
-        $screenshotFileNames = Add-ScreenshotCaptions -Xml $xml -Images $images -LanguageCode ($Listing.languageCode)
-        $additionalAssetFileNames = Add-AdditionalAssets -Xml $xml -Images $images -LanguageCode ($Listing.languageCode)
-        $trailerFileNames = Add-Trailers -Xml $xml -Videos $videos -LanguageCode ($Listing.languageCode)
+        $screenshots = Add-ScreenshotCaptions -Xml $xml -Images $images -LanguageCode $languageCode
+        $additionalAssets = Add-AdditionalAssets -Xml $xml -Images $images -LanguageCode $languageCode
+        $trailerFiles = Add-Trailers -Xml $xml -Videos $videos -LanguageCode $languageCode
         Add-AppFeatures -Xml $Xml -Listing $Listing
         Add-RecommendedHardware -Xml $Xml -Listing $Listing
         Add-MinimumHardware -Xml $Xml -Listing $Listing
@@ -1535,24 +1590,68 @@ function ConvertFrom-Listing
         Add-PrivacyPolicy -Xml $Xml -Properties $Properties
 
         # Save XML object to file
-        $filePath = Ensure-PdpFilePath -PdpRootPath $PdpRootPath -Lang $LanguageCode -FileName $FileName
+        $pdpRootPath = $OutPath
+        if ($DownloadMedia)
+        {
+            $pdpRootPath = Join-Path -Path $OutPath -ChildPath 'PDPs'
+        }
+
+        $filePath = Ensure-PdpFilePath -PdpRootPath $pdpRootPath -Lang $languageCode -FileName $FileName
         $xml.Save($filePath)
 
         # Post-process the file to ensure CRLF (sometimes is only LF).
         $content = Get-Content -Encoding UTF8 -Path $filePath
         $content -join [Environment]::NewLine | Out-File -Force -Encoding utf8 -FilePath $filePath
 
+        if ($DownloadMedia)
+        {
+            $mediaRootPath = [System.IO.Path]::Combine($OutPath, 'Media', $languageCode)
+
+            Get-AssetMedia -Assets $screenshots -OutPath $mediaRootPath -NoStatus:$NoStatus
+            Get-AssetMedia -Assets $additionalAssets -OutPath $mediaRootPath -NoStatus:$NoStatus
+            Get-AssetMedia -Assets $trailerFiles -OutPath $mediaRootPath -NoStatus:$NoStatus
+        }
+
         # PowerShell likes to convert arrays of single items back to individual items.
         # We need to ensure that we're definitely concatenting arrays together, and don't have
         # any single items in there.  Therefore, we wrap each variable in an array to force it
         # to be an array for merging purposes.
-        $mediaFileNames = @($screenshotFileNames) + @($additionalAssetFileNames) + @($trailerFileNames)
+        $mediaFileNames = 
+            @(($screenshots | Select-Object -ExpandProperty fileName)) +
+            @(($additionalAssets | Select-Object -ExpandProperty fileName)) +
+            @(($trailerFiles | Select-Object -ExpandProperty fileName))
 
         return $mediaFileNames
     }
     catch
     {
         throw
+    }
+}
+
+function Get-AssetMedia
+{
+    [CmdletBinding()]
+    param(
+        [AllowNull()]
+        [PSCustomObject[]] $Assets,
+
+        [Parameter(Mandatory)]
+        [string] $OutPath,
+
+        [switch] $NoStatus
+    )
+
+    $null = New-Item -Path $OutPath -ItemType Directory -Force
+
+    foreach ($asset in $Assets)
+    {
+        $fileSasUri = $asset.fileSasUri
+        if (-not [String]::IsNullOrWhiteSpace($fileSasUri))
+        {
+            $filePath = Join-Path -Path $OutPath -ChildPath $asset.fileName
+            Get-StoreFile -SasUri $fileSasUri -FilePath $filePath -NoStatus:$NoStatus
+        }
     }
 }
 

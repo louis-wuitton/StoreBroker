@@ -493,11 +493,12 @@ function Update-ListingImage
             foreach ($image in $SubmissionData.listings.$LanguageCode.baseListing.images)
             {
                 # TODO: Determine if we should expose Orientation to the PDP and then here.
-                $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $image.imageType
+                $type = Get-ValidImageType -Type $image.imageType
+                $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $type
                 $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
 
                 # TODO: Remove this hack once the ListingImage is returned back with a state property
-                Add-Member -InputObject $imageSubmission -Type NoteProperty -Name ([StoreBrokerListingImageProperty]::state.ToString()) -Value ([StoreBrokerFileState]::Uploaded.ToString())
+                Set-PSObjectProperty -InputObject $imageSubmission -Name ([StoreBrokerListingImageProperty]::state.ToString()) -Value ([StoreBrokerFileState]::Uploaded.ToString())
 
                 $imageSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
                 # TODO: Need to add caption as well (if one exists) once it's supported
@@ -525,5 +526,42 @@ function Update-ListingImage
     catch
     {
         throw
+    }
+}
+
+function Get-ValidImageType
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $Type
+    )
+
+    # We only have entries to translate v1 type names to v2 typenames.
+    # For all other types, we'll return them as-is.
+    $imageTypeMap = @{
+        "HoloLensScreenshot"          = "PpiScreenshot"
+        "SurfaceHubScreenshot"        = "AnalogScreenshot"
+        'StoreLogo9x16'               = 'PosterArt'
+        'StoreLogoSquare'             = 'BoxArt'
+        'PromotionalArt16x9'          = 'SquareHeroArt'
+        'PromotionalArtwork2400X1200' = 'HeroImage2400x1200'
+        'XboxBrandedKeyArt'           = 'BrandedKeyArt'
+        'XboxTitledHeroArt'           = 'TitledHeroArt'
+        'XboxFeaturedPromotionalArt'  = 'FeaturedPromotionalArt'
+        'SquareIcon358X358'           = 'Square'
+        'BackgroundImage1000X800'     = 'Panoramic'
+        'PromotionalArtwork414X180'   = 'HeroImage414x180'
+    }
+
+    $translatedType = $imageTypeMap[$Type]
+    if ([String]::IsNullOrWhiteSpace($translatedType))
+    {
+        return $Type
+    }
+    else
+    {
+        Write-Log -Message "Translated v1 image type [$Type] to [$translatedType]." -Level Verbose
+        return $translatedType
     }
 }

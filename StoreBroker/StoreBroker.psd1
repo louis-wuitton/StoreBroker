@@ -40,8 +40,6 @@
     PowerShellVersion = '4.0'
 
     FunctionsToExport = @(
-        'Update-Submission',
-
         'New-FeatureAvailability',
         'Set-FeatureAvailability',
         'Get-FeatureAvailability',
