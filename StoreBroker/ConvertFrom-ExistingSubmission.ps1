@@ -23,36 +23,36 @@ $script:ScreenshotAttributeMap = @{
     "AnalogScreenshot"     = "HoloLensImage"}
  
 $script:AdditionalAssetNames = @(
-    'PosterArt',
+    'AchievementIcon',
     'BoxArt',
-    'Icon',
-    'SquareHeroArt',
-    'HeroImage2400x1200',
     'BrandedKeyArt',
-    'TitledHeroArt',
+    'ChallengePromoIcon',
+    'DesktopIcon',
+    'Doublewide',
     'FeaturedPromotionalArt',
-    'Square',
-    'Panoramic',
     'HeroImage414x180',
-    'HeroImage846x468',
-    'HeroImage558x756',
     'HeroImage414x468',
     'HeroImage558x558',
-    'ScreenshotWXGA',
-    'ScreenshotHD720',
-    'ScreenshotWVGA',
-    'SmallMobileTile',
-    'SmallXboxLiveTile',
+    'HeroImage558x756',
+    'HeroImage846x468',
+    'HeroImage2400x1200',
+    'Icon',
+    'Icon71X71',
+    'Icon150X150',
     'LargeMobileTile',
     'LargeXboxLiveTile',
-    'Tile',
-    'DesktopIcon',
-    'AchievementIcon',
-    'ChallengePromoIcon',
+    'Panoramic',
+    'PosterArt',
     'RewardDisplayIcon',
-    'Icon150X150',
-    'Icon71X71',
-    'Doublewide')
+    'ScreenshotHD720',
+    'ScreenshotWVGA',
+    'ScreenshotWXGA',
+    'SmallMobileTile',
+    'SmallXboxLiveTile',
+    'Square',
+    'SquareHeroArt',
+    'Tile',
+    'TitledHeroArt')
 
 function ConvertFrom-ExistingSubmission
 {
@@ -974,7 +974,7 @@ function Add-AdditionalAssets
 
     foreach ($image in $Images)
     {
-        $imageType = $image.imageType
+        $imageType = $image.type
         $imageName = Split-Path -Path ($image.fileName) -Leaf
         # We intentionally don't bother capturing the description for these since it's not relevant.
 
