@@ -694,7 +694,6 @@ function Update-Listing
                 $listing.features = $suppliedListing.features
                 $listing.recommendedHardware = $suppliedListing.minimumHardware
                 $listing.devStudio = $suppliedListing.devStudio
-                #TODO: $listing.shouldOverridePackageLogos = ???
                 $listing.title = $suppliedListing.title
                 $listing.description = $suppliedListing.description
                 $listing.shortDescription = $suppliedListing.shortDescription
@@ -703,7 +702,17 @@ function Update-Listing
                 # suppliedListing.websiteUrl
                 # suppliedListing.privacyPolicy
                 # suppliedListing.supportContact
+            }
 
+            if ($UpdateScreenshotsAndCaptions)
+            {
+                $hasAlternateIcons = (($suppliedListing.images |
+                    Where-Object { $_.imageType -in ('Icon', 'Icon150x150', 'Icon71x71') }).Count -gt 0)
+                $listing.shouldOverridePackageLogos = $hasAlternateIcons
+            }
+
+            if ($UpdateListingText -or $UpdateScreenshotsAndCaptions)
+            {
                 $null = Set-Listing @commonParams -Object $listing
             }
 
@@ -759,7 +768,6 @@ function Update-Listing
                 Set-PSObjectProperty -InputObject $listing -Name recommendedHardware -Value $suppliedListing.recommendedHardware
                 Set-PSObjectProperty -InputObject $listing -Name minimumHardware -Value $suppliedListing.minimumHardware
                 Set-PSObjectProperty -InputObject $listing -Name devStudio -Value $suppliedListing.devStudio
-                #TODO: $listing.shouldOverridePackageLogos = ???
                 Set-PSObjectProperty -InputObject $listing -Name title -Value $suppliedListing.title
                 Set-PSObjectProperty -InputObject $listing -Name shortDescription -Value $suppliedListing.shortDescription
 
@@ -767,6 +775,13 @@ function Update-Listing
                 # suppliedListing.websiteUrl
                 # suppliedListing.privacyPolicy
                 # suppliedListing.supportContact
+
+                if ($UpdateScreenshotsAndCaptions)
+                {
+                    $hasAlternateIcons = (($suppliedListing.images |
+                        Where-Object { $_.imageType -in ('Icon', 'Icon150x150', 'Icon71x71') }).Count -gt 0)
+                    Set-PSObjectProperty -InputObject $listing -Name shouldOverridePackageLogos -Value $hasAlternateIcons
+                }
 
                 $langCode = $listing.languageCode
                 $null = Set-Listing @commonParams -Object $listing
