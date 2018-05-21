@@ -466,7 +466,9 @@ function Get-AccessToken
     }
 
     # If the cached access token hasn't expired, we can just use it.
-    if (($null -ne $script:lastAccessToken) -and (($script:lastAccessTokenExpirationDate - (Get-Date)).TotalSeconds -gt 0))
+    $numSecondsBeforeTokenExpiration = ($script:lastAccessTokenExpirationDate - (Get-Date)).TotalSeconds
+    if ((-not [String]::IsNullOrWhiteSpace($script:lastAccessToken)) -and
+        ($numSecondsBeforeTokenExpiration -gt 0))
     {
         return $script:lastAccessToken
     }
