@@ -1316,7 +1316,7 @@ function Add-CopyrightAndTrademark
 
     $elementName = "CopyrightAndTrademark"
     $elementNode = Ensure-RootChild -Xml $Xml -Element $elementName
-    $elementNode.InnerText = $Listing.copyrightAndTrademarkInfo
+    $elementNode.InnerText = $Listing.trademark
 
     # Add comment to parent
     $maxChars = 200
@@ -1352,7 +1352,7 @@ function Add-AdditionalLicenseTerms
 
     $elementName = "AdditionalLicenseTerms"
     $elementNode = Ensure-RootChild -Xml $Xml -Element $elementName
-    $elementNode.InnerText = $Listing.licenseTerms
+    $elementNode.InnerText = $Listing.licenseTerm
 
     # Add comment to parent
     $maxChars = 10000
@@ -1650,7 +1650,20 @@ function Get-AssetMedia
         if (-not [String]::IsNullOrWhiteSpace($fileSasUri))
         {
             $filePath = Join-Path -Path $OutPath -ChildPath $asset.fileName
-            Get-StoreFile -SasUri $fileSasUri -FilePath $filePath -NoStatus:$NoStatus
+            try
+            {
+                Get-StoreFile -SasUri $fileSasUri -FilePath $filePath -NoStatus:$NoStatus
+            }
+            catch
+            {
+                # We're reporting the exception and then eating it, because we don't want
+                # media creation failures to stop the entire conversion process.
+                Write-Log -Message "Error downloading [$($asset.languageCode)] [$($asset.fileName)].  Conversion process will still continue:" -Exception $_ -Level Warning
+            }
+        }
+        else
+        {
+            Write-Log "No SasUri available to download [$($asset.languageCode)] [$($asset.fileName)]." -Level Verbose    
         }
     }
 }
