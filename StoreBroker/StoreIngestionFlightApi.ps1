@@ -100,9 +100,7 @@ function New-Flight
             ParameterSetName="Individual")]
         [string[]] $GroupId,
 
-        [Parameter(
-            Mandatory,
-            ParameterSetName="Individual")]
+        [Parameter(ParameterSetName="Individual")]
         [int] $RelativeRank,
 
         [string] $ClientRequestId,
@@ -136,7 +134,11 @@ function New-Flight
             $hashBody[[StoreBrokerFlightProperty]::resourceType] = [StoreBrokerResourceType]::PackageFlight
             $hashBody[[StoreBrokerFlightProperty]::name] = $Name
             $hashBody[[StoreBrokerFlightProperty]::groupIds] = @($GroupId)
-            $hashBody[[StoreBrokerFlightProperty]::relativeRank] = $RelativeRank
+
+            if ($null -ne $PSBoundParameters['RelativeRank'])
+            {
+                $hashBody[[StoreBrokerFlightProperty]::relativeRank] = $RelativeRank
+            }
         }
 
         $body = Get-JsonBody -InputObject $hashBody
@@ -246,9 +248,7 @@ function Set-Flight
             ParameterSetName="Individual")]
         [string[]] $GroupId,
 
-        [Parameter(
-            Mandatory,
-            ParameterSetName="Individual")]
+        [Parameter(ParameterSetName="Individual")]
         [int] $RelativeRank,
 
         [Parameter(
@@ -294,8 +294,12 @@ function Set-Flight
             $hashBody[[StoreBrokerFlightProperty]::resourceType] = [StoreBrokerResourceType]::PackageFlight
             $hashBody[[StoreBrokerFlightProperty]::name] = $Name
             $hashBody[[StoreBrokerFlightProperty]::groupIds] = @($GroupId)
-            $hashBody[[StoreBrokerFlightProperty]::relativeRank] = $RelativeRank
             $hashBody[[StoreBrokerFlightProperty]::revisionToken] = $RevisionToken
+
+            if ($null -ne $PSBoundParameters['RelativeRank'])
+            {
+                $hashBody[[StoreBrokerFlightProperty]::relativeRank] = $RelativeRank
+            }
         }
 
         $body = Get-JsonBody -InputObject $hashBody

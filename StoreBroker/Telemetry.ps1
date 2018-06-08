@@ -56,6 +56,7 @@ Add-Type -TypeDefinition @"
       ProvidedCertificationNotes,
       ProvidedSubmissionData,
       RedundantPackagesToKeep,
+      RelativeRank,
       RemoveOnly,
       ReplacePackages,
       RequestId,

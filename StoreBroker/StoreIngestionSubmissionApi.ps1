@@ -351,21 +351,16 @@ function New-Submission
         # Convert the input into a Json body.
         $global:hashBody = @{}
         $hashBody[[StoreBrokerSubmissionProperty]::resourceType] = [StoreBrokerResourceType]::Submission
-        #$hashBody['scope'] = $Scope
-        # $hashBody[[StoreBrokerSubmissionProperty]::target] = @{
-        #     [StoreBrokerSubmissionTargetProperty]::scope = $Scope
-        # }
+        $hashBody['scope'] = $Scope
 
         if (-not [String]::IsNullOrWhiteSpace($FlightId))
         {
             $hashBody[[StoreBrokerSubmissionProperty]::flightId] = $FlightId
-            #$hashBody[[StoreBrokerSubmissionProperty]::target]['flight'] = $FlightId
         }
 
         if (-not [String]::IsNullOrWhiteSpace($SandboxId))
         {
             $hashBody[[StoreBrokerSubmissionProperty]::sandboxId] = $SandboxId
-            #$hashBody[[StoreBrokerSubmissionProperty]::target]['sandbox'] = $SandboxId
         }
 
         $body = Get-JsonBody -InputObject $hashBody
@@ -763,7 +758,7 @@ function Update-SubmissionDetail
 
         # If the user passes in a different value for any of the publish/values at the commandline,
         # they override those coming from the config.
-        if ($TargetPublishMode -ne $script:keywordDefault)
+        if ($providedTargetPublishMode)
         {
             if (($TargetPublishMode -eq $script:keywordSpecificDate) -and (-not $providedTargetPublishDate))
             {
@@ -772,12 +767,12 @@ function Update-SubmissionDetail
                 throw $output
             }
 
-            $detail.isManualPublish = ($SubmissionData.targetPublishMode -eq $script:keywordManual)
+            $detail.isManualPublish = ($TargetPublishMode -eq $script:keywordManual)
 
             # TODO: There is no equivalent of changing to "Immediate" from a specific date/time,
             # so, we'll hack that by changing it to now which will be the past (and hence immediate)
             # by the time this gets submitted.
-            if ($SubmissionData.targetPublishMode -eq $script:keywordImmediate)
+            if ($TargetPublishMode -eq $script:keywordImmediate)
             {
                 $detail.releaseTimeInUtc = (Get-Date).ToUniversalTime().ToString('o')
             }
@@ -1373,8 +1368,6 @@ function Update-Submission
                     Write-Log -Message "Unzip complete." -Level Verbose
                 }
 
-                $null = Update-Listing @commonParams -SubmissionData $jsonSubmission -ContentPath $ContentPath -UpdateListingText:$UpdateListingText -UpdateImagesAndCaptions:$UpdateImagesAndCaptions -UpdateVideos:$UpdateVideos
-
                 $packageParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $packageParams.Add('SubmissionData', $jsonSubmission)
                 $packageParams.Add('ContentPath', $ContentPath)
@@ -1385,6 +1378,14 @@ function Update-Submission
                     $packageParams.Add('RedundantPackagesToKeep', $RedundantPackagesToKeep)
                 }
                 $null = Update-ProductPackage @packageParams
+
+                $listingParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
+                $listingParams.Add('SubmissionData', $jsonSubmission)
+                $listingParams.Add('ContentPath', $ContentPath)
+                $listingParams.Add('UpdateListingText', $UpdateListingText)
+                $listingParams.Add('UpdateImagesAndCaptions', $UpdateImagesAndCaptions)
+                $listingParams.Add('UpdateVideos', $UpdateVideos)
+                $null = Update-Listing @listingParams
             }
 
             if ($UpdateAppProperties)
@@ -1411,9 +1412,9 @@ function Update-Submission
             $detailParams.Add('SubmissionData', $jsonSubmission)
             $detailParams.Add('UpdatePublishModeAndDateFromSubmissionData', $UpdatePublishModeAndVisibility)
             $detailParams.Add('UpdateCertificationNotesFromSubmissionData', $UpdateCerificationNotes)
-            if ($null -ne $PSBoundParameters['TargetPublishMode']) { $availabilityParams.Add("TargetPublishMode", $TargetPublishMode) }
-            if ($null -ne $PSBoundParameters['TargetPublishDate']) { $availabilityParams.Add("TargetPublishDate", $TargetPublishDate) }
-            if ($null -ne $PSBoundParameters['CertificationNotes']) { $availabilityParams.Add("CertificationNotes", $CertificationNotes) }
+            if ($null -ne $PSBoundParameters['TargetPublishMode']) { $detailParams.Add("TargetPublishMode", $TargetPublishMode) }
+            if ($null -ne $PSBoundParameters['TargetPublishDate']) { $detailParams.Add("TargetPublishDate", $TargetPublishDate) }
+            if ($null -ne $PSBoundParameters['CertificationNotes']) { $detailParams.Add("CertificationNotes", $CertificationNotes) }
             $null = Update-SubmissionDetail @detailParams # TODO: This API currently fails.  Should comment out while testing.
 
             if ($UpdatePublishModeAndVisibility -or ($null -ne $PSBoundParameters['Visibility']))
@@ -1460,7 +1461,7 @@ function Update-Submission
                 $rolloutParams.Add('State', [StoreBrokerRolloutState]::Initialized)
                 $rolloutParams.Add('Percentage', $PackageRolloutPercentage)
                 $rolloutParams.Add('Enabled', $true)
-                
+
                 $null = Update-SubmissionRollout @rolloutParams
             }
 

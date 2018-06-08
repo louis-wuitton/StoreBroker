@@ -122,7 +122,7 @@ function Set-SubmissionRollout
             # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
             $State = Get-ProperEnumCasing -Value $State
         }
-        
+
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
@@ -174,7 +174,7 @@ function Set-SubmissionRollout
 
         $params = @{
             "UriFragment" = "products/$ProductId/submissions/$SubmissionId/rollout"
-            "Method" = 'Put'
+            "Method" = 'Post'
             "Description" = "Updating rollout details for submission: $SubmissionId"
             "Body" = $body
             "ClientRequestId" = $ClientRequestId

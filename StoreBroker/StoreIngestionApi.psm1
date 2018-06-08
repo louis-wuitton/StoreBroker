@@ -1910,6 +1910,7 @@ function Invoke-SBRestMethod
                     {
                         $bodyAsBytes = [System.Text.Encoding]::UTF8.GetBytes($Body)
                         $params.Add("Body", $bodyAsBytes)
+                        Write-Log -Message "Request includes a body." -Level Verbose
                     }
 
                     $result = Invoke-WebRequest @params
@@ -1951,6 +1952,7 @@ function Invoke-SBRestMethod
                         {
                             $bodyAsBytes = [System.Text.Encoding]::UTF8.GetBytes($Body)
                             $params.Add("Body", $bodyAsBytes)
+                            Write-Log -Message "Request includes a body." -Level Verbose
                         }
 
                         try
