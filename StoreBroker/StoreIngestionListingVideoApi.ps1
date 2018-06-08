@@ -298,13 +298,13 @@ function Remove-ListingVideo
         }
 
         $params = @{
-            "UriFragment" = "products/$ProductId/listings/$LanguageCode/images/$ImageId`?" + ($getParams -join '&')
+            "UriFragment" = "products/$ProductId/listings/$LanguageCode/videos/$VideoId`?" + ($getParams -join '&')
             "Method" = "Delete"
-            "Description" = "Deleting image $ImageId from the $LanguageCode listing for $ProductId"
+            "Description" = "Deleting video $VideoId from the $LanguageCode listing for $ProductId"
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Remove-ListingImage"
+            "TelemetryEventName" = "Remove-ListingVideo"
             "TelemetryProperties" = $telemetryProperties
             "NoStatus" = $NoStatus
         }
@@ -385,8 +385,17 @@ function Set-ListingVideo
 
     try
     {
-        $State = (Get-ProperEnumCasing -Value $State)
-        $ThumbnailState = (Get-ProperEnumCasing -Value $ThumbnailState)
+        # Theese checks arenecessary, because if no value was provided, we'll get an empty string back
+        # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
+        if ($null -ne $PSBoundParameters['State'])
+        {
+            $State = Get-ProperEnumCasing -Value $State
+        }
+
+        if ($null -ne $PSBoundParameters['ThumbnailState'])
+        {
+            $ThumbnailState = Get-ProperEnumCasing -Value $ThumbnailState
+        }
 
         if ($null -ne $Object)
         {

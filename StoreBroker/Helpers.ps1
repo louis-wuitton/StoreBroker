@@ -560,8 +560,8 @@ function Write-Log
         [AllowNull()]
         [string[]] $Message = @(),
 
-        [ValidateSet('Error', 'Warning', 'Info', 'Verbose', 'Debug')]
-        [string] $Level = 'Info',
+        [ValidateSet('Error', 'Warning', 'Informational', 'Verbose', 'Debug')]
+        [string] $Level = 'Informational',
 
         [ValidateRange(1, 30)]
         [Int16] $Indent = 0,
@@ -651,7 +651,7 @@ function Write-Log
             'Warning' { Write-Warning $consoleMessage }
             'Verbose' { Write-Verbose $consoleMessage }
             'Debug'   { Write-Debug $consoleMessage }
-            'Info'    {
+            'Informational'    {
                 # We'd prefer to use Write-Information to enable users to redirect that pipe if
                 # they want, unfortunately it's only available on v5 and above.  We'll fallback to
                 # using Write-Host for earlier versions (since we still need to support v4).

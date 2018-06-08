@@ -620,11 +620,12 @@ function Update-Listing
         [PSCustomObject] $SubmissionData,
 
         [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
-        [string] $ContentPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all internal helpers only operate on a Contentpath
+        [string] $ContentPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all subsequent functions only operate on a Contentpath
 
         [switch] $UpdateListingText,
 
-        [switch] $UpdateScreenshotsAndCaptions,
+        [Alias('UpdateScreenshotsAndCaptions')]
+        [switch] $UpdateImagesAndCaptions,
 
         [Alias('UpdateTrailers')]
         [switch] $UpdateVideos,
@@ -704,19 +705,19 @@ function Update-Listing
                 # suppliedListing.supportContact
             }
 
-            if ($UpdateScreenshotsAndCaptions)
+            if ($UpdateImagesAndCaptions)
             {
                 $hasAlternateIcons = (($suppliedListing.images |
                     Where-Object { $_.imageType -in ('Icon', 'Icon150x150', 'Icon71x71') }).Count -gt 0)
                 $listing.shouldOverridePackageLogos = $hasAlternateIcons
             }
 
-            if ($UpdateListingText -or $UpdateScreenshotsAndCaptions)
+            if ($UpdateListingText -or $UpdateImagesAndCaptions)
             {
                 $null = Set-Listing @commonParams -Object $listing
             }
 
-            if ($UpdateScreenshotsAndCaptions)
+            if ($UpdateImagesAndCaptions)
             {
                 $null = Update-ListingImage @listingObjectParams -LanguageCode $langCode
             }
@@ -740,7 +741,7 @@ function Update-Listing
                 }
 
         Write-Log -Message 'Now adding listings for languages that don''t already exist.' -Level Verbose
-        if (($missingLangCodes.Count -gt 0) -and (-not $UpdateListingText) -and ($UpdateScreenshotsAndCaptions -or $UpdateVideos))
+        if (($missingLangCodes.Count -gt 0) -and (-not $UpdateListingText) -and ($UpdateImagesAndCaptions -or $UpdateVideos))
         {
             $message = @('There are new listings that need to be created, and you have indicated that you want',
                         'to update images and/or videos, but not the metadata.  This will create an inconsistent user experience.')
@@ -776,7 +777,7 @@ function Update-Listing
                 # suppliedListing.privacyPolicy
                 # suppliedListing.supportContact
 
-                if ($UpdateScreenshotsAndCaptions)
+                if ($UpdateImagesAndCaptions)
                 {
                     $hasAlternateIcons = (($suppliedListing.images |
                         Where-Object { $_.imageType -in ('Icon', 'Icon150x150', 'Icon71x71') }).Count -gt 0)
@@ -791,7 +792,7 @@ function Update-Listing
                 # one screenshot.  However, we definitely CAN'T do either of these if we're
                 # not also updating metadata, as there won't be a language listing that they
                 # could be associated with.
-                if ($UpdateScreenshotsAndCaptions)
+                if ($UpdateImagesAndCaptions)
                 {
                     $null = Update-ListingImage @listingObjectParams -LanguageCode $langCode
                 }
@@ -805,7 +806,7 @@ function Update-Listing
 
         # We only need to remove listings if we're updating listing text.  If we're not removing listings,
         # then we shouldn't remove the images or videos for listings, even if the user specified
-        # UpdateScreenshotsAndCaptions or UpdateVideos.  And if we are removing listings, then we MUST
+        # UpdateImagesAndCaptions or UpdateVideos.  And if we are removing listings, then we MUST
         # remove the corresponding images and videos, otherwise we risk these dangling images/videos
         # from getting auto re-linked should the user ever add that deleted language listing back.
         if ($UpdateListingText)
@@ -827,7 +828,7 @@ function Update-Listing
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
             [StoreBrokerTelemetryProperty]::UpdateListingText = $UpdateListingText
-            [StoreBrokerTelemetryProperty]::UpdateScreenshotsAndCaptions = $UpdateScreenshotsAndCaptions
+            [StoreBrokerTelemetryProperty]::UpdateImagesAndCaptions = $UpdateImagesAndCaptions
             [StoreBrokerTelemetryProperty]::UpdateVideos = $UpdateVideos
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId

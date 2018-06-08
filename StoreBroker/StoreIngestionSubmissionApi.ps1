@@ -103,6 +103,7 @@ function Get-Submission
             $State = Get-ProperEnumCasing -Value $State
         }
 
+        # We don't need to do the same check for Scope since it is assigned a valid default value
         $Scope = Get-ProperEnumCasing -Value $Scope
 
         $singleQuery = (-not [String]::IsNullOrWhiteSpace($SubmissionId))
@@ -1166,6 +1167,7 @@ function Update-Submission
 
         [switch] $UpdateListingText,
 
+        [Alias('UpdateScreenshotsAndCaptions')]
         [switch] $UpdateImagesAndCaptions,
 
         [switch] $UpdatePublishModeAndVisibility,
@@ -1176,6 +1178,7 @@ function Update-Submission
 
         [switch] $UpdateGamingOptions,
 
+        [Alias('UpdateTrailers')]
         [switch] $UpdateVideos,
 
         [Alias('UpdateNotesForCertification')]
@@ -1358,7 +1361,7 @@ function Update-Submission
         if ($PSCmdlet.ShouldProcess("Update Submission elements"))
         {
             # If we know that we'll be doing anything with binary content, ensure that it's accessible unzipped.
-            if ($UpdateListingText -or $UpdateScreenshotsAndCaptions -or $UpdateVideos -or $AddPackages -or $ReplacePackages -or $UpdatePackages)
+            if ($UpdateListingText -or $UpdateImagesAndCaptions -or $UpdateVideos -or $AddPackages -or $ReplacePackages -or $UpdatePackages)
             {
                 if ([String]::IsNullOrEmpty($ContentPath))
                 {
@@ -1453,7 +1456,12 @@ function Update-Submission
 
             if ($PackageRolloutPercentage -ge 0)
             {
-                $null = Update-SubmissionRollout @packageParams -Percentage $PackageRolloutPercentage -Enabled
+                $rolloutParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
+                $rolloutParams.Add('State', [StoreBrokerRolloutState]::Initialized)
+                $rolloutParams.Add('Percentage', $PackageRolloutPercentage)
+                $rolloutParams.Add('Enabled', $true)
+                
+                $null = Update-SubmissionRollout @rolloutParams
             }
 
             if ($IsMandatoryUpdate)
@@ -1509,7 +1517,7 @@ function Update-Submission
             [StoreBrokerTelemetryProperty]::UpdatePackages = $UpdatePackages
             [StoreBrokerTelemetryProperty]::RedundantPackagesToKeep = $RedundantPackagesToKeep
             [StoreBrokerTelemetryProperty]::UpdateListingText = $UpdateListingText
-            [StoreBrokerTelemetryProperty]::UpdateScreenshotsAndCaptions = $UpdateScreenshotsAndCaptions
+            [StoreBrokerTelemetryProperty]::UpdateImagesAndCaptions = $UpdateImagesAndCaptions
             [StoreBrokerTelemetryProperty]::UpdateVideos = $UpdateVideos
             [StoreBrokerTelemetryProperty]::UpdatePublishModeAndVisibility = $UpdatePublishModeAndVisibility
             [StoreBrokerTelemetryProperty]::UpdatePricingAndAvailability = $UpdatePricingAndAvailability
@@ -1535,7 +1543,7 @@ function Update-Submission
         {
             Write-Log -Message "Deleting temporary content directory: $ContentPath" -Level Verbose
             $null = Remove-Item -Force -Recurse $ContentPath -ErrorAction SilentlyContinue
-            Write-Log -Message "Deleting temporary directory complete." -Level Verbos
+            Write-Log -Message "Deleting temporary directory complete." -Level Verbose
         }
     }
 }

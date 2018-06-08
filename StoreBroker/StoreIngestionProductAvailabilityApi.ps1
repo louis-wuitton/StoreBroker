@@ -126,7 +126,12 @@ function New-ProductAvailability
 
     try
     {
-        $Visibility = Get-ProperEnumCasing -Value $Visibility
+        if ($null -ne $PSBoundParameters['Visibility'])
+        {
+            # The check is necessary, because if no value was provided, we'll get an empty string back
+            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
+            $Visibility = Get-ProperEnumCasing -Value $Visibility
+        }
 
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -235,7 +240,12 @@ function Set-ProductAvailability
 
     try
     {
-        $Visibility = Get-ProperEnumCasing -Value $Visibility
+        if ($null -ne $PSBoundParameters['Visibility'])
+        {
+            # The check is necessary, because if no value was provided, we'll get an empty string back
+            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
+            $Visibility = Get-ProperEnumCasing -Value $Visibility
+        }
 
         if ($null -ne $Object)
         {
