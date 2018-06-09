@@ -1228,44 +1228,32 @@ function Start-SubmissionMonitor
 #>
     [CmdletBinding(
         SupportsShouldProcess,
-        DefaultParametersetName="AppOrFlight")]
+        DefaultParametersetName="Flight")]
     [Alias('Start-ApplicationSubmissionMonitor')]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
     param(
-        [Parameter(
-            Mandatory,
-            ParameterSetName="AppOrFlight",
-            Position=0)]
-        [string] $AppId,
+        [Parameter(Mandatory)]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
+        [string] $ProductId,
 
-        [Parameter(
-            Mandatory,
-            ParameterSetName="AppOrFlight",
-            Position=1)]
-        [Parameter(
-            Mandatory,
-            ParameterSetName="Iap",
-            Position=1)]
+        [Parameter(Mandatory)]
         [string] $SubmissionId,
 
-        [Parameter(
-            ParameterSetName="AppOrFlight",
-            Position=2)]
-        [Parameter(
-            ParameterSetName="Iap",
-            Position=2)]
+        [Parameter(ParameterSetName='Flight')]
+        [string] $FlightId,
+
+        [Parameter(ParameterSetName='Sandbox')]
+        [string] $SandboxId,
+
         [string[]] $EmailNotifyTo = @(),
 
-        [Parameter(ParameterSetName="AppOrFlight")]
-        [string] $FlightId = $null,
-
-        [Parameter(
-            Mandatory,
-            ParameterSetName="Iap",
-            Position=0)]
-        [string] $IapId,
-
         [int] $PollingInterval = 5,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
 
         [switch] $NoStatus,
 
@@ -1276,141 +1264,119 @@ function Start-SubmissionMonitor
 
     # Telemetry-related
     $telemetryProperties = @{
-        [StoreBrokerTelemetryProperty]::AppId = $AppId
+        [StoreBrokerTelemetryProperty]::ProductId = $ProductId
         [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
     }
 
     if (-not [String]::IsNullOrEmpty($FlightId)) { $telemetryProperties[[StoreBrokerTelemetryProperty]::FlightId] = $FlightId }
-    if (-not [String]::IsNullOrEmpty($IapId)) { $telemetryProperties[[StoreBrokerTelemetryProperty]::IapId] = $IapId }
+    if (-not [String]::IsNullOrEmpty($SandboxId)) { $telemetryProperties[[StoreBrokerTelemetryProperty]::SandboxId] = $SandboxId }
     $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::NumEmailAddresses = $EmailNotifyTo.Count }
     Set-TelemetryEvent -EventName Start-ApplicationSubmissionMonitor -Properties $telemetryProperties -Metrics $telemetryMetrics
 
+    $providedAccessToken = ($null -ne $PSBoundParameters['AccessToken'])
     $shouldMonitor = $true
     $indentLength = 5
-    $lastTokenRefreshTime = Get-Date
-    $accessToken = Get-AccessToken -NoStatus:$NoStatus
+
+    if (-not $providedAccessToken)
+    {
+        $lastTokenRefreshTime = Get-Date
+        $accessToken = Get-AccessToken -NoStatus:$NoStatus
+    }
+
+    if ([String]::IsNullOrWhiteSpace($CorrelationId))
+    {
+        # We'll assign our own unique CorrelationId for this update request
+        # if one wasn't provided to us already.
+        $CorrelationId = "$((Get-Date).ToString("yyyyMMddssmm.ffff"))-$ProductId"
+    }
+
+    $commonParams = @{
+        'ClientRequestId' = $ClientRequestId
+        'CorrelationId' = $CorrelationId
+        'AccessToken' = $AccessToken
+        'NoStatus' = $NoStatus
+    }
 
     # Get the info so we have it's name when we give the user updates.
-    $isIapSubmission = -not [String]::IsNullOrEmpty($IapId)
-    if ($isIapSubmission)
-    {
-        $iap = Get-InAppProduct -IapId $IapId -AccessToken $AccessToken -NoStatus:$NoStatus
-        $appName = $iap.productId
-        $fullName = $appName
-    }
-    else
-    {
-        $app = Get-Application -AppId $AppId -AccessToken $AccessToken -NoStatus:$NoStatus
-        $appName = $app.primaryName
-        $fullName = $appName
+    $product = Get-Product @commonParams -ProductId $ProductId
+    $appId = ($product.externalIds | Where-Object { $_.type -eq 'StoreId' }).value
+    $productName = $product.name
+    $fullName = $productName
 
-        # If this is monitoring a flight submission, let's also get the flight's friendly name for
-        # those updates as well.
-        $isFlightingSubmission = (-not [String]::IsNullOrEmpty($FlightId))
-        if ($isFlightingSubmission)
-        {
-            $flight = Get-ApplicationFlight -AppId $AppId -FlightId $FlightId -AccessToken $AccessToken -NoStatus:$NoStatus
-            $flightName = $flight.friendlyName
-            $fullName = "$appName | $flightName"
-        }
+    $detail = Get-SubmissionDetail @commonParams -ProductId $ProductId -SubmissionId $SubmissionId
+
+    # If this is monitoring a flight submission, let's also get the flight's friendly name for
+    # those updates as well.
+    $isFlightingSubmission = (-not [String]::IsNullOrEmpty($FlightId))
+    if ($isFlightingSubmission)
+    {
+        $flight = Get-Flight @commonParams -ProductId $ProductId -FlightId $FlightId
+        $flightName = $flight.name
+        $fullName = "$productName | $flightName"
+    }
+
+    $isSandboxSubmission = (-not [String]::IsNullOrEmpty($SandboxId))
+    if ($isSandboxSubmission)
+    {
+        $fullName = "$productName | Sandbox $SandboxId"
     }
 
     $submission = $null
 
-    # We can safely assume this is being used on a recently committed submission.
-    # If it isn't we'll report that to the user and update this value during the first
-    # run through our loop.
-    $lastStatus = "CommitStarted"
+    $lastSubState = [StoreBrokerSubmissionSubState]::InDraft.ToString()
 
     while ($shouldMonitor)
     {
         # We need to refresh our access token every hour...we'll go a little more often to give
         # ourselves some wiggle room to avoid unnecessary failures.
-        $accessTokenTimeoutMinutes = 58
-        if ((New-TimeSpan $lastTokenRefreshTime $(Get-Date)).Minutes -gt $accessTokenTimeoutMinutes)
+        if (-not $providedAccessToken)
         {
-            $lastTokenRefreshTime = Get-Date
-            $accessToken = Get-AccessToken -NoStatus:$NoStatus
+            $accessTokenTimeoutMinutes = 58
+            if ((New-TimeSpan $lastTokenRefreshTime $(Get-Date)).Minutes -gt $accessTokenTimeoutMinutes)
+            {
+                $lastTokenRefreshTime = Get-Date
+                $accessToken = Get-AccessToken -NoStatus:$NoStatus
+            }
         }
 
         try
         {
-            if ($isIapSubmission)
-            {
-                $submission = Get-InAppProductSubmission -IapId $IapId -SubmissionId $SubmissionId -AccessToken $AccessToken -NoStatus:$NoStatus
-            }
-            elseif ($isFlightingSubmission)
-            {
-                $submission = Get-ApplicationFlightSubmission -AppId $AppId -FlightId $FlightId -SubmissionId $SubmissionId -AccessToken $AccessToken -NoStatus:$NoStatus
-            }
-            else
-            {
-                $submission = Get-ApplicationSubmission -AppId $AppId -SubmissionId $SubmissionId -AccessToken $AccessToken -NoStatus:$NoStatus
-            }
+            $submission = Get-Submission @commonParams -ProductId $ProductId -SubmissionId $SubmissionId
+            $report = Get-SubmissionReport @commonParams -ProductId $ProductId -SubmissionId $SubmissionId
 
-            if ($submission.status -ne $lastStatus)
+            if ($submission.status -ne $lastSubState)
             {
-                $lastStatus = $submission.status
+                $lastSubState = $submission.substate
 
                 $body = @()
                 $body += ""
-                if ($isIapSubmission)
+                $body += "ProductId             : $ProductId ($productName)"
+                if ($isFlightingSubmission)
                 {
-                    $body += "IapId             : $IapId ($appName)"
-                }
-                else
-                {
-                    $body += "AppId             : $AppId ($appName)"
-                    if ($isFlightingSubmission)
-                    {
-                        $body += "FlightId          : $FlightId ($flightName)"
-                    }
+                    $body += "FlightId              : $FlightId ($flightName)"
                 }
 
-                $body += "SubmissionId      : $SubmissionId"
-                $body += "Submission Status : $lastStatus"
+                $body += "SubmissionId          : $SubmissionId"
+                $body += "Submission State      : $($submission.state)"
+                $body += "Submission State      : $lastSubState"
                 $body += ""
-                $body += "Status Details [Errors]                : {0}" -f $(if ($submission.statusDetails.errors.count -eq 0) { "<None>" } else { "" })
-                $body += $submission.statusDetails.errors | Format-SimpleTableString -IndentationLevel $indentLength
-                $body += ""
-                $body += "Status Details [Warnings]              : {0}" -f $(if ($submission.statusDetails.warnings.count -eq 0) { "<None>" } else { "" })
-                $body += $submission.statusDetails.warnings | Format-SimpleTableString -IndentationLevel $indentLength
-                $body += ""
-                $body += "Status Details [Certification Reports] : {0}" -f $(if ($submission.statusDetails.certificationReports.count -eq 0) { "<None>" } else { "" })
-                foreach ($report in $submission.statusDetails.certificationReports)
+                $body += "Status Details        : {0}" -f $(if ($report.count -eq 0) { "<None>" } else { "" })
+                $body += $report | Format-SimpleTableString -IndentationLevel $indentLength
+                foreach ($entry in $report)
                 {
-                    $body += $(" " * $indentLength) + $(Get-Date -Date $report.date -Format R) + ": $($report.reportUrl)"
+                    $body += $(" " * $indentLength) + $(Get-Date -Date $entry.reportTimeInUtc -Format R) + ": $($entry.status) | $($entry.fileUri)"
                 }
 
                 $body += ""
                 $body += "To view the full submission"
                 $body += "---------------------------"
-                if ($isIapSubmission)
-                {
-                    $body += "Dev Portal URL"
-                    $body += "    https://dev.windows.com/en-us/dashboard/iaps/$IapId/submissions/$SubmissionId/"
-                    $body += "StoreBroker command"
-                    $body += "    Get-InAppProductSubmission -IapId $IapId -SubmissionId $SubmissionId"
-                }
-                else
-                {
-                    $body += "Dev Portal URL"
-                    $body += "    https://dev.windows.com/en-us/dashboard/apps/$AppId/submissions/$SubmissionId/"
-                    $body += "StoreBroker command"
-                    if ($isFlightingSubmission)
-                    {
-                        $body += "    Get-ApplicationFlightSubmission -AppId $AppId -FlightId $FlightId -SubmissionId $SubmissionId"
-                    }
-                    else
-                    {
-                        $body += "    Get-ApplicationSubmission -AppId $AppId -SubmissionId $SubmissionId"
-                    }
-                }
+                $body += "Dev Portal URL"
+                $body += "    https://dev.windows.com/en-us/dashboard/apps/$appId/submissions/$SubmissionId/"
+                $body += "StoreBroker command"
+                $body += "    Get-Submission -ProductId $productId -SubmissionId $SubmissionId"
 
-                # Any status that ends in Failed is absolutely a failed state that the user won't leave.
-                # If it changes from CommitStarted -> PendingCommit, that's indicative of a server-side
-                # failure that we also can't recover from.
-                if (($lastStatus -like "*Failed") -or ($lastStatus -eq $script:keywordPendingCommit))
+                $failedStates = @([StoreBrokerSubmissionSubState]::Failed, [StoreBrokerSubmissionSubState]::FailedInCertification)
+                if ($lastSubState -in $failedStates)
                 {
                     $body += ""
                     $body += "*** Your submission has entered a Failed state.  Monitoring will now end."
@@ -1418,7 +1384,7 @@ function Start-SubmissionMonitor
                     $shouldMonitor = $false
                 }
 
-                if (($lastStatus -eq $script:keywordRelease) -and ($submission.targetPublishMode -in ($script:keywordManual, $script:keywordSpecificDate)))
+                if ($lastSubState -eq [StoreBrokerSubmissionSubState]::ReadyToPublish)
                 {
                     $body += ""
                     $body += "*** Your submission is ready for publishing.  Monitoring will now end."
@@ -1426,7 +1392,7 @@ function Start-SubmissionMonitor
                     $shouldMonitor = $false
                 }
 
-                if ($lastStatus -eq $script:keywordPublished)
+                if ($lastSubState -eq [StoreBrokerSubmissionSubState]::Published)
                 {
                     $body += ""
                     $body += "*** Your submission has been published.  Monitoring will now end."
@@ -1438,7 +1404,7 @@ function Start-SubmissionMonitor
 
                 if ($EmailNotifyTo.Count -gt 0)
                 {
-                    $subject = "Status change for [$fullName] submission [$SubmissionId] : $lastStatus"
+                    $subject = "Status change for [$fullName] submission [$SubmissionId] : $lastSubState"
                     Send-SBMailMessage -Subject $subject -Body $($body -join [Environment]::NewLine) -To $EmailNotifyTo
                 }
             }
@@ -1460,7 +1426,7 @@ function Start-SubmissionMonitor
         if ($shouldMonitor)
         {
             $secondsBetweenChecks = $PollingInterval * 60
-            Write-Log -Message "Status is [$lastStatus]. Waiting $secondsBetweenChecks seconds before checking again..."
+            Write-Log -Message "SubState is [$lastSubState]. Waiting $secondsBetweenChecks seconds before checking again..."
             Start-Sleep -Seconds $secondsBetweenChecks
         }
     }

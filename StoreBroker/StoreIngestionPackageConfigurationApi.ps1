@@ -1,8 +1,17 @@
 Add-Type -TypeDefinition @"
    public enum StoreBrokerPackageConfigurationProperty
    {
+       mandatoryUpdate,
        resourceType,
        revisionToken
+   }
+"@
+
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerPackageConfigurationMandatoryUpdateProperty
+   {
+       effectiveDatetime,
+       isSpecifiedByDeveloper
    }
 "@
 
@@ -110,6 +119,12 @@ function New-ProductPackageConfiguration
             ParameterSetName="Object")]
         [PSCustomObject] $Object,
 
+        [Parameter(ParameterSetName="Individual")]
+        [switch] $IsMandatoryUpdate,
+
+        [Parameter(ParameterSetName="Individual")]
+        [DateTime] $MandatoryUpdateEffectiveDate,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -151,6 +166,26 @@ function New-ProductPackageConfiguration
             # Convert the input into a Json body.
             $hashBody = @{}
             $hashBody[[StoreBrokerPackageConfigurationProperty]::resourceType] = [StoreBrokerResourceType]::PackageConfiguration
+
+            if (($null -ne $PSBoundParameters['IsMandatoryUpdate']) -or ($null -ne $PSBoundParameters['MandatoryUpdateEffectiveDate']))
+            {
+                $hashBody[[StoreBrokerListingProperty]::mandatoryUpdate] = @{}
+
+                # We only set the value if the user explicitly provided a value for this parameter
+                # (so for $false, they'd have to pass in -IsMandatoryUpdate:$false).
+                # Otherwise, there'd be no way to know when the user wants to simply keep the
+                # existing value.
+                if ($null -ne $PSBoundParameters['IsMandatoryUpdate'])
+                {
+                    $hashBody[[StoreBrokerListingProperty]::mandatoryUpdate][[StoreBrokerPackageConfigurationMandatoryUpdateProperty]::isSpecifiedByDeveloper] = $IsMandatoryUpdate
+                    $telemetryProperties[[StoreBrokerTelemetryProperty]::IsMandatoryUpdate] = $IsMandatoryUpdate
+                }
+
+                if ($null -ne $PSBoundParameters['MandatoryUpdateEffectiveDate'])
+                {
+                    $hashBody[[StoreBrokerListingProperty]::mandatoryUpdate][[StoreBrokerPackageConfigurationMandatoryUpdateProperty]::effectiveDatetime] = $MandatoryUpdateEffectiveDate.ToUniversalTime().ToString('o')
+                }
+            }
         }
 
         $body = Get-JsonBody -InputObject $hashBody
@@ -199,6 +234,12 @@ function Set-ProductPackageConfiguration
             Mandatory,
             ParameterSetName="Object")]
         [PSCustomObject] $Object,
+
+        [Parameter(ParameterSetName="Individual")]
+        [switch] $IsMandatoryUpdate,
+
+        [Parameter(ParameterSetName="Individual")]
+        [DateTime] $MandatoryUpdateEffectiveDate,
 
         [Parameter(
             Mandatory,
@@ -249,6 +290,26 @@ function Set-ProductPackageConfiguration
             $hashBody = @{}
             $hashBody[[StoreBrokerPackageConfigurationProperty]::resourceType] = [StoreBrokerResourceType]::PackageConfiguration
             $hashBody[[StoreBrokerPackageConfigurationProperty]::revisionToken] = $RevisionToken
+
+            if (($null -ne $PSBoundParameters['IsMandatoryUpdate']) -or ($null -ne $PSBoundParameters['MandatoryUpdateEffectiveDate']))
+            {
+                $hashBody[[StoreBrokerListingProperty]::mandatoryUpdate] = @{}
+
+                # We only set the value if the user explicitly provided a value for this parameter
+                # (so for $false, they'd have to pass in -IsMandatoryUpdate:$false).
+                # Otherwise, there'd be no way to know when the user wants to simply keep the
+                # existing value.
+                if ($null -ne $PSBoundParameters['IsMandatoryUpdate'])
+                {
+                    $hashBody[[StoreBrokerListingProperty]::mandatoryUpdate][[StoreBrokerPackageConfigurationMandatoryUpdateProperty]::isSpecifiedByDeveloper] = $IsMandatoryUpdate
+                    $telemetryProperties[[StoreBrokerTelemetryProperty]::IsMandatoryUpdate] = $IsMandatoryUpdate
+                }
+
+                if ($null -ne $PSBoundParameters['MandatoryUpdateEffectiveDate'])
+                {
+                    $hashBody[[StoreBrokerListingProperty]::mandatoryUpdate][[StoreBrokerPackageConfigurationMandatoryUpdateProperty]::effectiveDatetime] = $MandatoryUpdateEffectiveDate.ToUniversalTime().ToString('o')
+                }
+            }
         }
 
         $body = Get-JsonBody -InputObject $hashBody
@@ -268,6 +329,77 @@ function Set-ProductPackageConfiguration
         }
 
         return Invoke-SBRestMethod @params
+    }
+    catch
+    {
+        throw
+    }
+}
+
+function Update-ProductPackageConfiguration
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $SubmissionId,
+
+        [switch] $IsMandatoryUpdate,
+
+        [DateTime] $MandatoryUpdateEffectiveDate,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
+
+    try
+    {
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+        $params = @{
+            'ProductId' = $ProductId
+            'SubmissionId' = $SubmissionId
+            'ClientRequestId' = $ClientRequestId
+            'CorrelationId' = $CorrelationId
+            'AccessToken' = $AccessToken
+            'NoStatus' = $NoStatus
+        }
+
+        $configuration = Get-ProductPackageConfiguration @params
+
+        if ($null -ne $PSBoundParameters['IsMandatoryUpdate'])
+        {
+            # TODO: Ensure that MandatoryUpdate exists as a property, then set the right sub-property
+        }
+
+        if ($null -ne $PSBoundParameters['MandatoryUpdateEffectiveDate'])
+        {
+            # TODO: Ensure that MandatoryUpdate exists as a property, then set the right sub-property
+        }
+
+        $null = Set-ProductPackageConfiguration @params -Object $configuration
+
+        # Record the telemetry for this event.
+        $stopwatch.Stop()
+        $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        Set-TelemetryEvent -EventName Update-ProductPackageConfiguration -Properties $telemetryProperties -Metrics $telemetryMetrics
+        return
     }
     catch
     {

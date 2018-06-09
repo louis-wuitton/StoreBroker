@@ -289,6 +289,7 @@ function Update-ProductProperty
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
 
         [Parameter(Mandatory)]

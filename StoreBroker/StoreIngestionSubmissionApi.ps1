@@ -792,14 +792,14 @@ function Update-SubmissionDetail
 
         if ($UpdateCertificationNotesFromSubmissionData)
         {
-            $details.certificationNotes = $SubmissionData.notesForCertification
+            $detail.certificationNotes = $SubmissionData.notesForCertification
         }
 
         # If the user explicitly passes in CertificationNotes at the commandline, it will override
         # the value that might have come from the config file/SubmissionData.
         if ($providedCertificationNotes)
         {
-            $details.certificationNotes = $CertificationNotes
+            $detail.certificationNotes = $CertificationNotes
         }
 
         $null = Set-SubmissionDetail @params -Object $detail
@@ -1042,7 +1042,22 @@ function Submit-Submission
             "NoStatus" = $NoStatus
         }
 
-        return (Invoke-SBRestMethod @params)
+        $result = Invoke-SBRestMethod @params
+
+        $product = Get-Product -ProductId $ProductId -ClientRequestId $ClientRequestId -CorrelationId $CorrelationId -AccessToken $AccessToken -NoStatus:$NoStatus
+        $appId = ($product.externalIds | Where-Object { $_.type -eq 'StoreId' }).value
+        Write-Log -Message @(
+            "The submission has been successfully submitted.",
+            "This is just the beginning though.",
+            "It still has multiple phases of validation to get through, and there's no telling how long that might take.",
+            "You can view the progress of the submission validation on the Dev Portal here:",
+            "    https://dev.windows.com/en-us/dashboard/apps/$appId/submissions/$submissionId/",
+            "or by running this command:",
+            "    Get-Submission -ProductId $AppId -SubmissionId $submissionId",
+            "You can automatically monitor this submission with this command:",
+            "    Start-SubmissionMonitor -Product $ProductId -SubmissionId $SubmissionId -EmailNotifyTo $env:username")
+
+        return $result
     }
     catch
     {
@@ -1109,7 +1124,10 @@ function Update-Submission
     [OutputType([Object[]])]
     param(
         [Parameter(Mandatory)]
+        [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
         [string] $ProductId,
+
+        [string] $FlightId,
 
         [Parameter(Mandatory)]
         [ValidateScript({if (Test-Path -Path $_ -PathType Leaf) { $true } else { throw "$_ cannot be found." }})]
@@ -1190,6 +1208,30 @@ function Update-Submission
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    # Check for specified options that are invalid for Flight submission updates
+    if (-not [String]::IsNullOrWhiteSpace($FlightId))
+    {
+        $unsupportedFlightingOptions = @(
+            'UpdateListingText',
+            'UpdateImagesAndCaptions',
+            'UpdatePublishModeAndVisibility',
+            'UpdatePricingAndAvailability',
+            'UpdateAppProperties',
+            'UpdateGamingOptions',
+            'UpdateVideos'
+        )
+
+        foreach ($option in $unsupportedFlightingOptions)
+        {
+            if ($PSBoundParameters.ContainsKey($option))
+            {
+                $message = "[$option] is not supported for Flight submission updates."
+                Write-Log -Message $message -Level Error
+                throw $message
+            }
+        }
+    }
 
     $isContentPathTemporary = $false
 
@@ -1415,7 +1457,7 @@ function Update-Submission
             if ($null -ne $PSBoundParameters['TargetPublishMode']) { $detailParams.Add("TargetPublishMode", $TargetPublishMode) }
             if ($null -ne $PSBoundParameters['TargetPublishDate']) { $detailParams.Add("TargetPublishDate", $TargetPublishDate) }
             if ($null -ne $PSBoundParameters['CertificationNotes']) { $detailParams.Add("CertificationNotes", $CertificationNotes) }
-            $null = Update-SubmissionDetail @detailParams # TODO: This API currently fails.  Should comment out while testing.
+            $null = Update-SubmissionDetail @detailParams
 
             if ($UpdatePublishModeAndVisibility -or ($null -ne $PSBoundParameters['Visibility']))
             {
@@ -1467,6 +1509,10 @@ function Update-Submission
 
             if ($IsMandatoryUpdate)
             {
+                $configurationParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
+                if ($null -ne $PSBoundParameters['State']) { $configurationParams.Add('State', [StoreBrokerRolloutState]::Initialized) }
+                if ($null -ne $PSBoundParameters['State']) { $configurationParams.Add('State', [StoreBrokerRolloutState]::Initialized) }
+
                 # TODO: No equivalent
                 # $jsonContent.packageDeliveryOptions.isMandatoryUpdate
                 # if ($null -ne $MandatoryUpdateEffectiveDate)

@@ -548,7 +548,7 @@ function Set-TelemetryEvent
 
     if ($global:SBDisableTelemetry)
     {
-        Write-Log -Message "Telemetry has been disabled via `$global:SBDisableTelemetry. Skipping reporting event." -Level Verbose
+        Write-Log -Message "Telemetry has been disabled via `$global:SBDisableTelemetry. Skipping reporting event [$EventName]." -Level Verbose
         return
     }
 
@@ -651,7 +651,7 @@ function Set-TelemetryException
 
     if ($global:SBDisableTelemetry)
     {
-        Write-Log -Message "Telemetry has been disabled via `$global:SBDisableTelemetry. Skipping reporting event." -Level Verbose
+        Write-Log -Message "Telemetry has been disabled via `$global:SBDisableTelemetry. Skipping reporting exception." -Level Verbose
         return
     }
 
@@ -729,7 +729,7 @@ function Flush-TelemetryClient
 
     if ($global:SBDisableTelemetry)
     {
-        Write-Log -Message "Telemetry has been disabled via `$global:SBDisableTelemetry. Skipping reporting event." -Level Verbose
+        Write-Log -Message "Telemetry has been disabled via `$global:SBDisableTelemetry. Skipping flushing of the telemetry client." -Level Verbose
         return
     }
 
