@@ -372,7 +372,7 @@ function Update-ProductProperty
             Write-Log -Message "Using the [$langCode] listing data for updating this product's support contact info." -Level Verbose
             $listing = $SubmissionData.listings.$langCode.baseListing
             $property.supportContact = $listing.supportContact
-            $property.privatePolicyUri = $listing.privacyPolicy
+            $property.privacyPolicyUri = $listing.privacyPolicy
             $property.websiteUri = $listing.websiteUrl
         }
 

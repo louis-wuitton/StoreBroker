@@ -21,7 +21,7 @@ $script:ScreenshotAttributeMap = @{
     "XboxScreenshot"       = "XboxImage"
     "PpiScreenshot"        = "SurfaceHubImage"
     "AnalogScreenshot"     = "HoloLensImage"}
- 
+
 $script:AdditionalAssetNames = @(
     'AchievementIcon',
     'BoxArt',
@@ -872,7 +872,7 @@ function Add-ScreenshotCaptions
             $imageName = $captionImageMap.$caption[$screenshotType]
             $child.SetAttribute($script:ScreenshotAttributeMap[$screenshotType], $imageName)
 
-            $properties = @{           
+            $properties = @{
                 fileName     = $imageName
                 languageCode = $LanguageCode
                 fileSasUri   = $image.fileSasUri
@@ -893,7 +893,7 @@ function Add-ScreenshotCaptions
         $child.SetAttribute($script:ScreenshotAttributeMap[$image.Keys[0]], $imageName)
         $elementNode.AppendChild($child) | Out-Null
 
-        $properties = @{           
+        $properties = @{
             fileName     = $imageName
             languageCode = $LanguageCode
             fileSasUri   = $image.fileSasUri
@@ -985,7 +985,7 @@ function Add-AdditionalAssets
             continue
         }
 
-        $properties = @{           
+        $properties = @{
             fileName     = $imageName
             languageCode = $LanguageCode
             fileSasUri   = $image.fileSasUri
@@ -1007,7 +1007,7 @@ function Add-AdditionalAssets
         "   SmallMobileTile, SmallXboxLiveTile, LargeMobileTile, LargeXboxLiveTile, Tile,",
         "   DesktopIcon, Icon (use this value for the 1:1 300x300 pixels logo), AchievementIcon,",
         "   ChallengePromoIcon, RewardDisplayIcon, Icon150X150, Icon71X71,",
-        "   BoxArt, BrandedKeyArt, PosterArt, FeaturedPromotionalArt, SquareHeroArt, TitledHeroArt",           
+        "   BoxArt, BrandedKeyArt, PosterArt, FeaturedPromotionalArt, SquareHeroArt, TitledHeroArt",
         " There is no content for any of these elements, just a single attribute called FileName. "
     )
 
@@ -1071,7 +1071,7 @@ function Add-Trailers
 
         # There's an entry for this trailer, for this language, so add it to the PDP
         $trailerFileName = Split-Path -Path ($trailer.fileName) -Leaf
-        $properties = @{           
+        $properties = @{
             fileName     = $trailerFileName
             languageCode = $LanguageCode
             fileSasUri   = $trailer.fileSasUri
@@ -1090,14 +1090,14 @@ function Add-Trailers
             # The API doesn't seem to always return the screenshot filename.
             # We'll guard against that by only adding the value to our asset array
             # if there's a value.
-            $properties = @{           
+            $properties = @{
                 fileName     = $screenshotFileName
                 languageCode = $LanguageCode
                 fileSasUri   = $trailer.thumbnail.fileSasUri
             }
 
             $asset = New-Object PSObject -Property $properties
-            $assets += $asset    
+            $assets += $asset
         }
 
         $trailerElement = $Xml.CreateElement("Trailer", $xml.productDescription.NamespaceURI)
@@ -1457,7 +1457,7 @@ function Add-PrivacyPolicy
 
     $elementName = "PrivacyPolicyURL"
     $elementNode = Ensure-RootChild -Xml $Xml -Element $elementName
-    $elementNode.InnerText = $Properties.privatePolicyUri
+    $elementNode.InnerText = $Properties.privacyPolicyUri
 
     # Add comment to parent
     $maxChars = 2048
@@ -1616,7 +1616,7 @@ function ConvertFrom-Listing
         # We need to ensure that we're definitely concatenting arrays together, and don't have
         # any single items in there.  Therefore, we wrap each variable in an array to force it
         # to be an array for merging purposes.
-        $mediaFileNames = 
+        $mediaFileNames =
             @(($screenshots | Select-Object -ExpandProperty fileName)) +
             @(($additionalAssets | Select-Object -ExpandProperty fileName)) +
             @(($trailerFiles | Select-Object -ExpandProperty fileName))
@@ -1663,7 +1663,7 @@ function Get-AssetMedia
         }
         else
         {
-            Write-Log "No SasUri available to download [$($asset.languageCode)] [$($asset.fileName)]." -Level Verbose    
+            Write-Log "No SasUri available to download [$($asset.languageCode)] [$($asset.fileName)]." -Level Verbose
         }
     }
 }
