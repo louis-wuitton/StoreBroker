@@ -1283,12 +1283,7 @@ function Start-SubmissionMonitor
         $accessToken = Get-AccessToken -NoStatus:$NoStatus
     }
 
-    if ([String]::IsNullOrWhiteSpace($CorrelationId))
-    {
-        # We'll assign our own unique CorrelationId for this update request
-        # if one wasn't provided to us already.
-        $CorrelationId = "$((Get-Date).ToString("yyyyMMddssmm.ffff"))-$ProductId"
-    }
+    $CorrelationId = Get-CorrelationId -CorrelationId $CorrelationId -Identifier $ProductId
 
     $commonParams = @{
         'ClientRequestId' = $ClientRequestId
@@ -1656,7 +1651,7 @@ filter Get-ProperEnumCasing
         'SmallMobileTile', 'SmallXboxLiveTile', 'LargeMobileTile', 'LargeXboxLiveTile', 'Tile',
         'DesktopIcon', 'Icon', 'AchievementIcon', 'ChallengePromoIcon', 'RewardDisplayIcon', 'Icon150X150', 'Icon71X71',
         'Doublewide', 'Panoramic', 'Square', 'MobileScreenshot', 'XboxScreenshot', 'PpiScreenshot', 'AnalogScreenshot',
-        'BoxArt', 'BrandedKeyArt', 'PosterArt', 'FeaturedPromotionalArt', 'SquareHeroArt', 'TitledHeroArt'
+        'BoxArt', 'BrandedKeyArt', 'PosterArt', 'FeaturedPromotionalArt', 'PromotionalArt16x9', 'TitledHeroArt'
         'Application', 'AvatarItem', 'Bundle', 'Consumable', 'ManagedConsumable', 'Durable', 'DurableWithBits',
         'Subscription', 'SeasonPass', 'InternetOfThings'
         'ApplicationProperty', 'AddonProperty', 'BundleProperty', 'AvatarProperty', 'IoTProperty', 'AzureProperty'
@@ -2480,4 +2475,22 @@ function Test-ResourceType
         Write-Log -Message $message -Level Error
         throw $message
     }
+}
+
+function Get-CorrelationId
+{
+    [CmdletBinding()]
+    param(
+        [string] $CorrelationId,
+
+        [string] $Identifier
+    )
+
+    # We'll provide a unique value if one wasn't provided to us already.
+    if ([String]::IsNullOrWhiteSpace($CorrelationId))
+    {
+        return "$((Get-Date).ToString("yyyyMMddssmm.ffff"))-$Identifier"
+    }
+
+    return $CorrelationId
 }

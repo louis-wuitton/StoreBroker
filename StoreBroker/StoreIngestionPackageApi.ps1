@@ -10,7 +10,9 @@ Add-Type -TypeDefinition @"
 
 function Get-ProductPackage
 {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        DefaultParametersetName="Search")]
     param(
         [Parameter(Mandatory)]
         [ValidateScript({if ($_.Length -le 12) { throw "It looks like you supplied an AppId instead of a ProductId.  Use Get-Product with -AppId to find the ProductId for this AppId." } else { $true }})]
@@ -19,11 +21,18 @@ function Get-ProductPackage
         [Parameter(Mandatory)]
         [string] $SubmissionId,
 
+        [Parameter(
+            Mandatory,
+            ParameterSetName="Known")]
         [string] $PackageId,
 
         [string] $FeatureGroupId,
 
+        [Parameter(ParameterSetName="Search")]
         [switch] $SinglePage,
+
+        [Parameter(ParameterSetName="Known")]
+        [switch] $WithUrl,
 
         [string] $ClientRequestId,
 
@@ -56,6 +65,11 @@ function Get-ProductPackage
     if (-not [String]::IsNullOrWhiteSpace($FeatureGroupId))
     {
         $getParams += "featureGroupId=$FeatureGroupId"
+    }
+
+    if ($WithUrl)
+    {
+        $getParams += "withUrl=true"
     }
 
     $params = @{

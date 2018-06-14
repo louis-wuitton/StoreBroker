@@ -128,7 +128,7 @@ function New-ListingImage
             'SmallMobileTile', 'SmallXboxLiveTile', 'LargeMobileTile', 'LargeXboxLiveTile', 'Tile',
             'DesktopIcon', 'Icon', 'AchievementIcon', 'ChallengePromoIcon', 'RewardDisplayIcon', 'Icon150X150', 'Icon71X71',
             'Doublewide', 'Panoramic', 'Square', 'MobileScreenshot', 'XboxScreenshot', 'PpiScreenshot', 'AnalogScreenshot',
-            'BoxArt', 'BrandedKeyArt', 'PosterArt', 'FeaturedPromotionalArt', 'SquareHeroArt', 'TitledHeroArt')]
+            'BoxArt', 'BrandedKeyArt', 'PosterArt', 'FeaturedPromotionalArt', 'PromotionalArt16x9', 'TitledHeroArt')]
         [string] $Type,
 
         [Parameter(ParameterSetName="Individual")]
@@ -554,7 +554,6 @@ function Get-ValidImageType
         "SurfaceHubScreenshot"        = "AnalogScreenshot"
         'StoreLogo9x16'               = 'PosterArt'
         'StoreLogoSquare'             = 'BoxArt'
-        'PromotionalArt16x9'          = 'SquareHeroArt'
         'PromotionalArtwork2400X1200' = 'HeroImage2400x1200'
         'XboxBrandedKeyArt'           = 'BrandedKeyArt'
         'XboxTitledHeroArt'           = 'TitledHeroArt'

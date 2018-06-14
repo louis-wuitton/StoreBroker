@@ -43,6 +43,7 @@ $script:AdditionalAssetNames = @(
     'LargeXboxLiveTile',
     'Panoramic',
     'PosterArt',
+    'PromotionalArt16x9',
     'RewardDisplayIcon',
     'ScreenshotHD720',
     'ScreenshotWVGA',
@@ -50,7 +51,6 @@ $script:AdditionalAssetNames = @(
     'SmallMobileTile',
     'SmallXboxLiveTile',
     'Square',
-    'SquareHeroArt',
     'Tile',
     'TitledHeroArt')
 
@@ -153,12 +153,7 @@ function ConvertFrom-ExistingSubmission
 
     try
     {
-        if ([String]::IsNullOrWhiteSpace($CorrelationId))
-        {
-            # We'll assign our own unique CorrelationId for this update request
-            # if one wasn't provided to us already.
-            $CorrelationId = "$((Get-Date).ToString("yyyyMMddssmm.ffff"))-ConvertFrom-ExistingSubmission"
-        }
+        $CorrelationId = Get-CorrelationId -CorrelationId $CorrelationId -Identifier 'ConvertFrom-ExistingSubmission'
 
         $commonParams = @{
             'ClientRequestId' = $ClientRequestId
@@ -1007,7 +1002,7 @@ function Add-AdditionalAssets
         "   SmallMobileTile, SmallXboxLiveTile, LargeMobileTile, LargeXboxLiveTile, Tile,",
         "   DesktopIcon, Icon (use this value for the 1:1 300x300 pixels logo), AchievementIcon,",
         "   ChallengePromoIcon, RewardDisplayIcon, Icon150X150, Icon71X71,",
-        "   BoxArt, BrandedKeyArt, PosterArt, FeaturedPromotionalArt, SquareHeroArt, TitledHeroArt",
+        "   BoxArt, BrandedKeyArt, PosterArt, FeaturedPromotionalArt, PromotionalArt16x9, TitledHeroArt",
         " There is no content for any of these elements, just a single attribute called FileName. "
     )
 

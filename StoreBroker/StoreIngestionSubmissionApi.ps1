@@ -2,20 +2,28 @@ Add-Type -TypeDefinition @"
    public enum StoreBrokerSubmissionProperty
    {
        certificationNotes,
-       flightId,
        isAutoPromote,
        isManualPublish,
        releaseTimeInUtc,
        resourceType,
        revisionToken,
-       sandboxId,
-       target
+       targets
    }
 "@
 
 Add-Type -TypeDefinition @"
-   public enum StoreBrokerSubmissionTargetProperty
+   public enum StoreBrokerSubmissionTargetsProperty
    {
+       type,
+       value
+   }
+"@
+
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerSubmissionTargetsValues
+   {
+       flight,
+       sandbox,
        scope
    }
 "@
@@ -349,18 +357,28 @@ function New-Submission
         }
 
         # Convert the input into a Json body.
-        $global:hashBody = @{}
+        $hashBody = @{}
         $hashBody[[StoreBrokerSubmissionProperty]::resourceType] = [StoreBrokerResourceType]::Submission
-        $hashBody['scope'] = $Scope
+        $hashBody[[StoreBrokerSubmissionProperty]::targets] = @()
+        $hashBody[[StoreBrokerSubmissionProperty]::targets] += @{
+            [StoreBrokerSubmissionTargetsProperty]::type.ToString() = [StoreBrokerSubmissionTargetsValues]::scope.ToString()
+            [StoreBrokerSubmissionTargetsProperty]::value.ToString() = $Scope
+        }
 
         if (-not [String]::IsNullOrWhiteSpace($FlightId))
         {
-            $hashBody[[StoreBrokerSubmissionProperty]::flightId] = $FlightId
-        }
+            $hashBody[[StoreBrokerSubmissionProperty]::targets] += @{
+                [StoreBrokerSubmissionTargetsProperty]::type.ToString() = [StoreBrokerSubmissionTargetsValues]::flight.ToString()
+                [StoreBrokerSubmissionTargetsProperty]::value.ToString() = $FlightId
+            }
+    }
 
         if (-not [String]::IsNullOrWhiteSpace($SandboxId))
         {
-            $hashBody[[StoreBrokerSubmissionProperty]::sandboxId] = $SandboxId
+            $hashBody[[StoreBrokerSubmissionProperty]::targets] += @{
+                [StoreBrokerSubmissionTargetsProperty]::type.ToString() = [StoreBrokerSubmissionTargetsValues]::sandbox.ToString()
+                [StoreBrokerSubmissionTargetsProperty]::value.ToString() = $SandboxId
+            }
         }
 
         $body = Get-JsonBody -InputObject $hashBody
@@ -1266,12 +1284,7 @@ function Update-Submission
         throw $message
     }
 
-    if ([String]::IsNullOrWhiteSpace($CorrelationId))
-    {
-        # We'll assign our own unique CorrelationId for this update request
-        # if one wasn't provided to us already.
-        $CorrelationId = "$((Get-Date).ToString("yyyyMMddssmm.ffff"))-$ProductId"
-    }
+    $CorrelationId = Get-CorrelationId -CorrelationId $CorrelationId -Identifier $ProductId
 
     $commonParams = @{
         'ClientRequestId' = $ClientRequestId
