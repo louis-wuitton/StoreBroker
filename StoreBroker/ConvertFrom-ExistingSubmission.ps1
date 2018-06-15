@@ -19,8 +19,8 @@ $script:ScreenshotAttributeMap = @{
     "Screenshot"           = "DesktopImage"
     "MobileScreenshot"     = "MobileImage"
     "XboxScreenshot"       = "XboxImage"
-    "PpiScreenshot"        = "SurfaceHubImage"
-    "AnalogScreenshot"     = "HoloLensImage"}
+    "SurfaceHubScreesnot"  = "SurfaceHubImage"
+    "HoloLensScreenshot"   = "HoloLensImage"}
 
 $script:AdditionalAssetNames = @(
     'AchievementIcon',
@@ -824,7 +824,7 @@ function Add-ScreenshotCaptions
     {
         $imageType = $image.type
         $fileName = Split-Path -Path ($image.fileName) -Leaf
-        $description = $null # TODO: Get the comment once the API is able to return it
+        $description = $image.description
         if (-not $script:ScreenshotAttributeMap.Contains($imageType))
         {
             if (-not $script:AdditionalAssetNames.Contains($imageType))

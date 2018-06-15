@@ -1650,7 +1650,7 @@ filter Get-ProperEnumCasing
         'Screenshot', 'ScreenshotWXGA', 'ScreenshotHD720', 'ScreenshotWVGA',
         'SmallMobileTile', 'SmallXboxLiveTile', 'LargeMobileTile', 'LargeXboxLiveTile', 'Tile',
         'DesktopIcon', 'Icon', 'AchievementIcon', 'ChallengePromoIcon', 'RewardDisplayIcon', 'Icon150X150', 'Icon71X71',
-        'Doublewide', 'Panoramic', 'Square', 'MobileScreenshot', 'XboxScreenshot', 'PpiScreenshot', 'AnalogScreenshot',
+        'Doublewide', 'Panoramic', 'Square', 'MobileScreenshot', 'XboxScreenshot', 'SurfaceHubScreenshot', 'HoloLensScreenshot',
         'BoxArt', 'BrandedKeyArt', 'PosterArt', 'FeaturedPromotionalArt', 'PromotionalArt16x9', 'TitledHeroArt'
         'Application', 'AvatarItem', 'Bundle', 'Consumable', 'ManagedConsumable', 'Durable', 'DurableWithBits',
         'Subscription', 'SeasonPass', 'InternetOfThings'

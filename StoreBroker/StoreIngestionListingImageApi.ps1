@@ -2,6 +2,7 @@ Add-Type -TypeDefinition @"
    public enum StoreBrokerListingImageProperty
    {
        fileName,
+       description,
        resourceType,
        revisionToken,
        orientation,
@@ -127,7 +128,7 @@ function New-ListingImage
             'Screenshot', 'ScreenshotWXGA', 'ScreenshotHD720', 'ScreenshotWVGA',
             'SmallMobileTile', 'SmallXboxLiveTile', 'LargeMobileTile', 'LargeXboxLiveTile', 'Tile',
             'DesktopIcon', 'Icon', 'AchievementIcon', 'ChallengePromoIcon', 'RewardDisplayIcon', 'Icon150X150', 'Icon71X71',
-            'Doublewide', 'Panoramic', 'Square', 'MobileScreenshot', 'XboxScreenshot', 'PpiScreenshot', 'AnalogScreenshot',
+            'Doublewide', 'Panoramic', 'Square', 'MobileScreenshot', 'XboxScreenshot', 'SurfaceHubScreenshot', 'HoloLensScreenshot',
             'BoxArt', 'BrandedKeyArt', 'PosterArt', 'FeaturedPromotionalArt', 'PromotionalArt16x9', 'TitledHeroArt')]
         [string] $Type,
 
@@ -507,11 +508,10 @@ function Update-ListingImage
                 $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $type
                 $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
 
-                # TODO: Remove this hack once the ListingImage is returned back with a state property
-                Set-PSObjectProperty -InputObject $imageSubmission -Name ([StoreBrokerListingImageProperty]::state.ToString()) -Value ([StoreBrokerFileState]::Uploaded.ToString())
+                Add-Member -InputObject $imageSubmission -Name ([StoreBrokerListingImageProperty]::state.ToString()) -Value ([StoreBrokerFileState]::Uploaded.ToString()) -Type NoteProperty -Force
 
                 $imageSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
-                # TODO: Need to add caption as well (if one exists) once it's supported
+                $imageSubmission.description = $image.description
 
                 $null = Set-ListingImage @params -Object $imageSubmission
             }
@@ -550,8 +550,6 @@ function Get-ValidImageType
     # We only have entries to translate v1 type names to v2 typenames.
     # For all other types, we'll return them as-is.
     $imageTypeMap = @{
-        "HoloLensScreenshot"          = "PpiScreenshot"
-        "SurfaceHubScreenshot"        = "AnalogScreenshot"
         'StoreLogo9x16'               = 'PosterArt'
         'StoreLogoSquare'             = 'BoxArt'
         'PromotionalArtwork2400X1200' = 'HeroImage2400x1200'

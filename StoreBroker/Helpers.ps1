@@ -1077,14 +1077,30 @@ function Convert-EnumToString
         $InputObject
     )
 
-    if ($InputObject -is [hashtable])
+    # ConvertTo-Json only works if the keys are strings.
+    # We need to string-ify all keys
+    if ($InputObject -is [array])
     {
-        # ConvertTo-Json only works if the keys are strings.
-        # We need to string-ify all keys
+        $modified = @()
+        foreach ($item in $InputObject)
+        {
+            $modified += (Convert-EnumToString -InputObject $item)
+        }
+
+        return @($modified)
+    }
+    elseif ($InputObject -is [hashtable])
+    {
         $modified = @{}
         foreach ($key in $InputObject.Keys.GetEnumerator())
         {
-            $modified[$key.ToString()] = (Convert-EnumToString -InputObject $InputObject[$key])
+            $converted = (Convert-EnumToString -InputObject $InputObject[$key])
+            if ($InputObject[$key] -is [array])
+            {
+                $converted = @($converted)
+            }
+
+            $modified[$key.ToString()] = $converted
         }
 
         return $modified
@@ -1109,29 +1125,4 @@ function Get-JsonBody
     )
 
     return ConvertTo-Json -InputObject (Convert-EnumToString -InputObject $InputObject) -Depth $script:jsonConversionDepth
-}
-
-function Set-PSObjectProperty
-{
-    [CmdletBinding()]
-    param(
-        [Parameter(
-            Mandatory,
-            ValueFromPipeline)]
-        [PSObject] $InputObject,
-
-        [Parameter(Mandatory)]
-        [string] $Name,
-
-        $Value
-    )
-
-    if ($null -eq (Get-Member -InputObject $InputObject -type NoteProperty -Name $Name))
-    {
-        Add-Member -InputObject $InputObject -Type NoteProperty -Name $Name -Value $Value
-    }
-    else
-    {
-        $InputObject.$Name = $Value
-    }
 }

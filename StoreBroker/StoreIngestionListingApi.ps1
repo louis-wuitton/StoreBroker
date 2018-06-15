@@ -32,6 +32,8 @@ function Get-Listing
         [Parameter(Mandatory)]
         [string] $SubmissionId,
 
+        [string] $LanguageCode,
+
         [string] $FeatureGroupId,
 
         [switch] $SinglePage,
@@ -759,18 +761,18 @@ function Update-Listing
 
                 # Updating the new Listing submission with the user's supplied content
                 $suppliedListing = $SubmissionData.listings.$langCode.baselisting
-                Set-PSObjectProperty -InputObject $listing -Name shortTitle -Value $suppliedListing.shortTitle
-                Set-PSObjectProperty -InputObject $listing -Name voiceTitle -Value $suppliedListing.voiceTitle
-                Set-PSObjectProperty -InputObject $listing -Name releaseNotes -Value $suppliedListing.releaseNotes
-                Set-PSObjectProperty -InputObject $listing -Name keywords -Value $suppliedListing.keywords
-                Set-PSObjectProperty -InputObject $listing -Name trademark -Value $suppliedListing.trademark
-                Set-PSObjectProperty -InputObject $listing -Name licenseTerm -Value $suppliedListing.licenseTerm
-                Set-PSObjectProperty -InputObject $listing -Name features -Value $suppliedListing.features
-                Set-PSObjectProperty -InputObject $listing -Name recommendedHardware -Value $suppliedListing.recommendedHardware
-                Set-PSObjectProperty -InputObject $listing -Name minimumHardware -Value $suppliedListing.minimumHardware
-                Set-PSObjectProperty -InputObject $listing -Name devStudio -Value $suppliedListing.devStudio
-                Set-PSObjectProperty -InputObject $listing -Name title -Value $suppliedListing.title
-                Set-PSObjectProperty -InputObject $listing -Name shortDescription -Value $suppliedListing.shortDescription
+                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::shortTitle.ToString()) -Value $suppliedListing.shortTitle -Type NoteProperty -Force
+                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::voiceTitle.ToString()) -Value $suppliedListing.voiceTitle -Type NoteProperty -Force
+                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::releaseNotes.ToString()) -Value $suppliedListing.releaseNotes -Type NoteProperty -Force
+                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::keywords.ToString()) -Value $suppliedListing.keywords -Type NoteProperty -Force
+                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::trademark.ToString()) -Value $suppliedListing.trademark -Type NoteProperty -Force
+                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::licenseTerm.ToString()) -Value $suppliedListing.licenseTerm -Type NoteProperty -Force
+                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::features.ToString()) -Value $suppliedListing.features -Type NoteProperty -Force
+                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::recommendedHardware.ToString()) -Value $suppliedListing.recommendedHardware -Type NoteProperty -Force
+                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::minimumHardware.ToString()) -Value $suppliedListing.minimumHardware -Type NoteProperty -Force
+                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::devStudio.ToString()) -Value $suppliedListing.devStudio -Type NoteProperty -Force
+                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::title.ToString()) -Value $suppliedListing.title -Type NoteProperty -Force
+                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::shortDescription.ToString()) -Value $suppliedListing.shortDescription -Type NoteProperty -Force
 
                 # TODO: Not currently supported by the v2 object model
                 # suppliedListing.websiteUrl
@@ -781,7 +783,7 @@ function Update-Listing
                 {
                     $hasAlternateIcons = (($suppliedListing.images |
                         Where-Object { $_.imageType -in ('Icon', 'Icon150x150', 'Icon71x71') }).Count -gt 0)
-                    Set-PSObjectProperty -InputObject $listing -Name shouldOverridePackageLogos -Value $hasAlternateIcons
+                    Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::shouldOverridePackageLogos.ToString()) -Value $hasAlternateIcons -Type NoteProperty -Force
                 }
 
                 $langCode = $listing.languageCode

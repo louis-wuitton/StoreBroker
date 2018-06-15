@@ -339,7 +339,7 @@ function Update-ProductProperty
             'NoStatus' = $NoStatus
         }
 
-        $property = Get-Property @params
+        $property = Get-ProductProperty @params
 
         if ($UpdateCategoryFromSubmissionData)
         {

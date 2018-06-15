@@ -884,8 +884,8 @@ function Convert-ListingToObject
                             "DesktopImage" = "Screenshot";
                             "MobileImage"  = "MobileScreenshot";
                             "XboxImage"    = "XboxScreenshot";
-                            "HoloLensImage" = "AnalogScreenshot";
-                            "SurfaceHubImage" = "PpiScreenshot";
+                            "HoloLensImage" = "HoloLensScreenshot";
+                            "SurfaceHubImage" = "SurfaceHubScreenshot";
                         }
 
                         foreach ($member in $imageTypeMap.Keys)

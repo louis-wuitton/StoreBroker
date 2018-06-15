@@ -361,23 +361,23 @@ function New-Submission
         $hashBody[[StoreBrokerSubmissionProperty]::resourceType] = [StoreBrokerResourceType]::Submission
         $hashBody[[StoreBrokerSubmissionProperty]::targets] = @()
         $hashBody[[StoreBrokerSubmissionProperty]::targets] += @{
-            [StoreBrokerSubmissionTargetsProperty]::type.ToString() = [StoreBrokerSubmissionTargetsValues]::scope.ToString()
-            [StoreBrokerSubmissionTargetsProperty]::value.ToString() = $Scope
+            [StoreBrokerSubmissionTargetsProperty]::type = [StoreBrokerSubmissionTargetsValues]::scope
+            [StoreBrokerSubmissionTargetsProperty]::value = $Scope
         }
 
         if (-not [String]::IsNullOrWhiteSpace($FlightId))
         {
             $hashBody[[StoreBrokerSubmissionProperty]::targets] += @{
-                [StoreBrokerSubmissionTargetsProperty]::type.ToString() = [StoreBrokerSubmissionTargetsValues]::flight.ToString()
-                [StoreBrokerSubmissionTargetsProperty]::value.ToString() = $FlightId
+                [StoreBrokerSubmissionTargetsProperty]::type = [StoreBrokerSubmissionTargetsValues]::flight
+                [StoreBrokerSubmissionTargetsProperty]::value = $FlightId
             }
-    }
+        }
 
         if (-not [String]::IsNullOrWhiteSpace($SandboxId))
         {
             $hashBody[[StoreBrokerSubmissionProperty]::targets] += @{
-                [StoreBrokerSubmissionTargetsProperty]::type.ToString() = [StoreBrokerSubmissionTargetsValues]::sandbox.ToString()
-                [StoreBrokerSubmissionTargetsProperty]::value.ToString() = $SandboxId
+                [StoreBrokerSubmissionTargetsProperty]::type = [StoreBrokerSubmissionTargetsValues]::sandbox
+                [StoreBrokerSubmissionTargetsProperty]::value = $SandboxId
             }
         }
 
@@ -765,12 +765,11 @@ function Update-SubmissionDetail
             $detail.isManualPublish = ($SubmissionData.targetPublishMode -eq $script:keywordManual)
             $detail.releaseTimeInUtc = $SubmissionData.targetPublishDate
 
-            # TODO: There is no equivalent of changing to "Immediate" from a specific date/time,
-            # so, we'll hack that by changing it to now which will be the past (and hence immediate)
-            # by the time this gets submitted.
+            # There is no equivalent of changing to "Immediate" from a specific date/time,
+            # but we can set it to null which means "now".
             if ($SubmissionData.targetPublishMode -eq $script:keywordImmediate)
             {
-                $detail.releaseTimeInUtc = (Get-Date).ToUniversalTime().ToString('o')
+                $detail.releaseTimeInUtc = $null
             }
         }
 
@@ -787,12 +786,11 @@ function Update-SubmissionDetail
 
             $detail.isManualPublish = ($TargetPublishMode -eq $script:keywordManual)
 
-            # TODO: There is no equivalent of changing to "Immediate" from a specific date/time,
-            # so, we'll hack that by changing it to now which will be the past (and hence immediate)
-            # by the time this gets submitted.
+            # There is no equivalent of changing to "Immediate" from a specific date/time,
+            # but we can set it to null which means "now".
             if ($TargetPublishMode -eq $script:keywordImmediate)
             {
-                $detail.releaseTimeInUtc = (Get-Date).ToUniversalTime().ToString('o')
+                $detail.releaseTimeInUtc = $null
             }
         }
 
@@ -1523,22 +1521,10 @@ function Update-Submission
             if ($IsMandatoryUpdate)
             {
                 $configurationParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
-                if ($null -ne $PSBoundParameters['State']) { $configurationParams.Add('State', [StoreBrokerRolloutState]::Initialized) }
-                if ($null -ne $PSBoundParameters['State']) { $configurationParams.Add('State', [StoreBrokerRolloutState]::Initialized) }
+                $configurationParams.Add('IsMandatoryUpdate', $true)
+                if ($null -ne $PSBoundParameters['MandatoryUpdateEffectiveDate']) { $configurationParams.Add('MandatoryUpdateEffectiveDate', $MandatoryUpdateEffectiveDate) }
 
-                # TODO: No equivalent
-                # $jsonContent.packageDeliveryOptions.isMandatoryUpdate
-                # if ($null -ne $MandatoryUpdateEffectiveDate)
-                # {
-                #     if ($IsMandatoryUpdate)
-                #     {
-                #         $PatchedSubmission.packageDeliveryOptions.mandatoryUpdateEffectiveDate = $MandatoryUpdateEffectiveDate.ToUniversalTime().ToString('o')
-                #     }
-                #     else
-                #     {
-                #         Write-Log -Message "MandatoryUpdateEffectiveDate specified without indicating IsMandatoryUpdate.  The value will be ignored." -Level Warning
-                #     }
-                # }
+                $null = Update-ProductPackageConfiguration @configurationParams
             }
         }
 

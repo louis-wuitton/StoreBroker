@@ -110,6 +110,7 @@
         'Get-ProductPackageConfiguration',
         'New-ProductPackageConfiguration',
         'Set-ProductPackageConfiguration',
+        'Update-ProductPackageConfiguration',
 
         'Get-ProductProperty',
         'New-ProductProperty',
