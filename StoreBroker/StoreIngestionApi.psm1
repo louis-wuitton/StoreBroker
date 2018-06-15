@@ -1298,7 +1298,11 @@ function Start-SubmissionMonitor
     $productName = $product.name
     $fullName = $productName
 
-    $detail = Get-SubmissionDetail @commonParams -ProductId $ProductId -SubmissionId $SubmissionId
+    $isSandboxSubmission = (-not [String]::IsNullOrEmpty($SandboxId))
+    if ($isSandboxSubmission)
+    {
+        $fullName = "$productName | Sandbox $SandboxId"
+    }
 
     # If this is monitoring a flight submission, let's also get the flight's friendly name for
     # those updates as well.
@@ -1310,11 +1314,9 @@ function Start-SubmissionMonitor
         $fullName = "$productName | $flightName"
     }
 
-    $isSandboxSubmission = (-not [String]::IsNullOrEmpty($SandboxId))
-    if ($isSandboxSubmission)
-    {
-        $fullName = "$productName | Sandbox $SandboxId"
-    }
+    # Get the submission details so that we know how/when this submission will get published
+    # once it has passed certification.
+    $detail = Get-SubmissionDetail @commonParams -ProductId $ProductId -SubmissionId $SubmissionId
 
     $submission = $null
 
@@ -1338,8 +1340,9 @@ function Start-SubmissionMonitor
         {
             $submission = Get-Submission @commonParams -ProductId $ProductId -SubmissionId $SubmissionId
             $report = Get-SubmissionReport @commonParams -ProductId $ProductId -SubmissionId $SubmissionId
+            $validation = Get-SubmissionValidation @commonParams -ProductId $ProductId -SubmissionId $SubmissionId
 
-            if ($submission.status -ne $lastSubState)
+            if (($submission.status -ne $lastSubState) -or ($validation.Count -gt 0))
             {
                 $lastSubState = $submission.substate
 
@@ -1355,6 +1358,9 @@ function Start-SubmissionMonitor
                 $body += "Submission State      : $($submission.state)"
                 $body += "Submission State      : $lastSubState"
                 $body += ""
+                $body += "Validation Details    : {0}" -f $(if ($validation.count -eq 0) { "<None>" } else { "" })
+                $body += $validation | Format-SimpleTableString -IndentationLevel $indentLength
+                $body += ""
                 $body += "Status Details        : {0}" -f $(if ($report.count -eq 0) { "<None>" } else { "" })
                 $body += $report | Format-SimpleTableString -IndentationLevel $indentLength
                 foreach ($entry in $report)
@@ -1369,6 +1375,14 @@ function Start-SubmissionMonitor
                 $body += "    https://dev.windows.com/en-us/dashboard/apps/$appId/submissions/$SubmissionId/"
                 $body += "StoreBroker command"
                 $body += "    Get-Submission -ProductId $productId -SubmissionId $SubmissionId"
+
+                if ($validation.Count -gt 0)
+                {
+                    $body += ""
+                    $body += "*** Your submission has validation errors that must be fixed.  Monitoring will now end."
+
+                    $shouldMonitor = $false
+                }
 
                 $failedStates = @([StoreBrokerSubmissionSubState]::Failed, [StoreBrokerSubmissionSubState]::FailedInCertification)
                 if ($lastSubState -in $failedStates)
