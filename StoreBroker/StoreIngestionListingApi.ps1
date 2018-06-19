@@ -755,24 +755,23 @@ function Update-Listing
         {
             if ($UpdateListingText)
             {
-                # TODO: It seems that we can't directly POST a listing with all its values,
-                # but instead must create a thin listing, and then PUT the updates.
-                $listing = New-Listing @commonParams -LanguageCode $langCode
-
-                # Updating the new Listing submission with the user's supplied content
                 $suppliedListing = $SubmissionData.listings.$langCode.baselisting
-                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::shortTitle.ToString()) -Value $suppliedListing.shortTitle -Type NoteProperty -Force
-                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::voiceTitle.ToString()) -Value $suppliedListing.voiceTitle -Type NoteProperty -Force
-                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::releaseNotes.ToString()) -Value $suppliedListing.releaseNotes -Type NoteProperty -Force
-                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::keywords.ToString()) -Value $suppliedListing.keywords -Type NoteProperty -Force
-                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::trademark.ToString()) -Value $suppliedListing.trademark -Type NoteProperty -Force
-                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::licenseTerm.ToString()) -Value $suppliedListing.licenseTerm -Type NoteProperty -Force
-                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::features.ToString()) -Value $suppliedListing.features -Type NoteProperty -Force
-                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::recommendedHardware.ToString()) -Value $suppliedListing.recommendedHardware -Type NoteProperty -Force
-                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::minimumHardware.ToString()) -Value $suppliedListing.minimumHardware -Type NoteProperty -Force
-                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::devStudio.ToString()) -Value $suppliedListing.devStudio -Type NoteProperty -Force
-                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::title.ToString()) -Value $suppliedListing.title -Type NoteProperty -Force
-                Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::shortDescription.ToString()) -Value $suppliedListing.shortDescription -Type NoteProperty -Force
+
+                $listingParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
+                $listingParams['LanguageCode'] = $langCode
+                $listingParams['Title'] = $suppliedListing.title
+                $listingParams['ShortTitle'] = $suppliedListing.shortTitle
+                $listingParams['VoiceTitle'] = $suppliedListing.voiceTitle
+                $listingParams['ReleaseNotes'] = $suppliedListing.releaseNotes
+                $listingParams['Keywords'] = $suppliedListing.keywords
+                $listingParams['Trademark'] = $suppliedListing.trademark
+                $listingParams['LicenseTerm'] = $suppliedListing.licenseTerm
+                $listingParams['Features'] = $suppliedListing.features
+                $listingParams['MinimumHardware'] = $suppliedListing.minimumHardware
+                $listingParams['RecommendedHardware'] = $suppliedListing.recommendedHardware
+                $listingParams['DevStudio'] = $suppliedListing.devStudio
+                $listingParams['Description'] = $suppliedListing.description
+                $listingParams['ShortDescription'] = $suppliedListing.shortDescription
 
                 # TODO: Not currently supported by the v2 object model
                 # suppliedListing.websiteUrl
@@ -783,11 +782,11 @@ function Update-Listing
                 {
                     $hasAlternateIcons = (($suppliedListing.images |
                         Where-Object { $_.imageType -in ('Icon', 'Icon150x150', 'Icon71x71') }).Count -gt 0)
-                    Add-Member -InputObject $listing -Name ([StoreBrokerListingProperty]::shouldOverridePackageLogos.ToString()) -Value $hasAlternateIcons -Type NoteProperty -Force
+
+                    $listingParams['ShouldOverridePackageLogos'] = $hasAlternateIcons
                 }
 
-                $langCode = $listing.languageCode
-                $null = Set-Listing @commonParams -Object $listing
+                $null = New-Listing @listingParams
 
                 # In theory, we could always do this for NEW listings regardless of the value
                 # of the switch, as new listings won't validate if they don't have at least

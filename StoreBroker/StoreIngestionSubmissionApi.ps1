@@ -1124,7 +1124,8 @@ function Get-SubmissionValidation
             "NoStatus" = $NoStatus
         }
 
-        return Invoke-SBRestMethod @params
+        $result = Invoke-SBRestMethod @params
+        return @($result.items)
     }
     catch
     {
@@ -1383,7 +1384,7 @@ function Update-Submission
         {
             $newSubmissionParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
             $newSubmissionParams['Force'] = $Force
-            if ($null -ne $PSBoundParameters['ExistingPackageRolloutAction']) { $newSumissionParams['ExistingPackageRolloutAction'] = $ExistingPackageRolloutAction }
+            if ($null -ne $PSBoundParameters['ExistingPackageRolloutAction']) { $newSubmissionParams['ExistingPackageRolloutAction'] = $ExistingPackageRolloutAction }
 
             $submission = New-Submission @newSubmissionParams
             $SubmissionId = $submission.id
