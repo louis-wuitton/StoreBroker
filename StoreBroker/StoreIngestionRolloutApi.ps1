@@ -135,7 +135,7 @@ function Set-SubmissionRollout
         Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Rollout)
 
         $hashBody = $Object
-        if ($null -eq got )
+        if ($null -eq $hashBody)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
