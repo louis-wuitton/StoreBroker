@@ -177,8 +177,8 @@ function New-ProductPackageConfiguration
                 # existing value.
                 if ($null -ne $PSBoundParameters['IsMandatoryUpdate'])
                 {
-                    $hashBody[[StoreBrokerPackageConfigurationProperty]::mandatoryUpdate][[StoreBrokerPackageConfigurationMandatoryUpdateProperty]::isSpecifiedByDeveloper] = $IsMandatoryUpdate
-                    $telemetryProperties[[StoreBrokerTelemetryProperty]::IsMandatoryUpdate] = $IsMandatoryUpdate
+                    $hashBody[[StoreBrokerPackageConfigurationProperty]::mandatoryUpdate][[StoreBrokerPackageConfigurationMandatoryUpdateProperty]::isSpecifiedByDeveloper] = ($IsMandatoryUpdate -eq $true)
+                    $telemetryProperties[[StoreBrokerTelemetryProperty]::IsMandatoryUpdate] = ($IsMandatoryUpdate -eq $true)
                 }
 
                 if ($null -ne $PSBoundParameters['MandatoryUpdateEffectiveDate'])
@@ -315,8 +315,8 @@ function Set-ProductPackageConfiguration
                 # existing value.
                 if ($null -ne $PSBoundParameters['IsMandatoryUpdate'])
                 {
-                    $hashBody[[StoreBrokerPackageConfigurationProperty]::mandatoryUpdate][[StoreBrokerPackageConfigurationMandatoryUpdateProperty]::isSpecifiedByDeveloper] = $IsMandatoryUpdate
-                    $telemetryProperties[[StoreBrokerTelemetryProperty]::IsMandatoryUpdate] = $IsMandatoryUpdate
+                    $hashBody[[StoreBrokerPackageConfigurationProperty]::mandatoryUpdate][[StoreBrokerPackageConfigurationMandatoryUpdateProperty]::isSpecifiedByDeveloper] = ($IsMandatoryUpdate -eq $true)
+                    $telemetryProperties[[StoreBrokerTelemetryProperty]::IsMandatoryUpdate] = ($IsMandatoryUpdate -eq $true)
                 }
 
                 if ($null -ne $PSBoundParameters['MandatoryUpdateEffectiveDate'])

@@ -477,9 +477,9 @@ function Update-ProductPackage
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
-            [StoreBrokerTelemetryProperty]::AddPackages = $AddPackages
-            [StoreBrokerTelemetryProperty]::ReplacePackages = $ReplacePackages
-            [StoreBrokerTelemetryProperty]::UpdatePackages = $UpdatePackages
+            [StoreBrokerTelemetryProperty]::AddPackages = ($AddPackages -eq $true)
+            [StoreBrokerTelemetryProperty]::ReplacePackages = ($ReplacePackages -eq $true)
+            [StoreBrokerTelemetryProperty]::UpdatePackages = ($UpdatePackages -eq $true)
             [StoreBrokerTelemetryProperty]::RedundantPackagesToKeep = $RedundantPackagesToKeep
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId

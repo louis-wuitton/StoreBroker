@@ -642,8 +642,8 @@ function Set-SubmissionDetail
             # existing value.
             if ($null -ne $PSBoundParameters['ManualPublish'])
             {
-                $hashBody[[StoreBrokerSubmissionProperty]::isManualPublish] = $ManualPublish
-                $telemetryProperties[[StoreBrokerTelemetryProperty]::IsManualPublish] = $ManualPublish
+                $hashBody[[StoreBrokerSubmissionProperty]::isManualPublish] = ($ManualPublish -eq $true)
+                $telemetryProperties[[StoreBrokerTelemetryProperty]::IsManualPublish] = ($ManualPublish -eq $true)
             }
 
             # We only set the value if the user explicitly provided a value for this parameter
@@ -652,8 +652,8 @@ function Set-SubmissionDetail
             # existing value.
             if ($null -ne $PSBoundParameters['AutoPromote'])
             {
-                $hashBody[[StoreBrokerSubmissionProperty]::isAutoPromote] = $AutoPromote
-                $telemetryProperties[[StoreBrokerTelemetryProperty]::IsAutoPromote] = $AutoPromote
+                $hashBody[[StoreBrokerSubmissionProperty]::isAutoPromote] = ($AutoPromote -eq $true)
+                $telemetryProperties[[StoreBrokerTelemetryProperty]::IsAutoPromote] = ($AutoPromote -eq $true)
             }
         }
 
@@ -1556,22 +1556,22 @@ function Update-Submission
             [StoreBrokerTelemetryProperty]::SubmissionId = $submissionId
             [StoreBrokerTelemetryProperty]::ZipPath = (Get-PiiSafeString -PlainText $ZipPath)
             [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
-            [StoreBrokerTelemetryProperty]::AutoSubmit = $AutoSubmit
-            [StoreBrokerTelemetryProperty]::Force = $Force
+            [StoreBrokerTelemetryProperty]::AutoSubmit = ($AutoSubmit -eq $true)
+            [StoreBrokerTelemetryProperty]::Force = ($Force -eq $true)
             [StoreBrokerTelemetryProperty]::PackageRolloutPercentage = $PackageRolloutPercentage
-            [StoreBrokerTelemetryProperty]::IsMandatoryUpdate = [bool]$IsMandatoryUpdate
-            [StoreBrokerTelemetryProperty]::AddPackages = $AddPackages
-            [StoreBrokerTelemetryProperty]::ReplacePackages = $ReplacePackages
-            [StoreBrokerTelemetryProperty]::UpdatePackages = $UpdatePackages
+            [StoreBrokerTelemetryProperty]::IsMandatoryUpdate = ($IsMandatoryUpdate -eq $true)
+            [StoreBrokerTelemetryProperty]::AddPackages = ($AddPackages -eq $true)
+            [StoreBrokerTelemetryProperty]::ReplacePackages = ($ReplacePackages -eq $true)
+            [StoreBrokerTelemetryProperty]::UpdatePackages = ($UpdatePackages -eq $true)
             [StoreBrokerTelemetryProperty]::RedundantPackagesToKeep = $RedundantPackagesToKeep
-            [StoreBrokerTelemetryProperty]::UpdateListingText = $UpdateListingText
-            [StoreBrokerTelemetryProperty]::UpdateImagesAndCaptions = $UpdateImagesAndCaptions
-            [StoreBrokerTelemetryProperty]::UpdateVideos = $UpdateVideos
-            [StoreBrokerTelemetryProperty]::UpdatePublishModeAndVisibility = $UpdatePublishModeAndVisibility
-            [StoreBrokerTelemetryProperty]::UpdatePricingAndAvailability = $UpdatePricingAndAvailability
-            [StoreBrokerTelemetryProperty]::UpdateGamingOptions = $UpdateGamingOptions
-            [StoreBrokerTelemetryProperty]::UpdateAppProperties = $UpdateAppProperties
-            [StoreBrokerTelemetryProperty]::UpdateCertificationNotes = $UpdateCertificationNotes
+            [StoreBrokerTelemetryProperty]::UpdateListingText = ($UpdateListingText -eq $true)
+            [StoreBrokerTelemetryProperty]::UpdateImagesAndCaptions = ($UpdateImagesAndCaptions -eq $true)
+            [StoreBrokerTelemetryProperty]::UpdateVideos = ($UpdateVideos -eq $true)
+            [StoreBrokerTelemetryProperty]::UpdatePublishModeAndVisibility = ($UpdatePublishModeAndVisibility -eq $true)
+            [StoreBrokerTelemetryProperty]::UpdatePricingAndAvailability = ($UpdatePricingAndAvailability -eq $true)
+            [StoreBrokerTelemetryProperty]::UpdateGamingOptions = ($UpdateGamingOptions -eq $true)
+            [StoreBrokerTelemetryProperty]::UpdateAppProperties = ($UpdateAppProperties -eq $true)
+            [StoreBrokerTelemetryProperty]::UpdateCertificationNotes = ($UpdateCertificationNotes -eq $true)
             [StoreBrokerTelemetryProperty]::ProvidedCertificationNotes = (-not [String]::IsNullOrWhiteSpace($CertificationNotes))
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId

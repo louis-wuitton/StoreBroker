@@ -276,8 +276,8 @@ function New-Listing
             # existing value.
             if ($null -ne $PSBoundParameters['ShouldOverridePackageLogos'])
             {
-                $hashBody[[StoreBrokerListingProperty]::shouldOverridePackageLogos] = $ShouldOverridePackageLogos
-                $telemetryProperties[[StoreBrokerTelemetryProperty]::ShouldOverridePackageLogos] = $ShouldOverridePackageLogos
+                $hashBody[[StoreBrokerListingProperty]::shouldOverridePackageLogos] = ($ShouldOverridePackageLogos -eq $true)
+                $telemetryProperties[[StoreBrokerTelemetryProperty]::ShouldOverridePackageLogos] = ($ShouldOverridePackageLogos -eq $true)
             }
 
             if (-not [String]::IsNullOrWhiteSpace($Description))
@@ -570,8 +570,8 @@ function Set-Listing
             # existing value.
             if ($null -ne $PSBoundParameters['ShouldOverridePackageLogos'])
             {
-                $hashBody[[StoreBrokerListingProperty]::shouldOverridePackageLogos] = $ShouldOverridePackageLogos
-                $telemetryProperties[[StoreBrokerTelemetryProperty]::ShouldOverridePackageLogos] = $ShouldOverridePackageLogos
+                $hashBody[[StoreBrokerListingProperty]::shouldOverridePackageLogos] = ($ShouldOverridePackageLogos -eq $true)
+                $telemetryProperties[[StoreBrokerTelemetryProperty]::ShouldOverridePackageLogos] = ($ShouldOverridePackageLogos -eq $true)
             }
 
             if ($null -ne $Description)

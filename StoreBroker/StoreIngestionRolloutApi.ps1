@@ -154,8 +154,8 @@ function Set-SubmissionRollout
             # existing value.
             if ($null -ne $PSBoundParameters['Enabled'])
             {
-                $hashBody[[StoreBrokerRolloutProperty]::isEnabled] = $Enabled
-                $telemetryProperties[[StoreBrokerTelemetryProperty]::IsEnabled] = $Enabled
+                $hashBody[[StoreBrokerRolloutProperty]::isEnabled] = ($Enabled -eq $true)
+                $telemetryProperties[[StoreBrokerTelemetryProperty]::IsEnabled] = ($Enabled -eq $true)
             }
 
             # We only set the value if the user explicitly provided a value for this parameter
@@ -164,8 +164,8 @@ function Set-SubmissionRollout
             # existing value.
             if ($null -ne $PSBoundParameters['SeekEnabled'])
             {
-                $hashBody[[StoreBrokerRolloutProperty]::isSeekEnabled] = $SeekEnabled
-                $telemetryProperties[[StoreBrokerTelemetryProperty]::IsSeekEnabled] = $SeekEnabled
+                $hashBody[[StoreBrokerRolloutProperty]::isSeekEnabled] = ($SeekEnabled -eq $true)
+                $telemetryProperties[[StoreBrokerTelemetryProperty]::IsSeekEnabled] = ($SeekEnabled -eq $true)
             }
         }
 

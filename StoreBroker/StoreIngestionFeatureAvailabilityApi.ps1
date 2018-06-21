@@ -49,9 +49,9 @@ function Get-FeatureAvailability
             [StoreBrokerTelemetryProperty]::FeatureAvailabilityId = $FeatureAvailabilityId
             [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-            [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
-            [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
-            [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
+            [StoreBrokerTelemetryProperty]::IncludeMarketStates = ($IncludeMarketStates -eq $true)
+            [StoreBrokerTelemetryProperty]::IncludeTrial = ($IncludeTrial -eq $true)
+            [StoreBrokerTelemetryProperty]::IncludePricing = ($IncludePricing -eq $true)
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
@@ -146,9 +146,9 @@ function New-FeatureAvailability
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
-            [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
-            [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
-            [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
+            [StoreBrokerTelemetryProperty]::IncludeMarketStates = ($IncludeMarketStates -eq $true)
+            [StoreBrokerTelemetryProperty]::IncludeTrial = ($IncludeTrial -eq $true)
+            [StoreBrokerTelemetryProperty]::IncludePricing = ($IncludePricing -eq $true)
             [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -233,9 +233,9 @@ function Set-FeatureAvailability
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::FeatureGroupId = $FeatureGroupId
             [StoreBrokerTelemetryProperty]::FeatureAvailabilityId = $FeatureAvailabilityId
-            [StoreBrokerTelemetryProperty]::IncludeMarketStates = $IncludeMarketStates
-            [StoreBrokerTelemetryProperty]::IncludeTrial = $IncludeTrial
-            [StoreBrokerTelemetryProperty]::IncludePricing = $IncludePricing
+            [StoreBrokerTelemetryProperty]::IncludeMarketStates = ($IncludeMarketStates -eq $true)
+            [StoreBrokerTelemetryProperty]::IncludeTrial = ($IncludeTrial -eq $true)
+            [StoreBrokerTelemetryProperty]::IncludePricing = ($IncludePricing -eq $true)
             [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
