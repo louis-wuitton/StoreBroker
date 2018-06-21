@@ -54,24 +54,24 @@
         'Set-Group',
 
         'New-Flight',
-        'Delete-Flight',
+        'Remove-Flight',
         'Get-Flight',
         'Set-Flight',
 
         'New-Listing',
-        'Delete-Listing',
+        'Remove-Listing',
         'Get-Listing',
         'Set-Listing',
         'Update-Listing',
 
         'New-ListingImage',
-        'Delete-ListingImage',
+        'Remove-ListingImage',
         'Get-ListingImage',
         'Set-ListingImage',
         'Update-ListingImage',
 
         'New-ListingVideo',
-        'Delete-ListingVideo',
+        'Remove-ListingVideo',
         'Get-ListingVideo',
         'Set-ListingVideo',
         'Update-ListingVideo',
