@@ -303,7 +303,7 @@ function Get-NugetPackageDllPath
         }
         else
         {
-            Write-Log -Message "Found $AssemblyName in module directory ($PSScriptRoot), but its version number didn't match required [$NugetPackageVersion]." -Level Verbose
+            Write-Log -Message "Found $AssemblyName in module directory ($PSScriptRoot), but its version number [$moduleAssembly] didn't match required [$NugetPackageVersion]." -Level Verbose
         }
     }
 
@@ -320,7 +320,7 @@ function Get-NugetPackageDllPath
             }
             else
             {
-                Write-Log -Message "Found $AssemblyName in alternate directory ($SBAlternateAssemblyDir), but its version number didn't match required [$NugetPackageVersion]." -Level Verbose
+                Write-Log -Message "Found $AssemblyName in alternate directory ($SBAlternateAssemblyDir), but its version number [$moduleAssembly] didn't match required [$NugetPackageVersion]." -Level Verbose
             }
         }
     }
@@ -342,7 +342,7 @@ function Get-NugetPackageDllPath
             }
             else
             {
-                Write-Log -Message "Found $AssemblyName in temp directory ($script:tempAssemblyCacheDir), but its version number didn't match required [$NugetPackageVersion]." -Level Verbose
+                Write-Log -Message "Found $AssemblyName in temp directory ($script:tempAssemblyCacheDir), but its version number [$moduleAssembly] didn't match required [$NugetPackageVersion]." -Level Verbose
             }
         }
     }
