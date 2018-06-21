@@ -1387,6 +1387,7 @@ function Update-Submission
             if ($null -ne $PSBoundParameters['ExistingPackageRolloutAction']) { $newSubmissionParams['ExistingPackageRolloutAction'] = $ExistingPackageRolloutAction }
 
             $submission = New-Submission @newSubmissionParams
+            Write-Log "New Submission: $($submission | ConvertTo-Json -Depth 20)" -Level Verbose
             $SubmissionId = $submission.id
         }
         else
@@ -1509,7 +1510,7 @@ function Update-Submission
                 }
             }
 
-            if ($PackageRolloutPercentage -ge 0)
+            if ($null -ne $PSBoundParameters['PackageRolloutPercentage'])
             {
                 $rolloutParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $rolloutParams.Add('State', [StoreBrokerRolloutState]::Initialized)

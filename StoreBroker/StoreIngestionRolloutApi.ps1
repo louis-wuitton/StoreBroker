@@ -135,7 +135,7 @@ function Set-SubmissionRollout
         Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Rollout)
 
         $hashBody = $Object
-        if ($null -eq $hashBody)
+        if ($null -eq got )
         {
             # Convert the input into a Json body.
             $hashBody = @{}
@@ -271,7 +271,7 @@ function Update-SubmissionRollout
 
         if ($null -ne $PSBoundParameters['Percentage'])
         {
-            $hashBody[[StoreBrokerRolloutProperty]::percentage] = $Percentage
+            $rollout.percentage = $Percentage
         }
 
         # We only set the value if the user explicitly provided a value for this parameter
@@ -280,7 +280,7 @@ function Update-SubmissionRollout
         # existing value.
         if ($null -ne $PSBoundParameters['Enabled'])
         {
-            $hashBody[[StoreBrokerRolloutProperty]::isEnabled] = $Enabled
+            $rollout.isEnabled = ($Enabled -eq $true)
         }
 
         # We only set the value if the user explicitly provided a value for this parameter
@@ -289,7 +289,7 @@ function Update-SubmissionRollout
         # existing value.
         if ($null -ne $PSBoundParameters['SeekEnabled'])
         {
-            $hashBody[[StoreBrokerRolloutProperty]::isSeekEnabled] = $SeekEnabled
+            $rollout.isSeekEnabled = ($SeekEnabled -eq $true)
         }
 
         $null = Set-SubmissionRollout @params -Object $rollout
