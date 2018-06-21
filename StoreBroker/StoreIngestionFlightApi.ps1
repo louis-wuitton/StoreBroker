@@ -5,7 +5,15 @@ Add-Type -TypeDefinition @"
        groupIds,
        relativeRank,
        resourceType,
-       revisionToken
+       revisionToken,
+       type
+   }
+"@
+
+Add-Type -TypeDefinition @"
+   public enum StoreBrokerFlightTypeProperty
+   {
+       packageFlight
    }
 "@
 
@@ -124,14 +132,15 @@ function New-Flight
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::PackageFlight)
+        Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Flight)
 
         $hashBody = $Object
         if ($null -eq $hashBody)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody[[StoreBrokerFlightProperty]::resourceType] = [StoreBrokerResourceType]::PackageFlight
+            $hashBody[[StoreBrokerFlightProperty]::resourceType] = [StoreBrokerResourceType]::Flight
+            $hashBody[[StoreBrokerFlightProperty]::type] = [StoreBrokerFlightTypeProperty]::packageFlight
             $hashBody[[StoreBrokerFlightProperty]::name] = $Name
             $hashBody[[StoreBrokerFlightProperty]::groupIds] = @($GroupId)
 
@@ -231,6 +240,7 @@ function Set-Flight
         [Parameter(
             Mandatory,
             ParameterSetName="Individual")]
+        [Parameter(ParameterSetName="Object")]
         [string] $FlightId,
 
         [Parameter(
@@ -284,14 +294,15 @@ function Set-Flight
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::PackageFlight)
+        Test-ResourceType -Object $Object -ResourceType ([StoreBrokerResourceType]::Flight)
 
         $hashBody = $Object
         if ($null -eq $hashBody)
         {
             # Convert the input into a Json body.
             $hashBody = @{}
-            $hashBody[[StoreBrokerFlightProperty]::resourceType] = [StoreBrokerResourceType]::PackageFlight
+            $hashBody[[StoreBrokerFlightProperty]::resourceType] = [StoreBrokerResourceType]::Flight
+            $hashBody[[StoreBrokerFlightProperty]::type] = [StoreBrokerFlightTypeProperty]::packageFlight
             $hashBody[[StoreBrokerFlightProperty]::name] = $Name
             $hashBody[[StoreBrokerFlightProperty]::groupIds] = @($GroupId)
             $hashBody[[StoreBrokerFlightProperty]::revisionToken] = $RevisionToken
@@ -319,6 +330,86 @@ function Set-Flight
         }
 
         return Invoke-SBRestMethod @params
+    }
+    catch
+    {
+        throw
+    }
+}
+
+function Update-Flight
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProductId,
+
+        [Parameter(Mandatory)]
+        [string] $FlightId,
+
+        [string] $Name,
+
+        [string[]] $GroupId,
+
+        [int] $RelativeRank,
+
+        [string] $ClientRequestId,
+
+        [string] $CorrelationId,
+
+        [string] $AccessToken,
+
+        [switch] $NoStatus
+    )
+
+    Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
+
+    try
+    {
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+        $CorrelationId = Get-CorrelationId -CorrelationId $CorrelationId -Identifier 'Update-Flight'
+
+        $params = @{
+            'ProductId' = $ProductId
+            'FlightId' = $FlightId
+            'ClientRequestId' = $ClientRequestId
+            'CorrelationId' = $CorrelationId
+            'AccessToken' = $AccessToken
+            'NoStatus' = $NoStatus
+        }
+
+        $global:flight = Get-Flight @params
+
+        if ($null -ne $PSBoundParameters['Name'])
+        {
+            $flight.name = $Name
+        }
+
+        if ($null -ne $PSBoundParameters['GroupId'])
+        {
+            $flight.groupIds = @($GroupId)
+        }
+
+        if ($null -ne $PSBoundParameters['RelativeRank'])
+        {
+            $flight.relativeRank = $RelativeRank
+        }
+
+        $null = Set-Flight @params -Object $flight
+
+        # Record the telemetry for this event.
+        $stopwatch.Stop()
+        $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::Duration = $stopwatch.Elapsed.TotalSeconds }
+        $telemetryProperties = @{
+            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
+            [StoreBrokerTelemetryProperty]::FlightId = $FlightId
+            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
+            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+        }
+
+        Set-TelemetryEvent -EventName Update-Flight -Properties $telemetryProperties -Metrics $telemetryMetrics
+        return
     }
     catch
     {

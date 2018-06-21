@@ -57,6 +57,7 @@
         'Remove-Flight',
         'Get-Flight',
         'Set-Flight',
+        'Update-Flight',
 
         'New-Listing',
         'Remove-Listing',

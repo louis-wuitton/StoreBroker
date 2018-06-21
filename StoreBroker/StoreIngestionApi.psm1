@@ -58,13 +58,13 @@ Add-Type -TypeDefinition @"
    {
        FeatureAvailability,
        FeatureGroup,
+       Flight,
        Group,
        Listing,
        ListingImage,
        ListingVideo,
        Package,
        PackageConfiguration,
-       PackageFlight,
        Rollout,
        Submission,
        SubmissionDetail
