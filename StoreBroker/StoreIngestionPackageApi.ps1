@@ -32,7 +32,7 @@ function Get-ProductPackage
         [switch] $SinglePage,
 
         [Parameter(ParameterSetName="Known")]
-        [switch] $WithUrl,
+        [switch] $WithSasUri,
 
         [string] $ClientRequestId,
 
@@ -67,7 +67,7 @@ function Get-ProductPackage
         $getParams += "featureGroupId=$FeatureGroupId"
     }
 
-    if ($WithUrl)
+    if ($WithSasUri)
     {
         $getParams += "withUrl=true"
     }
