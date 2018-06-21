@@ -697,8 +697,8 @@ function Get-AzureStorageDllPath
     )
 
     $nugetPackageName = "WindowsAzure.Storage"
-    $nugetPackageVersion = "8.1.1"
-    $assemblyPackageTailDir = "WindowsAzure.Storage.8.1.1\lib\net45\"
+    $nugetPackageVersion = "9.0.0.0"
+    $assemblyPackageTailDir = "WindowsAzure.Storage.9.0.0\lib\net45\"
     $assemblyName = "Microsoft.WindowsAzure.Storage.dll"
 
     return Get-NugetPackageDllPath -NugetPackageName $nugetPackageName -NugetPackageVersion $nugetPackageVersion -AssemblyPackageTailDirectory $assemblyPackageTailDir -AssemblyName $assemblyName -NoStatus:$NoStatus
@@ -757,8 +757,8 @@ function Get-AzureStorageDataMovementDllPath {
     )
 
     $nugetPackageName = "Microsoft.Azure.Storage.DataMovement"
-    $nugetPackageVersion = "0.5.1"
-    $assemblyPackageTailDir = "Microsoft.Azure.Storage.DataMovement.0.5.1\lib\net45\"
+    $nugetPackageVersion = "0.7.1"
+    $assemblyPackageTailDir = "Microsoft.Azure.Storage.DataMovement.0.7.1\lib\net45\"
     $assemblyName = "Microsoft.WindowsAzure.Storage.DataMovement.dll"
 
     return Get-NugetPackageDllPath -NugetPackageName $nugetPackageName -NugetPackageVersion $nugetPackageVersion -AssemblyPackageTailDirectory $assemblyPackageTailDir -AssemblyName $assemblyName -NoStatus:$NoStatus
