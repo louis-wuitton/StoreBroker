@@ -315,10 +315,10 @@ function New-Submission
                 # We can't delete a submission that isn't in the InDraft substate.  We'd have to cancel it first.
                 if ($inProgressSub.substate -ne [StoreBrokerSubmissionSubState]::InDraft)
                 {
-                    Stop-Submission @commonParams
+                    $null = Stop-Submission @commonParams
                 }
 
-                Remove-Submission @commonParams
+                $null = Remove-Submission @commonParams
             }
 
             # The user may have requested that we also take care of any existing rollout state for them.
@@ -345,7 +345,7 @@ function New-Submission
                     }
 
                     $setSubmissionRolloutParams['Object'] = $rollout
-                    Set-RolloutSubmission @setSubmissionRolloutParams
+                    $null = Set-SubmissionRollout @setSubmissionRolloutParams
                 }
             }
         }
@@ -1533,7 +1533,7 @@ function Update-Submission
         Write-Log -Message @(
             "Successfully cloned the existing submission and modified its content.",
             "You can view it on the Dev Portal here:",
-            "    https://dev.windows.com/en-us/dashboard/apps/$appId/submissions/$submissionId/")
+            "    https://dev.windows.com/en-us/dashboard/apps/$appId/submissions/$SubmissionId/")
 
         if ($AutoSubmit)
         {
@@ -1544,7 +1544,7 @@ function Update-Submission
         {
             Write-Log -Message @(
                 "When you're ready to commit, run this command:",
-                "  Submit-Submission -ProductId $ProductId -SubmissionId $submissionId")
+                "  Submit-Submission -ProductId $ProductId -SubmissionId $SubmissionId")
         }
 
         # Record the telemetry for this event.
@@ -1553,7 +1553,7 @@ function Update-Submission
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::AppId = $AppId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $submissionId
+            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::ZipPath = (Get-PiiSafeString -PlainText $ZipPath)
             [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
             [StoreBrokerTelemetryProperty]::AutoSubmit = ($AutoSubmit -eq $true)
