@@ -1443,24 +1443,18 @@ function Update-Submission
                 $null = Update-Listing @listingParams
             }
 
-            if ($UpdateAppProperties)
+            if ($UpdateAppProperties -or $UpdateGamingOptions)
             {
                 $propertyParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $propertyParams.Add('SubmissionData', $jsonSubmission)
                 $propertyParams.Add('ContentPath', $ContentPath)
                 $propertyParams.Add('UpdateCategoryFromSubmissionData', $UpdateAppProperties)
+                $propertyParams.Add('UpdatePropertiesFromSubmissionData', $UpdateAppProperties)
+                $propertyParams.Add('UpdateGamingOptions', $UpdateGamingOptions)
                 # NOTE: This pairing seems odd, but is correct for now.  API v2 puts this _localizable_
                 # data in a non-localized property object
                 $propertyParams.Add('UpdateContactInfoFromSubmissionData', $UpdateListingText)
                 $null = Update-ProductProperty @commonParams -SubmissionData $jsonSubmission
-
-                # TODO: No equivalent for:
-                # $jsonContent.hardwarePreferences
-                # $jsonContent.hasExternalInAppProducts
-                # $jsonContent.meetAccessibilityGuidelines
-                # $jsonContent.canInstallOnRemovableMedia
-                # $jsonContent.automaticBackupEnabled
-                # $jsonContent.isGameDvrEnabled
             }
 
             $detailParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
@@ -1490,24 +1484,6 @@ function Update-Submission
                 # $jsonContent.allowTargetFutureDeviceFamilies
                 # $jsonContent.allowMicrosoftDecideAppAvailabilityToFutureDeviceFamilies
                 # $jsonContent.enterpriseLicensing
-            }
-
-            if ($UpdateGamingOptions)
-            {
-                # TODO: No equivalent
-                # $jsonContent.gamingOptions
-
-                if ($null -eq $jsonContent.gamingOptions)
-                {
-                    $output = @()
-                    $output += "You selected to update the Gaming Options for this submission, but it appears you don't have"
-                    $output += "that section in your config file.  You should probably re-generate your config file with"
-                    $output += "New-StoreBrokerConfigFile, transfer any modified properties to that new config file, and then"
-                    $output += "re-generate your StoreBroker payload with New-SubmissionPackage."
-                    $output = $output -join [Environment]::NewLine
-                    Write-Log -Message $output -Level Error
-                    throw $output
-                }
             }
 
             if ($null -ne $PSBoundParameters['PackageRolloutPercentage'])
