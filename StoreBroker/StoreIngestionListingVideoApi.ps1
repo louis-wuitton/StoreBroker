@@ -385,18 +385,6 @@ function Set-ListingVideo
 
     try
     {
-        # Theese checks arenecessary, because if no value was provided, we'll get an empty string back
-        # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
-        if ($null -ne $PSBoundParameters['State'])
-        {
-            $State = Get-ProperEnumCasing -Value $State
-        }
-
-        if ($null -ne $PSBoundParameters['ThumbnailState'])
-        {
-            $ThumbnailState = Get-ProperEnumCasing -Value $ThumbnailState
-        }
-
         if ($null -ne $Object)
         {
             $VideoId = $Object.id

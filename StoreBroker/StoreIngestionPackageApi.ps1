@@ -233,13 +233,6 @@ function Set-ProductPackage
 
     try
     {
-        if ($null -ne $PSBoundParameters['State'])
-        {
-            # The check is necessary, because if no value was provided, we'll get an empty string back
-            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
-            $State = Get-ProperEnumCasing -Value $State
-        }
-
         if ($null -ne $Object)
         {
             $PackageId = $Object.id

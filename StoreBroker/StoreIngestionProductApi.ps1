@@ -44,13 +44,6 @@ function Get-Product
 
     try
     {
-        if ($null -ne $PSBoundParameters['Type'])
-        {
-            # The check is necessary, because if no value was provided, we'll get an empty string back
-            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
-            $Type = $Type | Get-ProperEnumCasing
-        }
-
         $singleQuery = (-not [String]::IsNullOrWhiteSpace($ProductId))
 
         $telemetryProperties = @{
@@ -150,13 +143,6 @@ function New-Product
 
     try
     {
-        if ($null -ne $PSBoundParameters['Type'])
-        {
-            # The check is necessary, because if no value was provided, we'll get an empty string back
-            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
-            $Type = Get-ProperEnumCasing -Value $Type
-        }
-
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::UsingObject = ($null -ne $Object)
@@ -368,13 +354,6 @@ function Get-ProductRelated
 
     try
     {
-        if ($null -ne $PSBoundParameters['Type'])
-        {
-            # The check is necessary, because if no value was provided, we'll get an empty string back
-            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
-            $Type = Get-ProperEnumCasing -Value $Type
-        }
-
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::AppId = $AppId
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId

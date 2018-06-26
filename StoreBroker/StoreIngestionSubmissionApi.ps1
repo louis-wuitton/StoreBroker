@@ -104,16 +104,6 @@ function Get-Submission
 
     try
     {
-        if ($null -ne $PSBoundParameters['State'])
-        {
-            # The check is necessary, because if no value was provided, we'll get an empty string back
-            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
-            $State = Get-ProperEnumCasing -Value $State
-        }
-
-        # We don't need to do the same check for Scope since it is assigned a valid default value
-        $Scope = Get-ProperEnumCasing -Value $Scope
-
         $singleQuery = (-not [String]::IsNullOrWhiteSpace($SubmissionId))
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -260,15 +250,7 @@ function New-Submission
 
     try
     {
-        $Scope = Get-ProperEnumCasing -Value $Scope
-
         $providedExistingPackageRolloutAction = ($null -ne $PSBoundParameters['ExistingPackageRolloutAction'])
-        if ($providedExistingPackageRolloutAction)
-        {
-            # The check is necessary, because if no value was provided, we'll get an empty string back
-            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
-            $ExistingPackageRolloutAction = Get-ProperEnumCasing -Value $ExistingPackageRolloutAction
-        }
 
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -720,13 +702,6 @@ function Update-SubmissionDetail
         $providedTargetPublishMode = ($null -ne $PSBoundParameters['TargetPublishMode'])
         $providedTargetPublishDate = ($null -ne $PSBoundParameters['TargetPublishDate'])
         $providedCertificationNotes = ($null -ne $PSBoundParameters['CertificationNotes'])
-
-        if ($providedTargetPublishMode)
-        {
-            # The check is necessary, because if no value was provided, we'll get an empty string back
-            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
-            $TargetPublishMode = Get-ProperEnumCasing -Value $TargetPublishMode
-        }
 
         $providedSubmissionData = ($null -ne $PSBoundParameters['SubmissionData'])
         if ((-not $providedSubmissionData) -and
@@ -1251,23 +1226,6 @@ function Update-Submission
     }
 
     $isContentPathTemporary = $false
-
-    # Theese checks are necessary because if no value was provided, we'll get an empty string back,
-    # and then PowerShell will throw an exception for trying to assign an invalid enum value.
-    if ($null -ne $PSBoundParameters['TargetPublishMode'])
-    {
-        $TargetPublishMode = Get-ProperEnumCasing -Value $TargetPublishMode
-    }
-
-    if ($null -ne $PSBoundParameters['Visibility'])
-    {
-        $Visibility = Get-ProperEnumCasing -Value $Visibility
-    }
-
-    if ($null -ne $PSBoundParameters['ExistingPackageRolloutAction'])
-    {
-        $ExistingPackageRolloutAction = Get-ProperEnumCasing -Value $ExistingPackageRolloutAction
-    }
 
     if ((-not [String]::IsNullOrWhiteSpace($ZipPath)) -and (-not [String]::IsNullOrWhiteSpace($ContentPath)))
     {

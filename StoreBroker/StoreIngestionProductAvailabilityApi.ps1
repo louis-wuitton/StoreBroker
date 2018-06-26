@@ -126,13 +126,6 @@ function New-ProductAvailability
 
     try
     {
-        if ($null -ne $PSBoundParameters['Visibility'])
-        {
-            # The check is necessary, because if no value was provided, we'll get an empty string back
-            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
-            $Visibility = Get-ProperEnumCasing -Value $Visibility
-        }
-
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
@@ -240,13 +233,6 @@ function Set-ProductAvailability
 
     try
     {
-        if ($null -ne $PSBoundParameters['Visibility'])
-        {
-            # The check is necessary, because if no value was provided, we'll get an empty string back
-            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
-            $Visibility = Get-ProperEnumCasing -Value $Visibility
-        }
-
         if ($null -ne $Object)
         {
             $ProductAvailabilityId = $Object.id
@@ -351,17 +337,10 @@ function Update-ProductAvailability
         }
 
         $providedVisibility = ($null -ne $PSBoundParameters['Visibility'])
-        if ($providedVisibility)
+        if ((-not $providedVisibility) -and (-not $UpdateVisibilityFromSubmissionData))
         {
-            # The check is necessary, because if no value was provided, we'll get an empty string back
-            # here, and then PowerShell will throw an exception for trying to assign an invalid enum value.
-            $Visibility = Get-ProperEnumCasing -Value $Visibility
-
-            if (-not $UpdateVisibilityFromSubmissionData)
-            {
-                Write-Log -Message 'No modification parameters provided.  Nothing to do.' -Level Verbose
-                return
-            }
+            Write-Log -Message 'No modification parameters provided.  Nothing to do.' -Level Verbose
+            return
         }
 
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
