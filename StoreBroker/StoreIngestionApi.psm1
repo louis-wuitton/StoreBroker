@@ -2106,7 +2106,7 @@ function Invoke-SBRestMethod
 
             if (-not [String]::IsNullOrEmpty($returnedClientRequestId))
             {
-                $localTelemetryProperties[$script:returnedClientRequestId] = $returnedClientRequestId
+                $localTelemetryProperties[$script:headerMSClientRequestId] = $returnedClientRequestId
                 $message = $script:headerMSClientRequestId + ': ' + $returnedClientRequestId
                 $output += $message
                 Write-Log -Message $message -Level Verbose
@@ -2114,7 +2114,7 @@ function Invoke-SBRestMethod
 
             if (-not [String]::IsNullOrEmpty($returnedCorrelationId))
             {
-                $localTelemetryProperties[$script:returnedCorrelationId] = $returnedCorrelationId
+                $localTelemetryProperties[$script:headerMSCorrelationId] = $returnedCorrelationId
                 $message = $script:headerMSCorrelationId + ': ' + $returnedCorrelationId
                 $output += $message
                 Write-Log -Message $message -Level Verbose
