@@ -1341,6 +1341,7 @@ function Update-Submission
         if ([System.String]::IsNullOrEmpty($SubmissionId))
         {
             $newSubmissionParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
+            $newSubmissionParams['FlightId'] = $FlightId
             $newSubmissionParams['Force'] = $Force
             if ($null -ne $PSBoundParameters['ExistingPackageRolloutAction']) { $newSubmissionParams['ExistingPackageRolloutAction'] = $ExistingPackageRolloutAction }
 
