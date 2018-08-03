@@ -1279,7 +1279,6 @@ function Start-SubmissionMonitor
 
     if (-not $providedAccessToken)
     {
-        $lastTokenRefreshTime = Get-Date
         $accessToken = Get-AccessToken -NoStatus:$NoStatus
     }
 
@@ -1324,16 +1323,12 @@ function Start-SubmissionMonitor
 
     while ($shouldMonitor)
     {
-        # We need to refresh our access token every hour...we'll go a little more often to give
-        # ourselves some wiggle room to avoid unnecessary failures.
+        # Let's always make sure that we have a non-expired access token (since submission monitor
+        # can easily run for over an hour.  Get-AccessToken is smart enough to return back a cached
+        # token quickly if it hasn't expired yet.
         if (-not $providedAccessToken)
         {
-            $accessTokenTimeoutMinutes = 58
-            if ((New-TimeSpan $lastTokenRefreshTime $(Get-Date)).Minutes -gt $accessTokenTimeoutMinutes)
-            {
-                $lastTokenRefreshTime = Get-Date
-                $accessToken = Get-AccessToken -NoStatus:$NoStatus
-            }
+            $accessToken = Get-AccessToken -NoStatus:$NoStatus
         }
 
         try
