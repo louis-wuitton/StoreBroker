@@ -1121,9 +1121,10 @@ function Update-Submission
 
         [string] $FlightId,
 
-        [Parameter(Mandatory)]
         [ValidateScript({if (Test-Path -Path $_ -PathType Leaf) { $true } else { throw "$_ cannot be found." }})]
         [string] $JsonPath,
+
+        [PSCustomObject] $JsonObject,
 
         [ValidateScript({if (Test-Path -Path $_ -PathType Leaf) { $true } else { throw "$_ cannot be found." }})]
         [string] $ZipPath,
@@ -1250,10 +1251,32 @@ function Update-Submission
         'NoStatus' = $NoStatus
     }
 
-    Write-Log -Message "Reading in the submission content from: $JsonPath" -Level Verbose
-    if ($PSCmdlet.ShouldProcess($JsonPath, "Get-Content"))
+    if (([String]::IsNullOrWhiteSpace($JsonPath)))
     {
-        $jsonSubmission = [string](Get-Content $JsonPath -Encoding UTF8) | ConvertFrom-Json
+        if ($null -eq $JsonObject)
+        {
+            $message = "You need to specify either JsonPath or JsonObject"
+            Write-Log -Message $message -Level Error
+            throw $message
+        }
+        else
+        {
+            $jsonSubmission = $JsonObject
+        }
+    }
+    elseif ($null -eq $JsonObject)
+    {
+        Write-Log -Message "Reading in the submission content from: $JsonPath" -Level Verbose
+        if ($PSCmdlet.ShouldProcess($JsonPath, "Get-Content"))
+        {
+            $jsonSubmission = [string](Get-Content $JsonPath -Encoding UTF8) | ConvertFrom-Json
+        }    
+    }
+    else 
+    {
+        $message = "You can't specify both JsonPath and JsonObject"
+        Write-Log -Message $message -Level Error
+        throw $message
     }
 
     $product = Get-Product @commonParams -ProductId $ProductId
@@ -1282,7 +1305,7 @@ function Update-Submission
             if ($jsonSubmission.appId -ne $appId)
             {
                 $output = @()
-                $output += "The AppId [$($jsonSubmission.appId))] in the submission content [$JsonPath] is not for the intended ProductId [$ProductId]."
+                $output += "The AppId [$($jsonSubmission.appId))] in the submission content is not for the intended ProductId [$ProductId]."
                 $output += "You either entered the wrong ProductId at the commandline, or you're referencing the wrong submission content to upload."
 
                 $newLineOutput = ($output -join [Environment]::NewLine)
@@ -1295,7 +1318,7 @@ function Update-Submission
     if ((-not [String]::IsNullOrWhiteSpace($jsonProductId)) -and ($ProductId -ne $jsonProductId))
     {
         $output = @()
-        $output += "The ProductId [$jsonProductId] in the submission content [$JsonPath] does not match the intended ProductId [$ProductId]."
+        $output += "The ProductId [$jsonProductId] in the submission content does not match the intended ProductId [$ProductId]."
         $output += "You either entered the wrong ProductId at the commandline, or you're referencing the wrong submission content to upload."
 
         $newLineOutput = ($output -join [Environment]::NewLine)
