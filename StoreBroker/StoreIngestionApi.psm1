@@ -1273,22 +1273,20 @@ function Start-SubmissionMonitor
     $telemetryMetrics = @{ [StoreBrokerTelemetryMetric]::NumEmailAddresses = $EmailNotifyTo.Count }
     Set-TelemetryEvent -EventName Start-ApplicationSubmissionMonitor -Properties $telemetryProperties -Metrics $telemetryMetrics
 
-    $providedAccessToken = ($null -ne $PSBoundParameters['AccessToken'])
     $shouldMonitor = $true
     $indentLength = 5
-
-    if (-not $providedAccessToken)
-    {
-        $accessToken = Get-AccessToken -NoStatus:$NoStatus
-    }
 
     $CorrelationId = Get-CorrelationId -CorrelationId $CorrelationId -Identifier $ProductId
 
     $commonParams = @{
         'ClientRequestId' = $ClientRequestId
         'CorrelationId' = $CorrelationId
-        'AccessToken' = $AccessToken
         'NoStatus' = $NoStatus
+    }
+
+    if ($null -ne $PSBoundParameters['AccessToken'])
+    {
+        $commonParams.Add('AccessToken', $AccessToken)
     }
 
     # Get the info so we have it's name when we give the user updates.
@@ -1323,14 +1321,6 @@ function Start-SubmissionMonitor
 
     while ($shouldMonitor)
     {
-        # Let's always make sure that we have a non-expired access token (since submission monitor
-        # can easily run for over an hour.  Get-AccessToken is smart enough to return back a cached
-        # token quickly if it hasn't expired yet.
-        if (-not $providedAccessToken)
-        {
-            $accessToken = Get-AccessToken -NoStatus:$NoStatus
-        }
-
         try
         {
             $submission = Get-Submission @commonParams -ProductId $ProductId -SubmissionId $SubmissionId
