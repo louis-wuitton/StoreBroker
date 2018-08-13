@@ -1196,7 +1196,9 @@ function Update-Submission
 
         [string] $AccessToken,
 
-        [switch] $NoStatus
+        [switch] $NoStatus,
+
+        [switch] $isSeekEnabled
     )
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
@@ -1474,6 +1476,7 @@ function Update-Submission
                 $rolloutParams.Add('State', [StoreBrokerRolloutState]::Initialized)
                 $rolloutParams.Add('Percentage', $PackageRolloutPercentage)
                 $rolloutParams.Add('Enabled', $true)
+                $rolloutParams.Add('isSeekEnabled', $isSeekEnabled)
 
                 $null = Update-SubmissionRollout @rolloutParams
             }
