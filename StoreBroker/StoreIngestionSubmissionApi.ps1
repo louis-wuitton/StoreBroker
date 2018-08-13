@@ -1482,7 +1482,7 @@ function Update-Submission
                 $rolloutParams.Add('State', [StoreBrokerRolloutState]::Initialized)
                 $rolloutParams.Add('Percentage', $PackageRolloutPercentage)
                 $rolloutParams.Add('Enabled', $true)
-                $rolloutParams.Add('isSeekEnabled', $isSeekEnabled)
+                $rolloutParams.Add('SeekEnabled', $isSeekEnabled)
 
                 $null = Update-SubmissionRollout @rolloutParams
             }
