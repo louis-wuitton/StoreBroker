@@ -1132,6 +1132,9 @@ function Update-Submission
         [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
         [string] $ContentPath,
 
+        [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
+        [string] $MetadataRootPath,
+
         [Alias('AutoCommit')]
         [switch] $AutoSubmit,
 
@@ -1420,9 +1423,12 @@ function Update-Submission
 
                 $listingParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $listingParams.Add('SubmissionData', $jsonSubmission)
-                $listingParams.Add('ContentPath', $ContentPath)
+                if (-not [string]::IsNullOrEmpty($MetadataRootPath))
+                {
+                    $listingParams.Add('ContentPath', $MetadataRootPath)
+                    $listingParams.Add('UpdateImagesAndCaptions', $UpdateImagesAndCaptions)
+                }
                 $listingParams.Add('UpdateListingText', $UpdateListingText)
-                $listingParams.Add('UpdateImagesAndCaptions', $UpdateImagesAndCaptions)
                 $listingParams.Add('UpdateVideos', $UpdateVideos)
                 $null = Update-Listing @listingParams
             }
