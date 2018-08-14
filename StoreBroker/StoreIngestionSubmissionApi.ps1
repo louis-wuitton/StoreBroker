@@ -1201,7 +1201,7 @@ function Update-Submission
 
         [switch] $NoStatus,
 
-        [switch] $isSeekEnabled
+        [switch] $SeekEnabled
     )
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
@@ -1426,8 +1426,12 @@ function Update-Submission
                 if (-not [string]::IsNullOrEmpty($MetadataRootPath))
                 {
                     $listingParams.Add('ContentPath', $MetadataRootPath)
-                    $listingParams.Add('UpdateImagesAndCaptions', $UpdateImagesAndCaptions)
                 }
+                else 
+                {
+                    $listingParams.Add('ContentPath', $ContentPath)
+                }
+                $listingParams.Add('UpdateImagesAndCaptions', $UpdateImagesAndCaptions)
                 $listingParams.Add('UpdateListingText', $UpdateListingText)
                 $listingParams.Add('UpdateVideos', $UpdateVideos)
                 $null = Update-Listing @listingParams
