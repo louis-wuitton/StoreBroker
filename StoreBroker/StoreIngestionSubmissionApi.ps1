@@ -1130,10 +1130,10 @@ function Update-Submission
         [string] $ZipPath,
 
         [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
-        [string] $ContentPath,
+        [string] $PackageRootPath,
 
         [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
-        [string] $MetadataRootPath,
+        [string] $MediaRootPath,
 
         [Alias('AutoCommit')]
         [switch] $AutoSubmit,
@@ -1193,15 +1193,15 @@ function Update-Submission
         [Alias('UpdateNotesForCertification')]
         [switch] $UpdateCertificationNotes,
 
+        [switch] $SeekEnabled,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
 
         [string] $AccessToken,
 
-        [switch] $NoStatus,
-
-        [switch] $SeekEnabled
+        [switch] $NoStatus
     )
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
@@ -1232,12 +1232,23 @@ function Update-Submission
     }
 
     $isContentPathTemporary = $false
-
-    if ((-not [String]::IsNullOrWhiteSpace($ZipPath)) -and (-not [String]::IsNullOrWhiteSpace($ContentPath)))
+    if (([String]::IsNullOrWhiteSpace($ZipPath))) 
     {
-        $message = "You should specify either ZipPath OR ContentPath.  Not both."
-        Write-Log -Message $message -Level Error
-        throw $message
+        if (([String]::IsNullOrWhiteSpace($PackageRootPath)) -or ([String]::IsNullOrWhiteSpace($MediaRootPath)))
+        {
+            $message = "If ZipPath is not speficied then you should specify both PackageRootPath and MediaRootPath"
+            Write-Log -Message $message -Level Error
+            throw $message
+        }
+    }
+    else 
+    {
+        if ((-not [String]::IsNullOrWhiteSpace($PackageRootPath)) -or (-not [String]::IsNullOrWhiteSpace($MediaRootPath)))
+        {
+            $message = "If ZipPath is speficied then you should not specify either PackageRootPath or MediaRootPath"
+            Write-Log -Message $message -Level Error
+            throw $message
+        }
     }
 
     if ($Force -and (-not [System.String]::IsNullOrEmpty($SubmissionId)))
@@ -1369,10 +1380,7 @@ function Update-Submission
         if ([System.String]::IsNullOrEmpty($SubmissionId))
         {
             $newSubmissionParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
-            if (-not [System.String]::IsNullOrEmpty($FlightId))
-            {
-                $newSubmissionParams['FlightId'] = $FlightId
-            }
+            $newSubmissionParams['FlightId'] = $FlightId
             $newSubmissionParams['Force'] = $Force
             if ($null -ne $PSBoundParameters['ExistingPackageRolloutAction']) { $newSubmissionParams['ExistingPackageRolloutAction'] = $ExistingPackageRolloutAction }
 
@@ -1403,19 +1411,19 @@ function Update-Submission
             # If we know that we'll be doing anything with binary content, ensure that it's accessible unzipped.
             if ($UpdateListingText -or $UpdateImagesAndCaptions -or $UpdateVideos -or $AddPackages -or $ReplacePackages -or $UpdatePackages)
             {
-                if ([String]::IsNullOrEmpty($ContentPath))
+                if ([String]::IsNullOrEmpty($PackageRootPath))
                 {
                     Add-Type -AssemblyName System.IO.Compression.FileSystem
                     $isContentPathTemporary = $true
-                    $ContentPath = New-TemporaryDirectory
-                    Write-Log -Message "Unzipping archive (Item: $ZipPath) to (Target: $ContentPath)." -Level Verbose
-                    [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $ContentPath)
+                    $PackageRootPath = New-TemporaryDirectory
+                    Write-Log -Message "Unzipping archive (Item: $ZipPath) to (Target: $PackageRootPath)." -Level Verbose
+                    [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $PackageRootPath)
                     Write-Log -Message "Unzip complete." -Level Verbose
                 }
 
                 $packageParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $packageParams.Add('SubmissionData', $jsonSubmission)
-                $packageParams.Add('ContentPath', $ContentPath)
+                $packageParams.Add('ContentPath', $PackageRootPath)
                 if ($AddPackages) { $packageParams.Add('AddPackages', $AddPackages) }
                 if ($ReplacePackages) { $packageParams.Add('ReplacePackages', $ReplacePackages) }
                 if ($UpdatePackages) {
@@ -1426,13 +1434,13 @@ function Update-Submission
 
                 $listingParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $listingParams.Add('SubmissionData', $jsonSubmission)
-                if (-not [string]::IsNullOrWhiteSpace($MetadataRootPath))
+                if (-not [string]::IsNullOrWhiteSpace($MediaRootPath))
                 {
-                    $listingParams.Add('ContentPath', $MetadataRootPath)
+                    $listingParams.Add('ContentPath', $MediaRootPath)
                 }
                 else 
                 {
-                    $listingParams.Add('ContentPath', $ContentPath)
+                    $listingParams.Add('ContentPath', $PackageRootPath)
                 }
                 $listingParams.Add('UpdateImagesAndCaptions', $UpdateImagesAndCaptions)
                 $listingParams.Add('UpdateListingText', $UpdateListingText)
@@ -1444,7 +1452,7 @@ function Update-Submission
             {
                 $propertyParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $propertyParams.Add('SubmissionData', $jsonSubmission)
-                $propertyParams.Add('ContentPath', $ContentPath)
+                $propertyParams.Add('ContentPath', $PackageRootPath)
                 $propertyParams.Add('UpdateCategoryFromSubmissionData', $UpdateAppProperties)
                 $propertyParams.Add('UpdatePropertiesFromSubmissionData', $UpdateAppProperties)
                 $propertyParams.Add('UpdateGamingOptions', $UpdateGamingOptions)
@@ -1529,7 +1537,7 @@ function Update-Submission
             [StoreBrokerTelemetryProperty]::AppId = $AppId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::ZipPath = (Get-PiiSafeString -PlainText $ZipPath)
-            [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
+            [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $PackageRootPath)
             [StoreBrokerTelemetryProperty]::AutoSubmit = ($AutoSubmit -eq $true)
             [StoreBrokerTelemetryProperty]::Force = ($Force -eq $true)
             [StoreBrokerTelemetryProperty]::PackageRolloutPercentage = $PackageRolloutPercentage
@@ -1561,10 +1569,10 @@ function Update-Submission
     }
     finally
     {
-        if ($isContentPathTemporary -and (-not [String]::IsNullOrWhiteSpace($ContentPath)))
+        if ($isContentPathTemporary -and (-not [String]::IsNullOrWhiteSpace($PackageRootPath)))
         {
-            Write-Log -Message "Deleting temporary content directory: $ContentPath" -Level Verbose
-            $null = Remove-Item -Force -Recurse $ContentPath -ErrorAction SilentlyContinue
+            Write-Log -Message "Deleting temporary content directory: $PackageRootPath" -Level Verbose
+            $null = Remove-Item -Force -Recurse $PackageRootPath -ErrorAction SilentlyContinue
             Write-Log -Message "Deleting temporary directory complete." -Level Verbose
         }
     }
