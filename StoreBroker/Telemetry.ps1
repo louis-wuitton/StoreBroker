@@ -48,6 +48,7 @@ Add-Type -TypeDefinition @"
       PackageConfigurationId,
       PackagePath,
       PackageRolloutPercentage,
+      PackageRootPath,
       Percentage,
       ProductAvailabilityId,
       ProductId,

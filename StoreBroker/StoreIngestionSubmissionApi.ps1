@@ -1232,11 +1232,12 @@ function Update-Submission
     }
 
     $isContentPathTemporary = $false
+    $expandedZipPath = [string]::Empty
     if (([String]::IsNullOrWhiteSpace($ZipPath))) 
     {
         if (([String]::IsNullOrWhiteSpace($PackageRootPath)) -or ([String]::IsNullOrWhiteSpace($MediaRootPath)))
         {
-            $message = "If ZipPath is not speficied then you should specify both PackageRootPath and MediaRootPath"
+            $message = "If ZipPath is not specified then you should specify both PackageRootPath and MediaRootPath"
             Write-Log -Message $message -Level Error
             throw $message
         }
@@ -1245,7 +1246,7 @@ function Update-Submission
     {
         if ((-not [String]::IsNullOrWhiteSpace($PackageRootPath)) -or (-not [String]::IsNullOrWhiteSpace($MediaRootPath)))
         {
-            $message = "If ZipPath is speficied then you should not specify either PackageRootPath or MediaRootPath"
+            $message = "If ZipPath is specified, then neither PackageRootPath nor MediaRootPath can be specified"
             Write-Log -Message $message -Level Error
             throw $message
         }
@@ -1415,15 +1416,22 @@ function Update-Submission
                 {
                     Add-Type -AssemblyName System.IO.Compression.FileSystem
                     $isContentPathTemporary = $true
-                    $PackageRootPath = New-TemporaryDirectory
-                    Write-Log -Message "Unzipping archive (Item: $ZipPath) to (Target: $PackageRootPath)." -Level Verbose
-                    [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $PackageRootPath)
+                    $expandedZipPath = New-TemporaryDirectory
+                    Write-Log -Message "Unzipping archive (Item: $ZipPath) to (Target: $expandedZipPath)." -Level Verbose
+                    [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $expandedZipPath)
                     Write-Log -Message "Unzip complete." -Level Verbose
                 }
 
                 $packageParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $packageParams.Add('SubmissionData', $jsonSubmission)
-                $packageParams.Add('ContentPath', $PackageRootPath)
+                if (-not [string]::IsNullOrEmpty($ZipPath))
+                {
+                    $packageParams.Add('ContentPath', $expandedZipPath)
+                }
+                else 
+                {
+                    $packageParams.Add('ContentPath', $PackageRootPath)
+                }
                 if ($AddPackages) { $packageParams.Add('AddPackages', $AddPackages) }
                 if ($ReplacePackages) { $packageParams.Add('ReplacePackages', $ReplacePackages) }
                 if ($UpdatePackages) {
@@ -1438,7 +1446,11 @@ function Update-Submission
                 {
                     $listingParams.Add('ContentPath', $MediaRootPath)
                 }
-                else 
+                elseif (-not [string]::IsNullOrWhiteSpace($ZipPath))
+                {
+                    $listingParams.Add('ContentPath', $expandedZipPath)
+                }
+                else
                 {
                     $listingParams.Add('ContentPath', $PackageRootPath)
                 }
@@ -1452,7 +1464,14 @@ function Update-Submission
             {
                 $propertyParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $propertyParams.Add('SubmissionData', $jsonSubmission)
-                $propertyParams.Add('ContentPath', $PackageRootPath)
+                if (-not [string]::IsNullOrWhiteSpace($ZipPath))
+                {
+                    $propertyParams.Add('ContentPath', $expandedZipPath)
+                }
+                else 
+                {
+                    $propertyParams.Add('ContentPath', $PackageRootPath)
+                }
                 $propertyParams.Add('UpdateCategoryFromSubmissionData', $UpdateAppProperties)
                 $propertyParams.Add('UpdatePropertiesFromSubmissionData', $UpdateAppProperties)
                 $propertyParams.Add('UpdateGamingOptions', $UpdateGamingOptions)
@@ -1537,7 +1556,8 @@ function Update-Submission
             [StoreBrokerTelemetryProperty]::AppId = $AppId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::ZipPath = (Get-PiiSafeString -PlainText $ZipPath)
-            [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $PackageRootPath)
+            [StoreBrokerTelemetryProperty]::PackageRootPath = (Get-PiiSafeString -PlainText $PackageRootPath)
+            [StoreBrokerTelemetryProperty]::MediaRootPath = (Get-PiiSafeString -PlainText $MediaRootPath)
             [StoreBrokerTelemetryProperty]::AutoSubmit = ($AutoSubmit -eq $true)
             [StoreBrokerTelemetryProperty]::Force = ($Force -eq $true)
             [StoreBrokerTelemetryProperty]::PackageRolloutPercentage = $PackageRolloutPercentage
@@ -1557,6 +1577,7 @@ function Update-Submission
             [StoreBrokerTelemetryProperty]::ProvidedCertificationNotes = (-not [String]::IsNullOrWhiteSpace($CertificationNotes))
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
+            [StoreBrokerTelemetryProperty]::SeekEnabled = $SeekEnabled
         }
 
         Set-TelemetryEvent -EventName Update-Submission -Properties $telemetryProperties -Metrics $telemetryMetrics
