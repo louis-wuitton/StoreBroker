@@ -1441,17 +1441,15 @@ function Update-Submission
 
                 $listingParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $listingParams.Add('SubmissionData', $jsonSubmission)
-                if ([string]::IsNullOrWhiteSpace($MediaRootPath))
-                {
-                    if (-not [string]::IsNullOrWhiteSpace($ZipPath))
-                    {
-                        $listingParams.Add('ContentPath', $expandedZipPath)
-                    }
-                }
-                else
+                if ([string]::IsNullOrWhiteSpace($ZipPath))
                 {
                     $listingParams.Add('ContentPath', $MediaRootPath)
                 }
+                else 
+                {
+                    $listingParams.Add('ContentPath', $expandedZipPath)
+                }
+
                 $listingParams.Add('UpdateImagesAndCaptions', $UpdateImagesAndCaptions)
                 $listingParams.Add('UpdateListingText', $UpdateListingText)
                 $listingParams.Add('UpdateVideos', $UpdateVideos)
