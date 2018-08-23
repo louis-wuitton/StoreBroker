@@ -219,6 +219,7 @@ function New-Submission
             Mandatory,
             ParameterSetName = 'Flight',
             Position = 1)]
+        [AllowEmptyString()]
         [string] $FlightId,
 
         [Parameter(
@@ -1231,13 +1232,12 @@ function Update-Submission
         }
     }
 
-    $isContentPathTemporary = $false
     $expandedZipPath = [string]::Empty
     if (([String]::IsNullOrWhiteSpace($ZipPath))) 
     {
         if (([String]::IsNullOrWhiteSpace($PackageRootPath)) -or ([String]::IsNullOrWhiteSpace($MediaRootPath)))
         {
-            $message = "If ZipPath is not specified then you should specify both PackageRootPath and MediaRootPath"
+            $message = "If ZipPath is not specified then you should specify both PackageRootPath and MediaRootPath."
             Write-Log -Message $message -Level Error
             throw $message
         }
@@ -1246,7 +1246,7 @@ function Update-Submission
     {
         if ((-not [String]::IsNullOrWhiteSpace($PackageRootPath)) -or (-not [String]::IsNullOrWhiteSpace($MediaRootPath)))
         {
-            $message = "If ZipPath is specified, then neither PackageRootPath nor MediaRootPath can be specified"
+            $message = "If ZipPath is specified, then neither PackageRootPath nor MediaRootPath can be specified."
             Write-Log -Message $message -Level Error
             throw $message
         }
@@ -1415,7 +1415,6 @@ function Update-Submission
                 if ([String]::IsNullOrEmpty($PackageRootPath))
                 {
                     Add-Type -AssemblyName System.IO.Compression.FileSystem
-                    $isContentPathTemporary = $true
                     $expandedZipPath = New-TemporaryDirectory
                     Write-Log -Message "Unzipping archive (Item: $ZipPath) to (Target: $expandedZipPath)." -Level Verbose
                     [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $expandedZipPath)
@@ -1450,10 +1449,6 @@ function Update-Submission
                 {
                     $listingParams.Add('ContentPath', $expandedZipPath)
                 }
-                else
-                {
-                    $listingParams.Add('ContentPath', $PackageRootPath)
-                }
                 $listingParams.Add('UpdateImagesAndCaptions', $UpdateImagesAndCaptions)
                 $listingParams.Add('UpdateListingText', $UpdateListingText)
                 $listingParams.Add('UpdateVideos', $UpdateVideos)
@@ -1464,14 +1459,6 @@ function Update-Submission
             {
                 $propertyParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $propertyParams.Add('SubmissionData', $jsonSubmission)
-                if (-not [string]::IsNullOrWhiteSpace($ZipPath))
-                {
-                    $propertyParams.Add('ContentPath', $expandedZipPath)
-                }
-                else 
-                {
-                    $propertyParams.Add('ContentPath', $PackageRootPath)
-                }
                 $propertyParams.Add('UpdateCategoryFromSubmissionData', $UpdateAppProperties)
                 $propertyParams.Add('UpdatePropertiesFromSubmissionData', $UpdateAppProperties)
                 $propertyParams.Add('UpdateGamingOptions', $UpdateGamingOptions)
@@ -1590,7 +1577,7 @@ function Update-Submission
     }
     finally
     {
-        if ($isContentPathTemporary -and (-not [String]::IsNullOrWhiteSpace($PackageRootPath)))
+        if (-not [String]::IsNullOrWhiteSpace($PackageRootPath))
         {
             Write-Log -Message "Deleting temporary content directory: $PackageRootPath" -Level Verbose
             $null = Remove-Item -Force -Recurse $PackageRootPath -ErrorAction SilentlyContinue
