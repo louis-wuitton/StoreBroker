@@ -1252,6 +1252,15 @@ function Update-Submission
         }
     }
 
+    if ([String]::IsNullOrEmpty($PackageRootPath))
+    {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $expandedZipPath = New-TemporaryDirectory
+        Write-Log -Message "Unzipping archive (Item: $ZipPath) to (Target: $expandedZipPath)." -Level Verbose
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $expandedZipPath)
+        Write-Log -Message "Unzip complete." -Level Verbose
+    }
+
     if ($Force -and (-not [System.String]::IsNullOrEmpty($SubmissionId)))
     {
         $message = "You can't specify Force AND supply a SubmissionId."
@@ -1412,24 +1421,15 @@ function Update-Submission
             # If we know that we'll be doing anything with binary content, ensure that it's accessible unzipped.
             if ($UpdateListingText -or $UpdateImagesAndCaptions -or $UpdateVideos -or $AddPackages -or $ReplacePackages -or $UpdatePackages)
             {
-                if ([String]::IsNullOrEmpty($PackageRootPath))
-                {
-                    Add-Type -AssemblyName System.IO.Compression.FileSystem
-                    $expandedZipPath = New-TemporaryDirectory
-                    Write-Log -Message "Unzipping archive (Item: $ZipPath) to (Target: $expandedZipPath)." -Level Verbose
-                    [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $expandedZipPath)
-                    Write-Log -Message "Unzip complete." -Level Verbose
-                }
-
                 $packageParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $packageParams.Add('SubmissionData', $jsonSubmission)
-                if (-not [string]::IsNullOrEmpty($ZipPath))
+                if ([string]::IsNullOrEmpty($ZipPath))
                 {
-                    $packageParams.Add('ContentPath', $expandedZipPath)
+                    $packageParams.Add('ContentPath', $PackageRootPath)
                 }
                 else 
                 {
-                    $packageParams.Add('ContentPath', $PackageRootPath)
+                    $packageParams.Add('ContentPath', $expandedZipPath)
                 }
                 if ($AddPackages) { $packageParams.Add('AddPackages', $AddPackages) }
                 if ($ReplacePackages) { $packageParams.Add('ReplacePackages', $ReplacePackages) }
@@ -1441,13 +1441,16 @@ function Update-Submission
 
                 $listingParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $listingParams.Add('SubmissionData', $jsonSubmission)
-                if (-not [string]::IsNullOrWhiteSpace($MediaRootPath))
+                if ([string]::IsNullOrWhiteSpace($MediaRootPath))
+                {
+                    if (-not [string]::IsNullOrWhiteSpace($ZipPath))
+                    {
+                        $listingParams.Add('ContentPath', $expandedZipPath)
+                    }
+                }
+                else
                 {
                     $listingParams.Add('ContentPath', $MediaRootPath)
-                }
-                elseif (-not [string]::IsNullOrWhiteSpace($ZipPath))
-                {
-                    $listingParams.Add('ContentPath', $expandedZipPath)
                 }
                 $listingParams.Add('UpdateImagesAndCaptions', $UpdateImagesAndCaptions)
                 $listingParams.Add('UpdateListingText', $UpdateListingText)
@@ -1577,10 +1580,10 @@ function Update-Submission
     }
     finally
     {
-        if (-not [String]::IsNullOrWhiteSpace($PackageRootPath))
+        if (-not [String]::IsNullOrWhiteSpace($expandedZipPath))
         {
-            Write-Log -Message "Deleting temporary content directory: $PackageRootPath" -Level Verbose
-            $null = Remove-Item -Force -Recurse $PackageRootPath -ErrorAction SilentlyContinue
+            Write-Log -Message "Deleting temporary content directory: $expandedZipPath" -Level Verbose
+            $null = Remove-Item -Force -Recurse $expandedZipPath -ErrorAction SilentlyContinue
             Write-Log -Message "Deleting temporary directory complete." -Level Verbose
         }
     }
