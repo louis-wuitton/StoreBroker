@@ -511,7 +511,7 @@ function Update-ListingImage
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
+            [StoreBrokerTelemetryProperty]::MediaRootPath = (Get-PiiSafeString -PlainText $ContentPath)
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
             [StoreBrokerTelemetryProperty]::RemoveOnly = $RemoveOnly
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId

@@ -827,7 +827,7 @@ function Update-Listing
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
+            [StoreBrokerTelemetryProperty]::MediaRootPath = (Get-PiiSafeString -PlainText $ContentPath)
             [StoreBrokerTelemetryProperty]::UpdateListingText = $UpdateListingText
             [StoreBrokerTelemetryProperty]::UpdateImagesAndCaptions = $UpdateImagesAndCaptions
             [StoreBrokerTelemetryProperty]::UpdateVideos = $UpdateVideos

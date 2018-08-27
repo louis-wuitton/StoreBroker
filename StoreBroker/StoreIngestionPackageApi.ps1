@@ -469,7 +469,7 @@ function Update-ProductPackage
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
+            [StoreBrokerTelemetryProperty]::PackageRootPath = (Get-PiiSafeString -PlainText $ContentPath)
             [StoreBrokerTelemetryProperty]::AddPackages = ($AddPackages -eq $true)
             [StoreBrokerTelemetryProperty]::ReplacePackages = ($ReplacePackages -eq $true)
             [StoreBrokerTelemetryProperty]::UpdatePackages = ($UpdatePackages -eq $true)
