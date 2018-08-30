@@ -451,6 +451,62 @@ function Update-ProductPackage
             # TODO -- Better understand the current object model so that we can accurately determine
             # which packages are redundant.
             # TODO: BE CAREFUL ABOUT KEEPING PRE-WIN 10 PACKAGES!!!
+            if ($RedundantPackagesToKeep -gt 25)
+            {
+                $RedundantPackagesToKeep = 25
+            }
+
+            $packages = Get-ProductPackage @params
+            $uniquePackageTypeToVersionMapping = @{}
+
+            foreach ($package in $packages)
+            {
+                if ($Null -eq $package.architecture)
+                {
+                    throw "Package $($package.version) doesn't have a valid architecture!"
+                }
+                $key = $package.architecture
+
+                if ($Null -eq $package.targetPlatforms)
+                {
+                    throw "Package $($package.version) doesn't have a valid target platform!"
+                }
+
+                $package.targetPlatforms | Sort-Object {$_.name}
+
+                foreach($targetPlatform in $package.targetPlatforms)
+                {
+                    $minVersionIdentifier = $targetPlatform.minVersion.Substring(0, 7)
+                    $key += "_$($targetPlatform.name)_$minVersionIdentifier"
+                }
+
+                if ($null -eq $uniquePackageTypeToVersionMapping[$key])
+                {
+                    $uniquePackageTypeToVersionMapping[$key] = @()
+                }
+
+                $uniquePackageTypeToVersionMapping[$key] += [System.Version]::Parse($package.version)
+            }
+            
+            $versionsToKeep = @{}
+
+            foreach ($entry in $uniquePackageTypeToVersionMapping.Keys)
+            {
+                [array]::Sort($uniquePackageTypeToVersionMapping[$entry])
+                [array]::Reverse($uniquePackageTypeToVersionMapping[$entry])
+                foreach($bundle in $uniquePackageTypeToVersionMapping[$entry][0..($RedundantPackagesToKeep - 1)])
+                {
+                    $versionsToKeep[$bundle.ToString()] = $true
+                }
+            }
+
+            foreach ($package in $packages)
+            {
+                if (-not $versionsToKeep.ContainsKey($package.version))
+                {
+                    $null = Remove-ProductPackage @params -PackageId ($package.id)
+                }
+            }
         }
 
         # Regardless of which method we're following, the last thing that we'll do is get these new
