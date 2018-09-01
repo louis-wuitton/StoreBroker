@@ -8,6 +8,8 @@ Add-Type -TypeDefinition @"
    }
 "@
 
+Set-Variable -Name MAX_PACKAGES_PER_GROUP -Value 25 -Option Constant -Scope Global -Force
+
 function Get-ProductPackage
 {
     [CmdletBinding(
@@ -367,6 +369,106 @@ function Remove-ProductPackage
     }
 }
 
+function Get-VersionsToKeep
+{
+    param(
+        [Parameter(Mandatory)]
+        [Object[]] $Packages,
+
+        [Parameter(Mandatory)]
+        [int] $RedundantPackagesToKeep
+    )
+
+    if ($RedundantPackagesToKeep -gt $MAX_PACKAGES_PER_GROUP)
+    {
+        Write-Warning "You have specified a value for number of packages to keep that exceeded the maximum possible number of packages to keep" -Verbose
+        $RedundantPackagesToKeep = $MAX_PACKAGES_PER_GROUP
+    }
+
+    $uniquePackageTypeToVersionMapping = @{}
+
+    foreach ($package in $Packages)
+    {
+        if ($null -eq $package.architecture)
+        {
+            $message =  "Package $($package.version) doesn't have a valid architecture!"
+            Write-Log -Message $message -Level "Error"
+            throw $message
+        }
+
+        $uniquePackageTypeKey = [string]::Empty
+        # Loop through the bundle contents
+        if ($package.bundleContents.Count -eq 0)
+        {
+            $uniquePackageTypeKey = $package.architecture
+        }
+        else 
+        {
+            $appBundles = $package.bundleContents | Where-Object { $bundle.contentType -eq 'Application'}
+            if ($appBundles.Count -eq 0)
+            {
+                $uniquePackageTypeKey = $package.architecture
+            }
+            else 
+            {
+                $architectures = New-Object System.Collections.Generic.SortedSet[string] -ArgumentList ([System.StringComparer]::OrdinalIgnoreCase)
+                foreach ($bundle in $appBundles)
+                {
+                    $null = $architectures.Add($bundle.architecture)
+                }
+
+                foreach ($architecture in $architectures)
+                {
+                    $uniquePackageTypeKey += "$architecture" + "_"
+                }
+
+                $uniquePackageTypeKey = $uniquePackageTypeKey.Substring(0, $uniquePackageTypeKey.Length - 1)
+            } 
+        } 
+
+        if ($null -eq $package.targetPlatforms)
+        {
+            $message =  "Package $($package.version) doesn't have a valid target platform!"
+            Write-Log -Message $message -Level "Error"
+            throw $message
+        }
+
+        $null = $package.targetPlatforms | Sort-Object {$platform.name} -CaseSensitive:$False
+
+        foreach ($targetPlatform in $package.targetPlatforms)
+        {
+            $uniquePackageTypeKey += "_$($targetPlatform.name)"
+            if ($null -ne $targetPlatform.minVersion)
+            {
+                # The first 7 characters of minVersion can effectively help us group all the packages into RS2, RS3 and RS4
+                $minVersionIdentifier = $targetPlatform.minVersion.Substring(0, 7)
+                $uniquePackageTypeKey += "_$minVersionIdentifier"
+            }
+        }
+
+        if ($null -eq $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey])
+        {
+            $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey] = @()
+        }
+
+        $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey] += [System.Version]::Parse($package.version)
+    }
+    
+    $versionsToKeep = @{}
+
+    foreach ($entry in $uniquePackageTypeToVersionMapping.Keys)
+    {
+        [array]::Sort($uniquePackageTypeToVersionMapping[$entry])
+        [array]::Reverse($uniquePackageTypeToVersionMapping[$entry])
+        foreach ($bundle in $uniquePackageTypeToVersionMapping[$entry][0..($RedundantPackagesToKeep - 1)])
+        {
+            $versionsToKeep[$bundle.ToString()] = $true
+        }
+    }
+
+    $versionsToKeep
+}
+
 function Update-ProductPackage
 {
     [CmdletBinding(
@@ -448,59 +550,9 @@ function Update-ProductPackage
         }
         elseif ($UpdatePackages)
         {
-            # TODO -- Better understand the current object model so that we can accurately determine
-            # which packages are redundant.
-            # TODO: BE CAREFUL ABOUT KEEPING PRE-WIN 10 PACKAGES!!!
-            if ($RedundantPackagesToKeep -gt 25)
-            {
-                $RedundantPackagesToKeep = 25
-            }
-
             $packages = Get-ProductPackage @params
-            $uniquePackageTypeToVersionMapping = @{}
-
-            foreach ($package in $packages)
-            {
-                if ($Null -eq $package.architecture)
-                {
-                    throw "Package $($package.version) doesn't have a valid architecture!"
-                }
-                $key = $package.architecture
-
-                if ($Null -eq $package.targetPlatforms)
-                {
-                    throw "Package $($package.version) doesn't have a valid target platform!"
-                }
-
-                $package.targetPlatforms | Sort-Object {$_.name}
-
-                foreach($targetPlatform in $package.targetPlatforms)
-                {
-                    $minVersionIdentifier = $targetPlatform.minVersion.Substring(0, 7)
-                    $key += "_$($targetPlatform.name)_$minVersionIdentifier"
-                }
-
-                if ($null -eq $uniquePackageTypeToVersionMapping[$key])
-                {
-                    $uniquePackageTypeToVersionMapping[$key] = @()
-                }
-
-                $uniquePackageTypeToVersionMapping[$key] += [System.Version]::Parse($package.version)
-            }
-            
-            $versionsToKeep = @{}
-
-            foreach ($entry in $uniquePackageTypeToVersionMapping.Keys)
-            {
-                [array]::Sort($uniquePackageTypeToVersionMapping[$entry])
-                [array]::Reverse($uniquePackageTypeToVersionMapping[$entry])
-                foreach($bundle in $uniquePackageTypeToVersionMapping[$entry][0..($RedundantPackagesToKeep - 1)])
-                {
-                    $versionsToKeep[$bundle.ToString()] = $true
-                }
-            }
-
-            foreach ($package in $packages)
+            $versionsToKeep = Get-VersionsToKeep -Packages $packages -RedundantPackagesToKeep $RedundantPackagesToKeep
+            foreach ($package in $Packages)
             {
                 if (-not $versionsToKeep.ContainsKey($package.version))
                 {

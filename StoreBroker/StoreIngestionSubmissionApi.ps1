@@ -1171,7 +1171,7 @@ function Update-Submission
         [switch] $UpdatePackages,
 
         [Parameter(ParameterSetName="UpdatePackages")]
-        [int] $RedundantPackagesToKeep = 1,
+        [int] $RedundantPackagesToKeep,
 
         [string] $CertificationNotes,
 
@@ -1252,7 +1252,7 @@ function Update-Submission
         }
     }
 
-    if ([String]::IsNullOrEmpty($PackageRootPath))
+    if ([String]::IsNullOrWhiteSpace($PackageRootPath))
     {
         Add-Type -AssemblyName System.IO.Compression.FileSystem
         $expandedZipPath = New-TemporaryDirectory
@@ -1367,6 +1367,7 @@ function Update-Submission
     # switch was provided by the user
     if ((-not $AddPackages) -and
         (-not $ReplacePackages) -and
+        (-not $UpdatePackages) -and 
         (-not $UpdateListingText) -and
         (-not $UpdateImagesAndCaptions) -and
         (-not $UpdatePublishModeAndVisibility) -and
