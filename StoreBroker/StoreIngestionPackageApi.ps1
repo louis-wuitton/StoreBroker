@@ -397,14 +397,13 @@ function Get-VersionsToKeep
         }
 
         $uniquePackageTypeKey = [string]::Empty
-        # Loop through the bundle contents
         if ($package.bundleContents.Count -eq 0)
         {
             $uniquePackageTypeKey = $package.architecture
         }
         else 
         {
-            $appBundles = $package.bundleContents | Where-Object { $bundle.contentType -eq 'Application'}
+            $appBundles = $package.bundleContents | Where-Object contentType -eq 'Application'
             if ($appBundles.Count -eq 0)
             {
                 $uniquePackageTypeKey = $package.architecture
@@ -433,15 +432,14 @@ function Get-VersionsToKeep
             throw $message
         }
 
-        $null = $package.targetPlatforms | Sort-Object {$platform.name} -CaseSensitive:$False
+        $null = $package.targetPlatforms | Sort-Object -Property name -CaseSensitive:$False
 
         foreach ($targetPlatform in $package.targetPlatforms)
         {
             $uniquePackageTypeKey += "_$($targetPlatform.name)"
             if ($null -ne $targetPlatform.minVersion)
             {
-                # The first 7 characters of minVersion can effectively help us group all the packages into RS2, RS3 and RS4
-                $minVersionIdentifier = $targetPlatform.minVersion.Substring(0, 7)
+                $minVersionIdentifier = $targetPlatform.minVersion
                 $uniquePackageTypeKey += "_$minVersionIdentifier"
             }
         }
@@ -462,6 +460,7 @@ function Get-VersionsToKeep
         [array]::Reverse($uniquePackageTypeToVersionMapping[$entry])
         foreach ($bundle in $uniquePackageTypeToVersionMapping[$entry][0..($RedundantPackagesToKeep - 1)])
         {
+            # We map each package type with the versions of the packages, and for each package type, the maximum number of packages to keep is defined by RedendantPackagesToKeep
             $versionsToKeep[$bundle.ToString()] = $true
         }
     }
@@ -485,7 +484,7 @@ function Update-ProductPackage
         [PSCustomObject] $SubmissionData,
 
         [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
-        [string] $ContentPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all internal helpers only operate on a Contentpath
+        [string] $PackageRootPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all internal helpers only operate on a PackageRootPath
 
         [Parameter(ParameterSetName="AddPackages")]
         [switch] $AddPackages,
@@ -552,6 +551,8 @@ function Update-ProductPackage
         {
             $packages = Get-ProductPackage @params
             $versionsToKeep = Get-VersionsToKeep -Packages $packages -RedundantPackagesToKeep $RedundantPackagesToKeep
+            $numberOfPackagesToRemove = $packages.Count - $versionsToKeep.Count
+            Write-Log -Message "The number of packages to keep for each package type is $RedundantPackagesToKeep, and the total number of packages to remove is $numberOfPackagesToRemove" -Level Verbose
             foreach ($package in $Packages)
             {
                 if (-not $versionsToKeep.ContainsKey($package.version))
@@ -566,7 +567,7 @@ function Update-ProductPackage
         foreach ($package in $SubmissionData.applicationPackages)
         {
             $packageSubmission = New-ProductPackage @params -FileName (Split-Path -Path $package.fileName -Leaf)
-            $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $package.fileName) -SasUri $packageSubmission.fileSasUri -NoStatus:$NoStatus
+            $null = Set-StoreFile -FilePath (Join-Path -Path $PackageRootPath -ChildPath $package.fileName) -SasUri $packageSubmission.fileSasUri -NoStatus:$NoStatus
             $packageSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
             $null = Set-ProductPackage @params -Object $packageSubmission
         }
@@ -577,7 +578,7 @@ function Update-ProductPackage
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::PackageRootPath = (Get-PiiSafeString -PlainText $ContentPath)
+            [StoreBrokerTelemetryProperty]::PackageRootPath = (Get-PiiSafeString -PlainText $PackageRootPath)
             [StoreBrokerTelemetryProperty]::AddPackages = ($AddPackages -eq $true)
             [StoreBrokerTelemetryProperty]::ReplacePackages = ($ReplacePackages -eq $true)
             [StoreBrokerTelemetryProperty]::UpdatePackages = ($UpdatePackages -eq $true)

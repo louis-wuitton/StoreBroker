@@ -1426,11 +1426,11 @@ function Update-Submission
                 $packageParams.Add('SubmissionData', $jsonSubmission)
                 if ([string]::IsNullOrEmpty($ZipPath))
                 {
-                    $packageParams.Add('ContentPath', $PackageRootPath)
+                    $packageParams.Add('PackageRootPath', $PackageRootPath)
                 }
                 else 
                 {
-                    $packageParams.Add('ContentPath', $expandedZipPath)
+                    $packageParams.Add('PackageRootPath', $expandedZipPath)
                 }
                 if ($AddPackages) { $packageParams.Add('AddPackages', $AddPackages) }
                 if ($ReplacePackages) { $packageParams.Add('ReplacePackages', $ReplacePackages) }
@@ -1444,11 +1444,11 @@ function Update-Submission
                 $listingParams.Add('SubmissionData', $jsonSubmission)
                 if ([string]::IsNullOrWhiteSpace($ZipPath))
                 {
-                    $listingParams.Add('ContentPath', $MediaRootPath)
+                    $listingParams.Add('MediaRootPath', $MediaRootPath)
                 }
                 else 
                 {
-                    $listingParams.Add('ContentPath', $expandedZipPath)
+                    $listingParams.Add('MediaRootPath', $expandedZipPath)
                 }
 
                 $listingParams.Add('UpdateImagesAndCaptions', $UpdateImagesAndCaptions)

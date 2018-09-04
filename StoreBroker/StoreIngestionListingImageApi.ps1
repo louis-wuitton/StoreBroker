@@ -442,7 +442,7 @@ function Update-ListingImage
             Mandatory,
             ParameterSetName="Update")]
         [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
-        [string] $ContentPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all internal helpers only operate on a Contentpath
+        [string] $MediaRootPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all internal helpers only operate on a MediaRootPath
 
         [Parameter(Mandatory)]
         [Alias('LangCode')]
@@ -494,7 +494,7 @@ function Update-ListingImage
                 # TODO: Determine if we should expose Orientation to the PDP and then here.
                 $type = Get-ValidImageType -Type $image.imageType
                 $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $type
-                $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
+                $null = Set-StoreFile -FilePath (Join-Path -Path $MediaRootPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
 
                 Add-Member -InputObject $imageSubmission -Name ([StoreBrokerListingImageProperty]::state.ToString()) -Value ([StoreBrokerFileState]::Uploaded.ToString()) -Type NoteProperty -Force
 
@@ -511,7 +511,7 @@ function Update-ListingImage
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::MediaRootPath = (Get-PiiSafeString -PlainText $ContentPath)
+            [StoreBrokerTelemetryProperty]::MediaRootPath = (Get-PiiSafeString -PlainText $MediaRootPath)
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
             [StoreBrokerTelemetryProperty]::RemoveOnly = $RemoveOnly
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId

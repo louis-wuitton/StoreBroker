@@ -471,7 +471,7 @@ function Update-ListingVideo
             Mandatory,
             ParameterSetName="Update")]
         [ValidateScript({if (Test-Path -Path $_ -PathType Container) { $true } else { throw "$_ cannot be found." }})]
-        [string] $ContentPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all internal helpers only operate on a Contentpath
+        [string] $MediaRootPath, # NOTE: The main wrapper should unzip the zip (if there is one), so that all internal helpers only operate on a MediaRootPath
 
         [Parameter(Mandatory)]
         [Alias('LangCode')]
@@ -536,8 +536,8 @@ function Update-ListingVideo
                     # TODO: $videoParams['ThumbnailOrientation'] = ???
 
                     $videoSubmission = New-ListingVideo @videoParams
-                    $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $fileName) -SasUri $videoSubmission.fileSasUri -NoStatus:$NoStatus
-                    $null = Set-StoreFile -FilePath (Join-Path -Path $ContentPath -ChildPath $thumbnailFileName) -SasUri $videoSubmission.thumbnail.fileSasUri -NoStatus:$NoStatus
+                    $null = Set-StoreFile -FilePath (Join-Path -Path $MediaRootPath -ChildPath $fileName) -SasUri $videoSubmission.fileSasUri -NoStatus:$NoStatus
+                    $null = Set-StoreFile -FilePath (Join-Path -Path $MediaRootPath -ChildPath $thumbnailFileName) -SasUri $videoSubmission.thumbnail.fileSasUri -NoStatus:$NoStatus
                     $videoSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
                     $videoSubmission.thumbnail.state = [StoreBrokerFileState]::Uploaded.ToString()
                     $null = Set-ListingVideo @params -Object $videoSubmission
@@ -551,7 +551,7 @@ function Update-ListingVideo
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::MediaRootPath = (Get-PiiSafeString -PlainText $ContentPath)
+            [StoreBrokerTelemetryProperty]::MediaRootPath = (Get-PiiSafeString -PlainText $MediaRootPath)
             [StoreBrokerTelemetryProperty]::LanguageCode = $LanguageCode
             [StoreBrokerTelemetryProperty]::RemoveOnly = $RemoveOnly
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
