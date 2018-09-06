@@ -418,7 +418,7 @@ function Get-VersionsToKeep
 
                 foreach ($architecture in $architectures)
                 {
-                    $uniquePackageTypeKey += "$architecture" + "_"
+                    $uniquePackageTypeKey += [string]::Join($architecture, "_")
                 }
 
                 $uniquePackageTypeKey = $uniquePackageTypeKey.Substring(0, $uniquePackageTypeKey.Length - 1)
@@ -439,8 +439,7 @@ function Get-VersionsToKeep
             $uniquePackageTypeKey += "_$($targetPlatform.name)"
             if ($null -ne $targetPlatform.minVersion)
             {
-                $minVersionIdentifier = $targetPlatform.minVersion
-                $uniquePackageTypeKey += "_$minVersionIdentifier"
+                $uniquePackageTypeKey += "_$($targetPlatform.minVersion)"
             }
         }
 
@@ -458,10 +457,10 @@ function Get-VersionsToKeep
     {
         [array]::Sort($uniquePackageTypeToVersionMapping[$entry])
         [array]::Reverse($uniquePackageTypeToVersionMapping[$entry])
-        foreach ($bundle in $uniquePackageTypeToVersionMapping[$entry][0..($RedundantPackagesToKeep - 1)])
+        foreach ($version in $uniquePackageTypeToVersionMapping[$entry][0..($RedundantPackagesToKeep - 1)])
         {
             # We map each package type with the versions of the packages, and for each package type, the maximum number of packages to keep is defined by RedendantPackagesToKeep
-            $versionsToKeep[$bundle.ToString()] = $true
+            $versionsToKeep[$version.ToString()] = $true
         }
     }
 
@@ -550,16 +549,24 @@ function Update-ProductPackage
         elseif ($UpdatePackages)
         {
             $packages = Get-ProductPackage @params
+            if ($null -eq $packages)
+            {
+                $message =  "Cannot update the packages because calling Get-ProductPackage on submission $SubmissionId returns null"
+                Write-Log -Message $message -Level "Error"
+                throw $message
+            }
+           
             $versionsToKeep = Get-VersionsToKeep -Packages $packages -RedundantPackagesToKeep $RedundantPackagesToKeep
-            $numberOfPackagesToRemove = $packages.Count - $versionsToKeep.Count
-            Write-Log -Message "The number of packages to keep for each package type is $RedundantPackagesToKeep, and the total number of packages to remove is $numberOfPackagesToRemove" -Level Verbose
+            $numberOfPackagesToRemove = 0
             foreach ($package in $Packages)
             {
                 if (-not $versionsToKeep.ContainsKey($package.version))
                 {
                     $null = Remove-ProductPackage @params -PackageId ($package.id)
+                    $numberOfPackagesToRemove += 1
                 }
             }
+            Write-Log -Message "The number of packages to keep for each package type is $RedundantPackagesToKeep, and the total number of packages to remove is $numberOfPackagesToRemove" -Level Verbose
         }
 
         # Regardless of which method we're following, the last thing that we'll do is get these new

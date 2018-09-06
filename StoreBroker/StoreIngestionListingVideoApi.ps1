@@ -532,7 +532,7 @@ function Update-ListingVideo
                     $videoParams['FileName'] = (Split-Path -Path $fileName -Leaf)
                     $videoParams['ThumbnailFileName'] = (Split-Path -Path $thumbnailFileName -Leaf)
                     $videoParams['ThumbnailTitle'] = $title
-                    $videoParams['ThumbnailDescription'] = $description
+                    $videoParams['ThumbnailDescription'] = $thumbnailDescription
                     # TODO: $videoParams['ThumbnailOrientation'] = ???
 
                     $videoSubmission = New-ListingVideo @videoParams
