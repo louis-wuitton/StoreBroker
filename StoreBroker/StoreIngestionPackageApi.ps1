@@ -404,7 +404,7 @@ function Get-VersionsToKeep
         }
 
         $uniquePackageTypeKey = [string]::Empty
-        $null = $package.targetPlatforms | Sort-Object -Property name -CaseSensitive:$False
+        $null = $package.targetPlatforms | Sort-Object -Property name -CaseSensitive:$false
         foreach ($targetPlatform in $package.targetPlatforms)
         {
             $uniquePackageTypeKey += "$($targetPlatform.name)_"
@@ -439,7 +439,7 @@ function Get-VersionsToKeep
         }
     }
     
-    $versionsToKeep = @{}
+    $versionsToKeepMap = @{}
 
     foreach ($entry in $uniquePackageTypeToVersionMapping.Keys)
     {
@@ -448,11 +448,13 @@ function Get-VersionsToKeep
         foreach ($version in $uniquePackageTypeToVersionMapping[$entry][0..($RedundantPackagesToKeep - 1)])
         {
             # We map each package type with the versions of the packages, and for each package type, the maximum number of packages to keep is defined by RedendantPackagesToKeep
-            $versionsToKeep[$version.ToString()] = $true
+            $versionsToKeepMap[$version.ToString()] = $true
         }
     }
 
-    $versionsToKeep
+    $versionsToKeep = @()
+    $versionsToKeepMap.Keys | ForEach-Object { $versionsToKeep += $_ }
+    return $versionsToKeep
 }
 
 function Update-ProductPackage
@@ -539,7 +541,7 @@ function Update-ProductPackage
             $packages = Get-ProductPackage @params
             if ($null -eq $packages)
             {
-                $message =  "Cannot update the packages because calling Get-ProductPackage on submission $SubmissionId returns null"
+                $message =  "Cannot update the packages because the cloned submission is missing its packages."
                 Write-Log -Message $message -Level Error
                 throw $message
             }
@@ -548,12 +550,13 @@ function Update-ProductPackage
             $numberOfPackagesToRemove = 0
             foreach ($package in $Packages)
             {
-                if (-not $versionsToKeep.ContainsKey($package.version))
+                if (-not $versionsToKeep.Contains($package.version))
                 {
                     $null = Remove-ProductPackage @params -PackageId ($package.id)
                     $numberOfPackagesToRemove += 1
                 }
             }
+
             Write-Log -Message "The number of packages to keep for each package type is $RedundantPackagesToKeep, and the total number of packages to remove is $numberOfPackagesToRemove" -Level Verbose
         }
 
