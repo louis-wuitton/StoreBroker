@@ -392,63 +392,51 @@ function Get-VersionsToKeep
         if ($null -eq $package.architecture)
         {
             $message =  "Package $($package.version) doesn't have a valid architecture!"
-            Write-Log -Message $message -Level "Error"
+            Write-Log -Message $message -Level Error
             throw $message
         }
-
-        $uniquePackageTypeKey = [string]::Empty
-        if ($package.bundleContents.Count -eq 0)
-        {
-            $uniquePackageTypeKey = $package.architecture
-        }
-        else 
-        {
-            $appBundles = $package.bundleContents | Where-Object contentType -eq 'Application'
-            if ($appBundles.Count -eq 0)
-            {
-                $uniquePackageTypeKey = $package.architecture
-            }
-            else 
-            {
-                $architectures = New-Object System.Collections.Generic.SortedSet[string] -ArgumentList ([System.StringComparer]::OrdinalIgnoreCase)
-                foreach ($bundle in $appBundles)
-                {
-                    $null = $architectures.Add($bundle.architecture)
-                }
-
-                foreach ($architecture in $architectures)
-                {
-                    $uniquePackageTypeKey += [string]::Join($architecture, "_")
-                }
-
-                $uniquePackageTypeKey = $uniquePackageTypeKey.Substring(0, $uniquePackageTypeKey.Length - 1)
-            } 
-        } 
 
         if ($null -eq $package.targetPlatforms)
         {
             $message =  "Package $($package.version) doesn't have a valid target platform!"
-            Write-Log -Message $message -Level "Error"
+            Write-Log -Message $message -Level Error
             throw $message
         }
 
+        $uniquePackageTypeKey = [string]::Empty
         $null = $package.targetPlatforms | Sort-Object -Property name -CaseSensitive:$False
-
         foreach ($targetPlatform in $package.targetPlatforms)
         {
-            $uniquePackageTypeKey += "_$($targetPlatform.name)"
+            $uniquePackageTypeKey += "$($targetPlatform.name)_"
             if ($null -ne $targetPlatform.minVersion)
             {
-                $uniquePackageTypeKey += "_$($targetPlatform.minVersion)"
+                $uniquePackageTypeKey += "$($targetPlatform.minVersion)_"
             }
         }
 
-        if ($null -eq $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey])
-        {
-            $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey] = @()
-        }
+        $appBundles = $package.bundleContents | Where-Object contentType -eq 'Application'
 
-        $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey] += [System.Version]::Parse($package.version)
+        if ($null -eq $appBundles -or $appBundles.Count -eq 0)
+        {
+            $uniquePackageTypeKey += $package.architecture
+            if ($null -eq $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey])
+            {
+                $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey] = @()
+            }
+            $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey] += [System.Version]::Parse($package.version)
+        }
+        else 
+        {
+            foreach ($bundle in $appBundles)
+            {
+                $tempUniqueKey =$uniquePackageTypeKey + $bundle.architecture
+                if ($null -eq $uniquePackageTypeToVersionMapping[$tempUniqueKey])
+                {
+                    $uniquePackageTypeToVersionMapping[$tempUniqueKey] = @()
+                }
+                $uniquePackageTypeToVersionMapping[$tempUniqueKey] += [System.Version]::Parse($package.version)
+            }
+        }
     }
     
     $versionsToKeep = @{}
@@ -552,7 +540,7 @@ function Update-ProductPackage
             if ($null -eq $packages)
             {
                 $message =  "Cannot update the packages because calling Get-ProductPackage on submission $SubmissionId returns null"
-                Write-Log -Message $message -Level "Error"
+                Write-Log -Message $message -Level Error
                 throw $message
             }
            
