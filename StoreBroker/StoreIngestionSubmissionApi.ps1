@@ -1068,6 +1068,8 @@ function Get-SubmissionValidation
         [Parameter(Mandatory)]
         [string] $SubmissionId,
 
+        [switch] $WaitForCompletion,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -1100,8 +1102,35 @@ function Get-SubmissionValidation
             "NoStatus" = $NoStatus
         }
 
-        $result = Invoke-SBRestMethod @params
-        return @($result.items)
+        $result = $null
+        if ($WaitForCompletion)
+        {
+            $params["ExtendedResult"] = $true
+
+            while ($true)
+            {
+                $result = Invoke-SBRestMethod @params
+                $statusCode = $result.StatusCode
+                $retryAfter = $result.RetryAfter
+                $params['UriFragment'] = $result.Location
+
+                if ($statusCode -eq 200)
+                {
+                    break
+                }
+
+                Write-Log -Message "Validation on the server has not completed (received status code of [$statusCode].  Will retry in [$retryAfter] seconds."
+                Start-Sleep -Seconds ($retryAfter)
+            }
+
+            return @($result.Result.items)
+        }
+        else
+        {
+            $result = Invoke-SBRestMethod @params
+            return @($result.items)
+        }
+
     }
     catch
     {
@@ -1153,7 +1182,7 @@ function Update-Submission
         [string] $ExistingPackageRolloutAction,
 
         [ValidateRange(0, 100)]
-        [double] $PackageRolloutPercentage,
+        [float] $PackageRolloutPercentage,
 
         [switch] $IsMandatoryUpdate,
 
@@ -1296,9 +1325,9 @@ function Update-Submission
         if ($PSCmdlet.ShouldProcess($JsonPath, "Get-Content"))
         {
             $jsonSubmission = [string](Get-Content $JsonPath -Encoding UTF8) | ConvertFrom-Json
-        }    
+        }
     }
-    else 
+    else
     {
         $message = "You can't specify both JsonPath and JsonObject"
         Write-Log -Message $message -Level Error
@@ -1527,6 +1556,12 @@ function Update-Submission
 
         if ($AutoSubmit)
         {
+            Write-Log -Message "User requested -AutoSubmit.  Ensuring that validation has completed before submitting the submission." -Level Verbose
+            $validation = Get-SubmissionValidation @commonParams -WaitForCompletion
+            Write-Log -Level Verbose -Message @(
+                "Issues found during validation: ",
+                (Format-SimpleTableString -Object $validation))
+
             Write-Log -Message "Submitting the submission since -AutoSubmit was requested." -Level Verbose
             Submit-Submission @commonParams -Auto
         }

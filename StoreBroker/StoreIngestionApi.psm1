@@ -53,6 +53,10 @@ $script:headerMSRequestId = 'MS-RequestId'
 $script:headerMSClientRequestId = 'MS-Client-RequestId'
 $script:headerMSCorrelationId = 'MS-CorrelationId'
 
+# Other headers that we may need for processing a response
+$script:headerRetryAfter = 'Retry-After'
+$script:headerLocation = 'Location'
+
 Add-Type -TypeDefinition @"
    public enum StoreBrokerResourceType
    {
@@ -1621,6 +1625,10 @@ function Invoke-SBRestMethod
         This optional parameter forms the body of a PUT or POST request. It will be automatically
         encoded to UTF8 and sent as Content Type: "application/json; charset=UTF-8"
 
+    .PARAMETER ExtendedResult
+        If specified, the result will be a PSObject that contains the normal result, along with
+        the response code and other relevant header detail content.
+
     .PARAMETER AccessToken
         If provided, this will be used as the AccessToken for authentication with the
         REST Api as opposed to requesting a new one.
@@ -1670,7 +1678,6 @@ function Invoke-SBRestMethod
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidGlobalVars", "", Justification="We use global variables sparingly and intentionally for module configuration, and employ a consistent naming convention.")]
     param(
         [Parameter(Mandatory)]
-        [ValidateScript({if ($_.StartsWith("/")) { throw "Fragments should not start with a leading `"/`"" } else { return $true }})]
         [string] $UriFragment,
 
         [Parameter(Mandatory)]
@@ -1681,6 +1688,8 @@ function Invoke-SBRestMethod
         [string] $Description,
 
         [string] $Body = $null,
+
+        [switch] $ExtendedResult,
 
         [string] $ClientRequestId,
 
@@ -1699,10 +1708,18 @@ function Invoke-SBRestMethod
 
     $serviceEndpointVersion = "2.0"
 
+    # Normalize our Uri fragment.  It might be coming from a method implemented here, or it might
+    # be coming from the Location header in a previous response.  Either way, we don't want there
+    # to be a leading "/"
+    if ($UriFragment.StartsWith("/"))
+    {
+        $UriFragment = $UriFragment.Substring(1)
+    }
+
     # The initial number of minutes we'll wait before retrying this command when we've hit an
     # error with a status code that is configured to auto-retry.  To reduce repeated contention, we
     # stagger the initial wait time (and thus, the resulting spread when it exponentially backs off).
-    $retryDelayMin = (1, 1.25, 1.5, 1.75, 2) | Get-Random
+    $retryDelayMin = [Math]::Round((Get-Random -Minimum 0.25 -Maximum 2.0), 2)
     $numRetries = 0
 
     # Telemetry-related
@@ -1734,7 +1751,15 @@ function Invoke-SBRestMethod
         $stopwatch.Start()
 
         $serviceEndpoint = Get-ServiceEndpoint
-        $url = "$serviceEndpoint/v$serviceEndpointVersion/my/$UriFragment"
+        $uriPreface = "v$serviceEndpointVersion/my"
+        $url = "$serviceEndpoint/$uriPreface/$UriFragment"
+
+        # This scenario might happen if a client calls into here setting the UriFragment
+        # to the value returned in the Location header from a previous request.
+        if ($UriFragment.StartsWith($uriPreface))
+        {
+            $url = "$serviceEndpoint/$UriFragment"
+        }
 
         $headers = @{"Authorization" = "Bearer $AccessToken"}
         if ($Method -in ('post', 'put'))
@@ -1920,6 +1945,20 @@ function Invoke-SBRestMethod
                 Write-Log -Message "$($script:headerMSCorrelationId) : $returnedCorrelationId" -Level Verbose
             }
 
+            $statusCode = $result.StatusCode
+
+            $retryAfterHeaderValue = 0
+            if ($result.Headers.ContainsKey($script:headerRetryAfter))
+            {
+                $retryAfterHeaderValue = $result.Headers[$script:headerRetryAfter]
+            }
+
+            $locationHeaderValue = $null
+            if ($result.Headers.ContainsKey($script:headerLocation))
+            {
+                $locationHeaderValue = $result.Headers[$script:headerLocation]
+            }
+
             # Record the telemetry for this event.
             $stopwatch.Stop()
             if (-not [String]::IsNullOrEmpty($TelemetryEventName))
@@ -1940,7 +1979,21 @@ function Invoke-SBRestMethod
                 $finalResult = $finalResult
             }
 
-            return $finalResult
+            if ($ExtendedResult)
+            {
+                $finalResultEx = @{
+                    'Result' = $finalResult
+                    'StatusCode' = $statusCode
+                    'RetryAfter' = $retryAfterHeaderValue
+                    'Location' = $locationHeaderValue
+                }
+
+                return ([PSCustomObject] $finalResultEx)
+            }
+            else
+            {
+                return $finalResult
+            }
         }
         catch
         {
