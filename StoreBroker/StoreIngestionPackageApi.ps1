@@ -8,6 +8,7 @@ Add-Type -TypeDefinition @"
    }
 "@
 
+# Maximum number of packages allowed in one flight group according to Windows Store
 Set-Variable -Name MAX_PACKAGES_PER_GROUP -Value 25 -Option Constant -Scope Global -Force
 
 function Get-ProductPackage
@@ -369,6 +370,7 @@ function Remove-ProductPackage
     }
 }
 
+# Determine what packages to keep by their versions
 function Get-VersionsToKeep
 {
     param(
@@ -387,6 +389,20 @@ function Get-VersionsToKeep
 
     $uniquePackageTypeToVersionMapping = @{}
 
+    <#
+        For each package we map each package's bundle with a unique key. The key is constructed by:
+        1. Concatnating all the target platforms followed by min version. So it looks something like:
+           targetplatform1_minversion1_targetplatform2_minversion2......
+           We save this as a variable called $uniquePackageTypeKey
+        2. Looking at all the architectures from the bundleContents. If the bundleContent is 
+           empty then we simply use grab the architecture field from the package object. Concatnate
+           $uniquePackageTypeKey with the package's architecture. 
+           Otherwise, we look through the app bundles. Each bundle has a unique architecture. Thus for each 
+           bundle we create a key by concatnating $uniquePackageTypeKey with the bundle's architecture.
+        3. Map each of the keys we derived from above with the package's version, and save the mapping in a 
+           dictionary. We want to make sure that the number of packages we want to keep for each key is less 
+           than or equal to $RedundantPackagesToKeep
+    #>
     foreach ($package in $Packages)
     {
         if ($null -eq $package.architecture)
