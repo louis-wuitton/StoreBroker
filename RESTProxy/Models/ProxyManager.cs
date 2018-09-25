@@ -139,6 +139,10 @@ namespace Microsoft.Windows.Source.StoreBroker.RestProxy.Models
         /// be used for this request.
         /// </param>
         /// <param name="endpointType">The type of endpoint that should be used for the request.</param>
+        /// <param name="clientName">
+        /// The name of the requesting client that we can pass on to the API via a special header
+        /// for tracking purposes.
+        /// </param>
         /// <returns>The <see cref="HttpResponseMessage"/> to be sent to the user.</returns>
         public static async Task<HttpResponseMessage> PerformRequestAsync(
             string pathAndQuery,
@@ -147,7 +151,8 @@ namespace Microsoft.Windows.Source.StoreBroker.RestProxy.Models
             string body = null,
             string tenantId = null,
             string tenantName = null,
-            EndpointType endpointType = EndpointType.Prod)
+            EndpointType endpointType = EndpointType.Prod,
+            string clientName = null)
         {
             // We'll track how long this takes, for telemetry purposes.
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -164,7 +169,7 @@ namespace Microsoft.Windows.Source.StoreBroker.RestProxy.Models
                 HttpResponseMessage response;
                 if (ProxyManager.TryGetEndpoint(tenantId, tenantName, endpointType, out endpoint, out response))
                 {
-                    response = await endpoint.PerformRequestAsync(pathAndQuery, method, onBehalfOf, body);
+                    response = await endpoint.PerformRequestAsync(pathAndQuery, method, onBehalfOf, body, clientName);
                 }
 
                 // used in the finally block

@@ -244,12 +244,17 @@ namespace Microsoft.Windows.Source.StoreBroker.RestProxy.Models
         /// The <see cref="IPrincipal"/> of the user that we're performing the API request on behalf of.
         /// </param>
         /// <param name="body">The body content of the REST request (if needed).</param>
+        /// <param name="clientName">
+        /// The name of the requesting client that we can pass on to the API via a special header
+        /// for tracking purposes.
+        /// </param>
         /// <returns>The <see cref="HttpResponseMessage"/> to be sent to the user.</returns>
         public async Task<HttpResponseMessage> PerformRequestAsync(
             string pathAndQuery,
             HttpMethod method,
             IPrincipal onBehalfOf,
-            string body = null)
+            string body = null,
+            string clientName = null)
         {
             // This is the real API endpoint that we'll be contacting.  We'll just append
             // pathAndQuery directly to this to get the final REST Uri that we need to use.
@@ -277,6 +282,11 @@ namespace Microsoft.Windows.Source.StoreBroker.RestProxy.Models
                 // in the authorization header.
                 string accessToken = await this.GetAccessTokenAsync();
                 request.Headers[HttpRequestHeader.Authorization] = string.Format("bearer {0}", accessToken);
+
+                if (!String.IsNullOrWhiteSpace(clientName))
+                {
+                    request.Headers.Add("X-ClientName", clientName);
+                }
 
                 // Write the body to the request stream if one was provided.
                 // Not every REST API will require a body.  For instance, the GET requests have
