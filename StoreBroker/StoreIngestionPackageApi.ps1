@@ -8,9 +8,6 @@ Add-Type -TypeDefinition @"
    }
 "@
 
-# Maximum number of packages allowed in one flight group according to Windows Store
-Set-Variable -Name MAX_PACKAGES_PER_GROUP -Value 25 -Option Constant -Scope Global -Force
-
 function Get-ProductPackage
 {
     [CmdletBinding(
@@ -370,58 +367,65 @@ function Remove-ProductPackage
     }
 }
 
-# Determine what packages to keep by their versions
 function Get-VersionsToKeep
 {
+<# 
+    .SYNOPSIS
+        Determine the versions of the packages to keep when user speficy Update-Packages for packages submissions
+
+    .NOTES
+        Here is how we determine which packages to keep:
+        For each package we map each package's bundle with a unique key. The key is constructed by:
+            1. Concatnating all the target platforms followed by min version. So it looks something like:
+               targetplatform1_minversion1_targetplatform2_minversion2......
+               We save this as a variable called $uniquePackageTypeKey
+            2. Looking at all the architectures from the bundleContents. If the bundleContent is 
+               empty then we simply use grab the architecture field from the package object. Concatnate
+               $uniquePackageTypeKey with the package's architecture. 
+               Otherwise, we look through the app bundles. Each bundle has a unique architecture. Thus for each 
+               bundle we create a key by concatnating $uniquePackageTypeKey with the bundle's architecture.
+            3. Map each of the keys we derived from above with the package's version, and save the mapping in a 
+               dictionary. We want to make sure that the number of packages we want to keep for each key is less 
+               than or equal to $RedundantPackagesToKeep
+#>
     param(
         [Parameter(Mandatory)]
-        [Object[]] $Packages,
+        [Object[]] $Package,
 
         [Parameter(Mandatory)]
         [int] $RedundantPackagesToKeep
     )
 
-    if ($RedundantPackagesToKeep -gt $MAX_PACKAGES_PER_GROUP)
+    # Maximum number of packages allowed in one flight group according to Windows Store
+    Set-Variable -Name MaxPackagesPerGroup -Value 25 -Option Constant -Scope Local -Force
+    
+    if ($RedundantPackagesToKeep -gt $MaxPackagesPerGroup)
     {
-        Write-Warning "You have specified a value for number of packages to keep that exceeded the maximum possible number of packages to keep" -Verbose
-        $RedundantPackagesToKeep = $MAX_PACKAGES_PER_GROUP
+        Write-Log "You have specified a value for number of packages to keep that exceeded the maximum possible number of packages to keep" -Level Warning
+        $RedundantPackagesToKeep = $MaxPackagesPerGroup
     }
 
     $uniquePackageTypeToVersionMapping = @{}
-
-    <#
-        For each package we map each package's bundle with a unique key. The key is constructed by:
-        1. Concatnating all the target platforms followed by min version. So it looks something like:
-           targetplatform1_minversion1_targetplatform2_minversion2......
-           We save this as a variable called $uniquePackageTypeKey
-        2. Looking at all the architectures from the bundleContents. If the bundleContent is 
-           empty then we simply use grab the architecture field from the package object. Concatnate
-           $uniquePackageTypeKey with the package's architecture. 
-           Otherwise, we look through the app bundles. Each bundle has a unique architecture. Thus for each 
-           bundle we create a key by concatnating $uniquePackageTypeKey with the bundle's architecture.
-        3. Map each of the keys we derived from above with the package's version, and save the mapping in a 
-           dictionary. We want to make sure that the number of packages we want to keep for each key is less 
-           than or equal to $RedundantPackagesToKeep
-    #>
-    foreach ($package in $Packages)
+    foreach ($pkg in $Package)
     {
-        if ($null -eq $package.architecture)
+        if ($null -eq $pkg.architecture)
         {
-            $message =  "Package $($package.version) doesn't have a valid architecture!"
+            $message =  "Package $($pkg.version) doesn't have a valid architecture!"
             Write-Log -Message $message -Level Error
             throw $message
         }
 
-        if ($null -eq $package.targetPlatforms)
+        if ($null -eq $pkg.targetPlatforms)
         {
-            $message =  "Package $($package.version) doesn't have a valid target platform!"
+            $message =  "Package $($pkg.version) doesn't have a valid target platform!"
             Write-Log -Message $message -Level Error
             throw $message
         }
 
         $uniquePackageTypeKey = [string]::Empty
-        $null = $package.targetPlatforms | Sort-Object -Property name -CaseSensitive:$false
-        foreach ($targetPlatform in $package.targetPlatforms)
+        $null = $pkg.targetPlatforms | Sort-Object -Property name -CaseSensitive:$false
+        # Concatnating all the target platforms followed by min version
+        foreach ($targetPlatform in $pkg.targetPlatforms)
         {
             $uniquePackageTypeKey += "$($targetPlatform.name)_"
             if ($null -ne $targetPlatform.minVersion)
@@ -430,16 +434,16 @@ function Get-VersionsToKeep
             }
         }
 
-        $appBundles = $package.bundleContents | Where-Object contentType -eq 'Application'
-
+        $appBundles = $pkg.bundleContents | Where-Object contentType -eq 'Application'
+        # Checking the architectures of all the application bundles
         if ($null -eq $appBundles -or $appBundles.Count -eq 0)
         {
-            $uniquePackageTypeKey += $package.architecture
+            $uniquePackageTypeKey += $pkg.architecture
             if ($null -eq $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey])
             {
                 $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey] = @()
             }
-            $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey] += [System.Version]::Parse($package.version)
+            $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey] += [System.Version]::Parse($pkg.version)
         }
         else 
         {
@@ -450,7 +454,7 @@ function Get-VersionsToKeep
                 {
                     $uniquePackageTypeToVersionMapping[$tempUniqueKey] = @()
                 }
-                $uniquePackageTypeToVersionMapping[$tempUniqueKey] += [System.Version]::Parse($package.version)
+                $uniquePackageTypeToVersionMapping[$tempUniqueKey] += [System.Version]::Parse($pkg.version)
             }
         }
     }
@@ -461,9 +465,9 @@ function Get-VersionsToKeep
     {
         [array]::Sort($uniquePackageTypeToVersionMapping[$entry])
         [array]::Reverse($uniquePackageTypeToVersionMapping[$entry])
+        # We map each package type with the versions of the packages, and for each package type, the maximum number of packages to keep is defined by RedendantPackagesToKeep
         foreach ($version in $uniquePackageTypeToVersionMapping[$entry][0..($RedundantPackagesToKeep - 1)])
         {
-            # We map each package type with the versions of the packages, and for each package type, the maximum number of packages to keep is defined by RedendantPackagesToKeep
             $versionsToKeepMap[$version.ToString()] = $true
         }
     }
@@ -562,18 +566,18 @@ function Update-ProductPackage
                 throw $message
             }
            
-            $versionsToKeep = Get-VersionsToKeep -Packages $packages -RedundantPackagesToKeep $RedundantPackagesToKeep
+            $versionsToKeep = Get-VersionsToKeep -Package $packages -RedundantPackagesToKeep $RedundantPackagesToKeep
             $numberOfPackagesToRemove = 0
-            foreach ($package in $Packages)
+            foreach ($package in $packages)
             {
                 if (-not $versionsToKeep.Contains($package.version))
                 {
                     $null = Remove-ProductPackage @params -PackageId ($package.id)
-                    $numberOfPackagesToRemove += 1
+                    $numberOfPackagesToRemove ++
                 }
             }
 
-            Write-Log -Message "The number of packages to keep for each package type is $RedundantPackagesToKeep, and the total number of packages to remove is $numberOfPackagesToRemove" -Level Verbose
+            Write-Log -Message "Cloned submission had [$($packages.Length)] package(s). New submission specified [$($SubmissionData.applicationPackages.Length)] package(s). User requested to keep [$RedundantPackagesToKeep] redundant package(s). [$numberofPackagesToRemove] package(s) were removed." -Level Verbose
         }
 
         # Regardless of which method we're following, the last thing that we'll do is get these new
