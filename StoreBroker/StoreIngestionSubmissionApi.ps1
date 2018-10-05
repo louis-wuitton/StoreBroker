@@ -1151,6 +1151,8 @@ function Update-Submission
 
         [string] $FlightId,
 
+        [string] $SandboxId,
+
         [ValidateScript({if (Test-Path -Path $_ -PathType Leaf) { $true } else { throw "$_ cannot be found." }})]
         [string] $JsonPath,
 
@@ -1394,8 +1396,17 @@ function Update-Submission
         if ([System.String]::IsNullOrEmpty($SubmissionId))
         {
             $newSubmissionParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
-            $newSubmissionParams['FlightId'] = $FlightId
             $newSubmissionParams['Force'] = $Force
+            if (-not [String]::IsNullOrEmpty($FlightId))
+            {
+                $newSubmissionParams['FlightId'] = $FlightId
+            }
+
+            if (-not [String]::IsNullOrEmpty($SandboxId))
+            {
+                $newSubmissionParams['SandboxId'] = $SandboxId
+            }
+
             if ($null -ne $PSBoundParameters['ExistingPackageRolloutAction']) { $newSubmissionParams['ExistingPackageRolloutAction'] = $ExistingPackageRolloutAction }
 
             $submission = New-Submission @newSubmissionParams
@@ -1565,6 +1576,8 @@ function Update-Submission
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::AppId = $AppId
+            [StoreBrokerTelemetryProperty]::FlightId = $FlightId
+            [StoreBrokerTelemetryProperty]::SandboxId = $SandboxId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::ZipPath = (Get-PiiSafeString -PlainText $ZipPath)
             [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
