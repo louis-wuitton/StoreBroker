@@ -367,7 +367,7 @@ function Remove-ProductPackage
     }
 }
 
-function Get-VersionsToKeep
+function Get-PackagesToKeep
 {
 <# 
     .SYNOPSIS
@@ -405,7 +405,7 @@ function Get-VersionsToKeep
         $RedundantPackagesToKeep = $MaxPackagesPerGroup
     }
 
-    $uniquePackageTypeToVersionMapping = @{}
+    $uniquePackageTypeMapping = @{}
     foreach ($pkg in $Package)
     {
         if ($null -eq $pkg.architecture)
@@ -439,42 +439,54 @@ function Get-VersionsToKeep
         if ($null -eq $appBundles -or $appBundles.Count -eq 0)
         {
             $uniquePackageTypeKey += $pkg.architecture
-            if ($null -eq $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey])
+            if ($null -eq $uniquePackageTypeMapping[$uniquePackageTypeKey])
             {
-                $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey] = @()
+                $uniquePackageTypeMapping[$uniquePackageTypeKey] = @()
             }
-            $uniquePackageTypeToVersionMapping[$uniquePackageTypeKey] += [System.Version]::Parse($pkg.version)
+
+            $pkgObj = New-Object -TypeName psobject -Property @{
+                id = $pkg.id
+                version = [System.Version]::Parse($pkg.version)
+            }
+
+            $uniquePackageTypeMapping[$uniquePackageTypeKey] += $pkgObj
         }
         else 
         {
-            foreach ($bundle in $appBundles)
+            foreach ($bundleContent in $appBundles)
             {
-                $tempUniqueKey =$uniquePackageTypeKey + $bundle.architecture
-                if ($null -eq $uniquePackageTypeToVersionMapping[$tempUniqueKey])
+                $tempUniqueKey =$uniquePackageTypeKey + $bundleContent.architecture
+                if ($null -eq $uniquePackageTypeMapping[$tempUniqueKey])
                 {
-                    $uniquePackageTypeToVersionMapping[$tempUniqueKey] = @()
+                    $uniquePackageTypeMapping[$tempUniqueKey] = @()
                 }
-                $uniquePackageTypeToVersionMapping[$tempUniqueKey] += [System.Version]::Parse($pkg.version)
+
+                $pkgObj = New-Object -TypeName psobject -Property @{
+                    id = $pkg.id
+                    version = [System.Version]::Parse($bundleContent.version)
+                }
+
+                $uniquePackageTypeMapping[$tempUniqueKey] += $pkgObj
             }
         }
     }
     
-    $versionsToKeepMap = @{}
+    $packagesToKeepMap = @{}
 
-    foreach ($entry in $uniquePackageTypeToVersionMapping.Keys)
+    foreach ($entry in $uniquePackageTypeMapping.Keys)
     {
-        [array]::Sort($uniquePackageTypeToVersionMapping[$entry])
-        [array]::Reverse($uniquePackageTypeToVersionMapping[$entry])
+        $null = $uniquePackageTypeMapping[$entry] | Sort-Object version
+        $null = [array]::Reverse($uniquePackageTypeMapping[$entry])
         # We map each package type with the versions of the packages, and for each package type, the maximum number of packages to keep is defined by RedendantPackagesToKeep
-        foreach ($version in $uniquePackageTypeToVersionMapping[$entry][0..($RedundantPackagesToKeep - 1)])
+        foreach ($pkgObj in $uniquePackageTypeMapping[$entry][0..($RedundantPackagesToKeep - 1)])
         {
-            $versionsToKeepMap[$version.ToString()] = $true
+            $packagesToKeepMap[$pkgObj.id] = $true
         }
     }
 
-    $versionsToKeep = @()
-    $versionsToKeepMap.Keys | ForEach-Object { $versionsToKeep += $_ }
-    return $versionsToKeep
+    $packagesToKeep = @()
+    $packagesToKeepMap.Keys | ForEach-Object { $packagesToKeep += $_ }
+    return $packagesToKeep
 }
 
 function Update-ProductPackage
@@ -566,11 +578,11 @@ function Update-ProductPackage
                 throw $message
             }
            
-            $versionsToKeep = Get-VersionsToKeep -Package $packages -RedundantPackagesToKeep $RedundantPackagesToKeep
+            $packagesToKeep = Get-PackagesToKeep -Package $packages -RedundantPackagesToKeep $RedundantPackagesToKeep
             $numberOfPackagesToRemove = 0
             foreach ($package in $packages)
             {
-                if (-not $versionsToKeep.Contains($package.version))
+                if (-not $packagesToKeep.Contains($package.id))
                 {
                     $null = Remove-ProductPackage @params -PackageId ($package.id)
                     $numberOfPackagesToRemove ++
