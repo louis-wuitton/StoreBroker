@@ -371,22 +371,32 @@ function Get-PackagesToKeep
 {
 <# 
     .SYNOPSIS
-        Determine the versions of the packages to keep when user speficy Update-Packages for packages submissions
+        Determine the versions of the packages to keep when users specify Update-Packages for packages submissions
+
+    .PARAMETER Package
+        A List of packages from the given submission. This function will determine which packages to keep from this list
+
+    .PARAMETER RedundantPackagesToKeep
+        Number of packages to keep in one flight group
+
+    .OUTPUTS
+        string[]
+        An array of IDs for the packages we want to keep
 
     .NOTES
         Here is how we determine which packages to keep:
         For each package we map each package's bundle with a unique key. The key is constructed by:
-            1. Concatnating all the target platforms followed by min version. So it looks something like:
+            1. Concatenating all the target platforms followed by min version. So it looks something like:
                targetplatform1_minversion1_targetplatform2_minversion2......
                We save this as a variable called $uniquePackageTypeKey
             2. Looking at all the architectures from the bundleContents. If the bundleContent is 
-               empty then we simply use grab the architecture field from the package object. Concatnate
+               empty then we simply grab the architecture field from the package object. Concatenate
                $uniquePackageTypeKey with the package's architecture. 
                Otherwise, we look through the app bundles. Each bundle has a unique architecture. Thus for each 
                bundle we create a key by concatnating $uniquePackageTypeKey with the bundle's architecture.
-            3. Map each of the keys we derived from above with the package's version, and save the mapping in a 
-               dictionary. We want to make sure that the number of packages we want to keep for each key is less 
-               than or equal to $RedundantPackagesToKeep
+            3. Map each of the keys we derived from above with the a hashtable that has the package's id and bundle's version, 
+               and save the mapping in a dictionary. We want to make sure that the number of packages we want to keep for each
+               key is less than or equal to $RedundantPackagesToKeep
 #>
     param(
         [Parameter(Mandatory)]
