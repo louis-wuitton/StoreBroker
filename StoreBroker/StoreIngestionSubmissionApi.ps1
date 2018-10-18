@@ -251,7 +251,7 @@ function New-Submission
 
     try
     {
-        $providedExistingPackageRolloutAction = ($null -ne $PSBoundParameters['ExistingPackageRolloutAction'])
+        $providedExistingPackageRolloutAction = ($PSBoundParameters.ContainsKey('ExistingPackageRolloutAction'))
 
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -609,12 +609,12 @@ function Set-SubmissionDetail
             $hashBody = @{}
             $hashBody[[StoreBrokerSubmissionProperty]::resourceType] = [StoreBrokerResourceType]::SubmissionDetail
 
-            if ($null -ne $PSBoundParameters['ReleaseDate'])
+            if ($PSBoundParameters.ContainsKey('ReleaseDate'))
             {
                 $hashBody[[StoreBrokerSubmissionProperty]::releaseTimeInUtc] = $ReleaseDate.ToUniversalTime().ToString('o')
             }
 
-            if ($null -ne $PSBoundParameters['CertificationNotes'])
+            if ($PSBoundParameters.ContainsKey('CertificationNotes'))
             {
                 $hashBody[[StoreBrokerSubmissionProperty]::certificationNotes] = $CertificationNotes
             }
@@ -623,7 +623,7 @@ function Set-SubmissionDetail
             # (so for $false, they'd have to pass in -ManualPublish:$false).
             # Otherwise, there'd be no way to know when the user wants to simply keep the
             # existing value.
-            if ($null -ne $PSBoundParameters['ManualPublish'])
+            if ($PSBoundParameters.ContainsKey('ManualPublish'))
             {
                 $hashBody[[StoreBrokerSubmissionProperty]::isManualPublish] = ($ManualPublish -eq $true)
                 $telemetryProperties[[StoreBrokerTelemetryProperty]::IsManualPublish] = ($ManualPublish -eq $true)
@@ -633,7 +633,7 @@ function Set-SubmissionDetail
             # (so for $false, they'd have to pass in -AutoPromote:$false).
             # Otherwise, there'd be no way to know when the user wants to simply keep the
             # existing value.
-            if ($null -ne $PSBoundParameters['AutoPromote'])
+            if ($PSBoundParameters.ContainsKey('AutoPromote'))
             {
                 $hashBody[[StoreBrokerSubmissionProperty]::isAutoPromote] = ($AutoPromote -eq $true)
                 $telemetryProperties[[StoreBrokerTelemetryProperty]::IsAutoPromote] = ($AutoPromote -eq $true)
@@ -687,6 +687,8 @@ function Update-SubmissionDetail
 
         [string] $CertificationNotes,
 
+        [switch] $IsMinimalObject,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -700,11 +702,11 @@ function Update-SubmissionDetail
 
     try
     {
-        $providedTargetPublishMode = ($null -ne $PSBoundParameters['TargetPublishMode'])
-        $providedTargetPublishDate = ($null -ne $PSBoundParameters['TargetPublishDate'])
-        $providedCertificationNotes = ($null -ne $PSBoundParameters['CertificationNotes'])
+        $providedTargetPublishMode = ($PSBoundParameters.ContainsKey('TargetPublishMode'))
+        $providedTargetPublishDate = ($PSBoundParameters.ContainsKey('TargetPublishDate'))
+        $providedCertificationNotes = ($PSBoundParameters.ContainsKey('CertificationNotes'))
 
-        $providedSubmissionData = ($null -ne $PSBoundParameters['SubmissionData'])
+        $providedSubmissionData = ($PSBoundParameters.ContainsKey('SubmissionData'))
         if ((-not $providedSubmissionData) -and
             ($UpdatePublishModeAndDateFromSubmissionData -or $UpdateCertificationNotesFromSubmissionData))
         {
@@ -735,17 +737,26 @@ function Update-SubmissionDetail
         }
 
         $detail = Get-SubmissionDetail @params
+        $setObjectPropertyParams = @{
+            'InputObject' = $detail
+            'SourceObject' = $SubmissionData
+            'SkipIfNotDefined' = $IsMinimalObject
+        }
 
         if ($UpdatePublishModeAndDateFromSubmissionData)
         {
-            $detail.isManualPublish = ($SubmissionData.targetPublishMode -eq $script:keywordManual)
-            $detail.releaseTimeInUtc = $SubmissionData.targetPublishDate
+            Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerSubmissionProperty]::releaseTimeInUtc) -SourceName 'targetPublishDate'
+            if ((Test-PropertyExists -InputObject $SubmissionData -Name 'targetPublishMode') -or
+                (-not $IsMinimalObject))
+            {
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerProductPropertyProperty]::isManualPublish) -Value ($SubmissionData.targetPublishMode -eq $script:keywordManual)
+            }
 
             # There is no equivalent of changing to "Immediate" from a specific date/time,
             # but we can set it to null which means "now".
             if ($SubmissionData.targetPublishMode -eq $script:keywordImmediate)
             {
-                $detail.releaseTimeInUtc = $null
+                Set-ObjectProperty -InputObject $detail -Name ([StoreBrokerSubmissionProperty]::releaseTimeInUtc) -Value $null
             }
         }
 
@@ -760,13 +771,13 @@ function Update-SubmissionDetail
                 throw $output
             }
 
-            $detail.isManualPublish = ($TargetPublishMode -eq $script:keywordManual)
+            Set-ObjectProperty -InputObject $detail -Name ([StoreBrokerSubmissionProperty]::isManualPublish) -Value ($TargetPublishMode -eq $script:keywordManual)
 
             # There is no equivalent of changing to "Immediate" from a specific date/time,
             # but we can set it to null which means "now".
             if ($TargetPublishMode -eq $script:keywordImmediate)
             {
-                $detail.releaseTimeInUtc = $null
+                Set-ObjectProperty -InputObject $detail -Name ([StoreBrokerSubmissionProperty]::releaseTimeInUtc) -Value $null
             }
         }
 
@@ -779,19 +790,19 @@ function Update-SubmissionDetail
                 throw $output
             }
 
-            $PatchedSubmission.targetPublishDate = $TargetPublishDate.ToUniversalTime().ToString('o')
+            Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerSubmissionProperty]::releaseTimeInUtc) -SourceName $TargetPublishDate.ToUniversalTime().ToString('o')
         }
 
         if ($UpdateCertificationNotesFromSubmissionData)
         {
-            $detail.certificationNotes = $SubmissionData.notesForCertification
+            Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerSubmissionProperty]::certificationNotes) -SourceName 'notesForCertification'
         }
 
         # If the user explicitly passes in CertificationNotes at the commandline, it will override
         # the value that might have come from the config file/SubmissionData.
         if ($providedCertificationNotes)
         {
-            $detail.certificationNotes = $CertificationNotes
+            Set-ObjectProperty -InputObject $detail -Name ([StoreBrokerSubmissionProperty]::certificationNotes) -Value $CertificationNotes
         }
 
         $null = Set-SubmissionDetail @params -Object $detail
@@ -1222,6 +1233,11 @@ function Update-Submission
         [Alias('UpdateNotesForCertification')]
         [switch] $UpdateCertificationNotes,
 
+        # Normally, every single field is updated in a request, so if a field is missing or null,
+        # is is updated to be null.  If this is set, then only the non-null/non-empty fields will
+        # be updated.
+        [switch] $IsMinimalObject,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -1423,7 +1439,7 @@ function Update-Submission
                 $newSubmissionParams['SandboxId'] = $SandboxId
             }
 
-            if ($null -ne $PSBoundParameters['ExistingPackageRolloutAction']) { $newSubmissionParams['ExistingPackageRolloutAction'] = $ExistingPackageRolloutAction }
+            if ($PSBoundParameters.ContainsKey('ExistingPackageRolloutAction')) { $newSubmissionParams['ExistingPackageRolloutAction'] = $ExistingPackageRolloutAction }
 
             $submission = New-Submission @newSubmissionParams
             Write-Log "New Submission: $($submission | ConvertTo-Json -Depth 20)" -Level Verbose
@@ -1479,6 +1495,7 @@ function Update-Submission
                 $listingParams.Add('UpdateListingText', $UpdateListingText)
                 $listingParams.Add('UpdateImagesAndCaptions', $UpdateImagesAndCaptions)
                 $listingParams.Add('UpdateVideos', $UpdateVideos)
+                $listingParams.Add('IsMinimalObject', $IsMinimalObject)
                 $null = Update-Listing @listingParams
             }
 
@@ -1489,6 +1506,7 @@ function Update-Submission
                 $propertyParams.Add('ContentPath', $ContentPath)
                 $propertyParams.Add('UpdateCategoryFromSubmissionData', $UpdateAppProperties)
                 $propertyParams.Add('UpdatePropertiesFromSubmissionData', $UpdateAppProperties)
+                $propertyParams.Add('IsMinimalObject', $IsMinimalObject)
                 $propertyParams.Add('UpdateGamingOptions', $UpdateGamingOptions)
                 # NOTE: This pairing seems odd, but is correct for now.  API v2 puts this _localizable_
                 # data in a non-localized property object
@@ -1500,17 +1518,19 @@ function Update-Submission
             $detailParams.Add('SubmissionData', $jsonSubmission)
             $detailParams.Add('UpdatePublishModeAndDateFromSubmissionData', $UpdatePublishModeAndVisibility)
             $detailParams.Add('UpdateCertificationNotesFromSubmissionData', $UpdateCerificationNotes)
-            if ($null -ne $PSBoundParameters['TargetPublishMode']) { $detailParams.Add("TargetPublishMode", $TargetPublishMode) }
-            if ($null -ne $PSBoundParameters['TargetPublishDate']) { $detailParams.Add("TargetPublishDate", $TargetPublishDate) }
-            if ($null -ne $PSBoundParameters['CertificationNotes']) { $detailParams.Add("CertificationNotes", $CertificationNotes) }
+            if ($PSBoundParameters.ContainsKey('TargetPublishMode')) { $detailParams.Add("TargetPublishMode", $TargetPublishMode) }
+            if ($PSBoundParameters.ContainsKey('TargetPublishDate')) { $detailParams.Add("TargetPublishDate", $TargetPublishDate) }
+            if ($PSBoundParameters.ContainsKey('CertificationNotes')) { $detailParams.Add("CertificationNotes", $CertificationNotes) }
+            $detailParams.Add('IsMinimalObject', $IsMinimalObject)
             $null = Update-SubmissionDetail @detailParams
 
-            if ($UpdatePublishModeAndVisibility -or ($null -ne $PSBoundParameters['Visibility']))
+            if ($UpdatePublishModeAndVisibility -or ($PSBoundParameters.ContainsKey('Visibility')))
             {
                 $availabilityParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $availabilityParams.Add('SubmissionData', $jsonSubmission)
                 $availabilityParams.Add('UpdateVisibilityFromSubmissionData', $UpdatePublishModeAndVisibility)
-                if ($null -ne $PSBoundParameters['Visibility']) { $availabilityParams.Add("Visibility", $Visibility) }
+                if ($PSBoundParameters.ContainsKey('Visibility')) { $availabilityParams.Add("Visibility", $Visibility) }
+                $availabilityParams.Add('IsMinimalObject', $IsMinimalObject)
                 $null = Update-ProductAvailability @availabilityParams
             }
 
@@ -1525,7 +1545,7 @@ function Update-Submission
                 # $jsonContent.enterpriseLicensing
             }
 
-            if ($null -ne $PSBoundParameters['PackageRolloutPercentage'])
+            if ($PSBoundParameters.ContainsKey('PackageRolloutPercentage'))
             {
                 $rolloutParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $rolloutParams.Add('State', [StoreBrokerRolloutState]::Initialized)
@@ -1539,7 +1559,7 @@ function Update-Submission
             {
                 $configurationParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $configurationParams.Add('IsMandatoryUpdate', $true)
-                if ($null -ne $PSBoundParameters['MandatoryUpdateEffectiveDate']) { $configurationParams.Add('MandatoryUpdateEffectiveDate', $MandatoryUpdateEffectiveDate) }
+                if ($PSBoundParameters.ContainsKey('MandatoryUpdateEffectiveDate')) { $configurationParams.Add('MandatoryUpdateEffectiveDate', $MandatoryUpdateEffectiveDate) }
 
                 $null = Update-ProductPackageConfiguration @configurationParams
             }
@@ -1614,6 +1634,7 @@ function Update-Submission
             [StoreBrokerTelemetryProperty]::UpdateAppProperties = ($UpdateAppProperties -eq $true)
             [StoreBrokerTelemetryProperty]::UpdateCertificationNotes = ($UpdateCertificationNotes -eq $true)
             [StoreBrokerTelemetryProperty]::ProvidedCertificationNotes = (-not [String]::IsNullOrWhiteSpace($CertificationNotes))
+            [StoreBrokerTelemetryProperty]::IsMinimalObject = ($IsMinimalObject -eq $true)
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }

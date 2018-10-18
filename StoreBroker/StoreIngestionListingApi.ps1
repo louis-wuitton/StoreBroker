@@ -274,7 +274,7 @@ function New-Listing
             # (so for $false, they'd have to pass in -ShouldOverridePackageLogos:$false).
             # Otherwise, there'd be no way to know when the user wants to simply keep the
             # existing value.
-            if ($null -ne $PSBoundParameters['ShouldOverridePackageLogos'])
+            if ($PSBoundParameters.ContainsKey('ShouldOverridePackageLogos'))
             {
                 $hashBody[[StoreBrokerListingProperty]::shouldOverridePackageLogos] = ($ShouldOverridePackageLogos -eq $true)
                 $telemetryProperties[[StoreBrokerTelemetryProperty]::ShouldOverridePackageLogos] = ($ShouldOverridePackageLogos -eq $true)
@@ -568,7 +568,7 @@ function Set-Listing
             # (so for $false, they'd have to pass in -ShouldOverridePackageLogos:$false).
             # Otherwise, there'd be no way to know when the user wants to simply keep the
             # existing value.
-            if ($null -ne $PSBoundParameters['ShouldOverridePackageLogos'])
+            if ($PSBoundParameters.ContainsKey('ShouldOverridePackageLogos'))
             {
                 $hashBody[[StoreBrokerListingProperty]::shouldOverridePackageLogos] = ($ShouldOverridePackageLogos -eq $true)
                 $telemetryProperties[[StoreBrokerTelemetryProperty]::ShouldOverridePackageLogos] = ($ShouldOverridePackageLogos -eq $true)
@@ -632,6 +632,8 @@ function Update-Listing
         [Alias('UpdateTrailers')]
         [switch] $UpdateVideos,
 
+        [switch] $IsMinimalObject,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -687,19 +689,25 @@ function Update-Listing
 
             if ($UpdateListingText)
             {
+                $setObjectPropertyParams = @{
+                    'InputObject' = $listing
+                    'SourceObject' = $suppliedListing
+                    'SkipIfNotDefined' = $IsMinimalObject
+                }
+        
                 # Updating the existing Listing submission with the user's supplied content
-                $listing.shortTitle = $suppliedListing.shortTitle
-                $listing.voiceTitle = $suppliedListing.voiceTitle
-                $listing.releaseNotes = $suppliedListing.releaseNotes
-                $listing.keywords = $suppliedListing.keywords
-                $listing.trademark = $suppliedListing.copyrightAndTrademarkInfo
-                $listing.licenseTerm = $suppliedListing.licenseTerms
-                $listing.features = $suppliedListing.features
-                $listing.recommendedHardware = $suppliedListing.minimumHardware
-                $listing.devStudio = $suppliedListing.devStudio
-                $listing.title = $suppliedListing.title
-                $listing.description = $suppliedListing.description
-                $listing.shortDescription = $suppliedListing.shortDescription
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::shortTitle) -SourceName 'shortTitle'
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::voiceTitle) -SourceName 'voiceTitle'
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::releaseNotes) -SourceName 'releaseNotes'
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::keywords) -SourceName 'keywords'
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::trademark) -SourceName 'copyrightAndTrademarkInfo'
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::licenseTerm) -SourceName 'licenseTerms'
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::features) -SourceName 'features'
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::recommendedHardware) -SourceName 'minimumHardware'
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::devStudio) -SourceName 'devStudio'
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::title) -SourceName 'title'
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::description) -SourceName 'description'
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::shortDescription) -SourceName 'shortDescription'
 
                 # TODO: Not currently supported by the v2 object model
                 # suppliedListing.websiteUrl
@@ -711,7 +719,12 @@ function Update-Listing
             {
                 $hasAlternateIcons = (($suppliedListing.images |
                     Where-Object { $_.imageType -in ('Icon', 'Icon150x150', 'Icon71x71') }).Count -gt 0)
-                $listing.shouldOverridePackageLogos = $hasAlternateIcons
+
+                if ((Test-PropertyExists -InputObject $suppliedListing -Name 'images') -or 
+                    (-not $IsMinimalObject))
+                {
+                    Set-ObjectProperty -InputObject $listing -Name ([StoreBrokerListingProperty]::shouldOverridePackageLogos) -Value $hasAlternateIcons
+                }
             }
 
             if ($UpdateListingText -or $UpdateImagesAndCaptions)
@@ -719,12 +732,18 @@ function Update-Listing
                 $null = Set-Listing @commonParams -Object $listing
             }
 
-            if ($UpdateImagesAndCaptions)
+            # There is no guaranteed way to know how to properly do a "minimal update" for images
+            # given that there's no guarantee that filenames have to remain the same to reference
+            # the same file content.
+            if ($UpdateImagesAndCaptions -and (-not $IsMinimalObject))
             {
                 $null = Update-ListingImage @listingObjectParams -LanguageCode $langCode
             }
 
-            if ($UpdateVideos)
+            # There is no guaranteed way to know how to properly do a "minimal update" for videos
+            # given that there's no guarantee that filenames have to remain the same to reference
+            # the same file content.
+            if ($UpdateVideos -and (-not $IsMinimalObject))
             {
                 $null = Update-ListingVideo @listingObjectParams -LanguageCode $langCode
             }
@@ -810,7 +829,9 @@ function Update-Listing
         # UpdateImagesAndCaptions or UpdateVideos.  And if we are removing listings, then we MUST
         # remove the corresponding images and videos, otherwise we risk these dangling images/videos
         # from getting auto re-linked should the user ever add that deleted language listing back.
-        if ($UpdateListingText)
+        # We don't do this if we are working with a minimal object however, as it's expected that
+        # it would be missing some of the listings.
+        if ($UpdateListingText -and (-not $IsMinimalObject))
         {
             Write-Log -Message 'Now removing listings for languages that were cloned by the submission but don''t have current user data.' -Level Verbose
             foreach ($langCode in $listingsToDelete)
