@@ -371,7 +371,7 @@ function Get-PackagesToKeep
 {
 <# 
     .SYNOPSIS
-        Determine the versions of the packages to keep when users specify Update-Packages for packages submissions
+        Determine the redundant packages to keep when users specify Update-Packages for packages submissions
 
     .PARAMETER Package
         A List of packages from the given submission. This function will determine which packages to keep from this list
@@ -385,18 +385,19 @@ function Get-PackagesToKeep
 
     .NOTES
         Here is how we determine which packages to keep:
-        For each package we map each package's bundle with a unique key. The key is constructed by:
-            1. Concatenating all the target platforms followed by min version. So it looks something like:
-               targetplatform1_minversion1_targetplatform2_minversion2......
-               We save this as a variable called $uniquePackageTypeKey
-            2. Looking at all the architectures from the bundleContents. If the bundleContent is 
-               empty then we simply grab the architecture field from the package object. Concatenate
-               $uniquePackageTypeKey with the package's architecture. 
-               Otherwise, we look through the app bundles. Each bundle has a unique architecture. Thus for each 
-               bundle we create a key by concatnating $uniquePackageTypeKey with the bundle's architecture.
-            3. Map each of the keys we derived from above with the a hashtable that has the package's id and bundle's version, 
-               and save the mapping in a dictionary. We want to make sure that the number of packages we want to keep for each
-               key is less than or equal to $RedundantPackagesToKeep
+        We build a set of unique keys based on the device families, minOS versions, and architecture. We then associate 
+        each package to the key it applies to. For bundles we build the keys based on the bundle's types of applications. 
+        
+        Start the key with target platform and minOS version. So it looks something like: targetplatform1_minversion1
+        We save this as a variable called $uniquePackageTypeKey
+        
+        Looking at all the architectures from the bundleContents. If the bundleContent is empty then we simply grab the
+        architecture field from the package object. Concatenate $uniquePackageTypeKey with the package's architecture. 
+        Otherwise, we look through the app bundles. Each bundle has a unique architecture. Thus for each bundle we create
+        a key by concatnating $uniquePackageTypeKey with the bundle's architecture.
+    
+        Populate a hashtable using the key we derived above and associate it with the current package. We want to make sure
+        that the number of packages we want to keep for each key is less than or equal to $RedundantPackagesToKeep
 #>
     param(
         [Parameter(Mandatory)]
@@ -411,7 +412,7 @@ function Get-PackagesToKeep
     
     if ($RedundantPackagesToKeep -gt $MaxPackagesPerGroup)
     {
-        Write-Log "You have specified a value for number of packages to keep that exceeded the maximum possible number of packages to keep" -Level Warning
+        Write-Log "You have specified $RedundantPackagesToKeep packages to keep. This exceeds the maximum which is $MaxPackagesPerGroup. We will override this with the max value" -Level Warning
         $RedundantPackagesToKeep = $MaxPackagesPerGroup
     }
 
@@ -432,51 +433,50 @@ function Get-PackagesToKeep
             throw $message
         }
 
-        $uniquePackageTypeKey = [string]::Empty
-        $null = $pkg.targetPlatforms | Sort-Object -Property name -CaseSensitive:$false
-        # Concatnating all the target platforms followed by min version
+        $pkg.targetPlatforms = $pkg.targetPlatforms | Sort-Object name -CaseSensitive:$false
+        $appBundles = $pkg.bundleContents | Where-Object contentType -eq 'Application'
+        # Concatenating all the target platforms followed by min version
         foreach ($targetPlatform in $pkg.targetPlatforms)
         {
-            $uniquePackageTypeKey += "$($targetPlatform.name)_"
+            $uniquePackageTypeKey = "$($targetPlatform.name)_"
             if ($null -ne $targetPlatform.minVersion)
             {
                 $uniquePackageTypeKey += "$($targetPlatform.minVersion)_"
             }
-        }
 
-        $appBundles = $pkg.bundleContents | Where-Object contentType -eq 'Application'
-        # Checking the architectures of all the application bundles
-        if ($null -eq $appBundles -or $appBundles.Count -eq 0)
-        {
-            $uniquePackageTypeKey += $pkg.architecture
-            if ($null -eq $uniquePackageTypeMapping[$uniquePackageTypeKey])
+            # Checking the architectures of all the application bundles
+            if (($null -eq $appBundles) -or ($appBundles.Count -eq 0))
             {
-                $uniquePackageTypeMapping[$uniquePackageTypeKey] = @()
-            }
-
-            $pkgObj = New-Object -TypeName psobject -Property @{
-                id = $pkg.id
-                version = [System.Version]::Parse($pkg.version)
-            }
-
-            $uniquePackageTypeMapping[$uniquePackageTypeKey] += $pkgObj
-        }
-        else 
-        {
-            foreach ($bundleContent in $appBundles)
-            {
-                $tempUniqueKey =$uniquePackageTypeKey + $bundleContent.architecture
-                if ($null -eq $uniquePackageTypeMapping[$tempUniqueKey])
+                $uniquePackageTypeKey += $pkg.architecture
+                if ($null -eq $uniquePackageTypeMapping[$uniquePackageTypeKey])
                 {
-                    $uniquePackageTypeMapping[$tempUniqueKey] = @()
+                    $uniquePackageTypeMapping[$uniquePackageTypeKey] = @()
                 }
 
-                $pkgObj = New-Object -TypeName psobject -Property @{
+                $pkgObj = New-Object -TypeName PSObject -Property @{
                     id = $pkg.id
-                    version = [System.Version]::Parse($bundleContent.version)
+                    version = [System.Version]::Parse($pkg.version)
                 }
 
-                $uniquePackageTypeMapping[$tempUniqueKey] += $pkgObj
+                $uniquePackageTypeMapping[$uniquePackageTypeKey] += $pkgObj
+            }
+            else 
+            {
+                foreach ($bundleContent in $appBundles)
+                {
+                    $tempUniqueKey = $uniquePackageTypeKey + $bundleContent.architecture
+                    if ($null -eq $uniquePackageTypeMapping[$tempUniqueKey])
+                    {
+                        $uniquePackageTypeMapping[$tempUniqueKey] = @()
+                    }
+
+                    $pkgObj = New-Object -TypeName PSObject -Property @{
+                        id = $pkg.id
+                        version = [System.Version]::Parse($bundleContent.version)
+                    }
+
+                    $uniquePackageTypeMapping[$tempUniqueKey] += $pkgObj
+                }
             }
         }
     }
@@ -485,10 +485,19 @@ function Get-PackagesToKeep
 
     foreach ($entry in $uniquePackageTypeMapping.Keys)
     {
-        $null = $uniquePackageTypeMapping[$entry] | Sort-Object version
-        $null = [array]::Reverse($uniquePackageTypeMapping[$entry])
+        # Sort-Object change the output into a single object if the length of the input array is 1
+        if ($uniquePackageTypeMapping[$entry].Count -gt 1)
+        {
+            $sortedPackageInfo = $uniquePackageTypeMapping[$entry] | Sort-Object version -Descending
+        }
+        else 
+        {
+            $sortedPackageInfo = $uniquePackageTypeMapping[$entry]
+        }
+
         # We map each package type with the versions of the packages, and for each package type, the maximum number of packages to keep is defined by RedendantPackagesToKeep
-        foreach ($pkgObj in $uniquePackageTypeMapping[$entry][0..($RedundantPackagesToKeep - 1)])
+        # We are not expecting the number of packages to keep is less than or equal to zero.
+        foreach ($pkgObj in $sortedPackageInfo[0..($RedundantPackagesToKeep - 1)])
         {
             $packagesToKeepMap[$pkgObj.id] = $true
         }
@@ -589,17 +598,17 @@ function Update-ProductPackage
             }
            
             $packagesToKeep = Get-PackagesToKeep -Package $packages -RedundantPackagesToKeep $RedundantPackagesToKeep
-            $numberOfPackagesToRemove = 0
+            $numberOfPackagesRemoved = 0
             foreach ($package in $packages)
             {
                 if (-not $packagesToKeep.Contains($package.id))
                 {
                     $null = Remove-ProductPackage @params -PackageId ($package.id)
-                    $numberOfPackagesToRemove ++
+                    $numberOfPackagesRemoved++
                 }
             }
 
-            Write-Log -Message "Cloned submission had [$($packages.Length)] package(s). New submission specified [$($SubmissionData.applicationPackages.Length)] package(s). User requested to keep [$RedundantPackagesToKeep] redundant package(s). [$numberofPackagesToRemove] package(s) were removed." -Level Verbose
+            Write-Log -Message "Cloned submission had [$($packages.Length)] package(s). New submission specified [$($SubmissionData.applicationPackages.Length)] package(s). User requested to keep [$RedundantPackagesToKeep] redundant package(s). [$numberOfPackagesRemoved] package(s) were removed." -Level Verbose
         }
 
         # Regardless of which method we're following, the last thing that we'll do is get these new
