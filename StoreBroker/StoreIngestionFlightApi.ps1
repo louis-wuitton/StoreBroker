@@ -144,7 +144,7 @@ function New-Flight
             $hashBody[[StoreBrokerFlightProperty]::name] = $Name
             $hashBody[[StoreBrokerFlightProperty]::groupIds] = @($GroupId)
 
-            if ($PSBoundParameters.ContainsKey('RelativeRank')
+            if ($PSBoundParameters.ContainsKey('RelativeRank'))
             {
                 $hashBody[[StoreBrokerFlightProperty]::relativeRank] = $RelativeRank
             }
