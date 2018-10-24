@@ -7,6 +7,7 @@ Add-Type -TypeDefinition @"
        releaseTimeInUtc,
        resourceType,
        revisionToken,
+       state,
        targets
    }
 "@
@@ -88,6 +89,9 @@ function Get-Submission
         [Parameter(ParameterSetName="Known")]
         [switch] $Validation,
 
+        [Parameter(ParameterSetName="Known")]
+        [switch] $WaitForCompletion,
+
         [Parameter(ParameterSetName="Search")]
         [switch] $SinglePage,
 
@@ -119,72 +123,73 @@ function Get-Submission
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
-        $getParams = @()
-        $getParams += "scope=$Scope"
-
-        if (-not [String]::IsNullOrWhiteSpace($FlightId))
-        {
-            $getParams += "flightId=$FlightId"
-        }
-
-        if (-not [String]::IsNullOrWhiteSpace($SandboxId))
-        {
-            $getParams += "sandboxId=$SandboxId"
-        }
-
-        if (-not [String]::IsNullOrWhiteSpace($State))
-        {
-            $getParams += "state=$State"
-        }
-
-        $params = @{
-            "ClientRequestId" = $ClientRequestId
-            "CorrelationId" = $CorrelationId
-            "AccessToken" = $AccessToken
-            "TelemetryEventName" = "Get-Submission"
-            "TelemetryProperties" = $telemetryProperties
-            "NoStatus" = $NoStatus
+        $commonParams = @{
+            'ClientRequestId' = $ClientRequestId
+            'CorrelationId' = $CorrelationId
+            'AccessToken' = $AccessToken
+            'NoStatus' = $NoStatus
         }
 
         if ($singleQuery)
         {
-            $params["UriFragment"] = "products/$ProductId/submissions/$SubmissionId"
-            $params["Method" ] = 'Get'
-            $params["Description"] =  "Getting submission $SubmissionId for $ProductId"
+            $singleQueryParams = @{
+                'UriFragment' = "products/$ProductId/submissions/$SubmissionId"
+                'Method' = 'Get'
+                'Description' =  "Getting submission $SubmissionId for $ProductId"
+                'WaitForCompletion' = $WaitForCompletion
+                'TelemetryEventName' = "Get-Submission"
+                'TelemetryProperties' = $telemetryProperties
+            }
 
-            Write-Output (Invoke-SBRestMethod @params)
+            Write-Output (Invoke-SBRestMethod @commonParams @singleQueryParams)
 
-            $params = @{
+            $additionalParams = @{
                 'ProductId' = $ProductId
                 'SubmissionId' = $SubmissionId
-                'ClientRequestId' = $ClientRequesId
-                'CorrelationId' = $CorrelationId
-                'AccessToken' = $AccessToken
-                'NoStatus' = $NoStatus
             }
 
             if ($Detail)
             {
-                Write-Output (Get-SubmissionDetail @params)
+                Write-Output (Get-SubmissionDetail @commonParams @additionalParams)
             }
 
             if ($Reports)
             {
-                Write-Output (Get-SubmissionReport @params)
+                Write-Output (Get-SubmissionReport @commonParams @additionalParams)
             }
 
             if ($Validation)
             {
-                Write-Output (Get-SubmissionValidation @params)
+                Write-Output (Get-SubmissionValidation @commonParams @additionalParams)
             }
         }
         else
         {
-            $params["UriFragment"] = "products/$ProductId/submissions`?" + ($getParams -join '&')
-            $params["Description"] =  "Getting submissions for $ProductId"
-            $params["SinglePage" ] = $SinglePage
+            $searchParams = @()
+            $searchParams += "scope=$Scope"
 
-            return Invoke-SBRestMethodMultipleResult @params
+            if (-not [String]::IsNullOrWhiteSpace($FlightId))
+            {
+                $searchParams += "flightId=$FlightId"
+            }
+
+            if (-not [String]::IsNullOrWhiteSpace($SandboxId))
+            {
+                $searchParams += "sandboxId=$SandboxId"
+            }
+
+            if (-not [String]::IsNullOrWhiteSpace($State))
+            {
+                $searchParams += "state=$State"
+            }
+
+            $multipleResultParams = @{
+                'UriFragment' = "products/$ProductId/submissions`?" + ($searchParams -join '&')
+                'Description' = "Getting submissions for $ProductId"
+                'SinglePage' = $SinglePage
+            }
+
+            return Invoke-SBRestMethodMultipleResult @commonParams @multipleResultParams
         }
     }
     catch
@@ -237,6 +242,8 @@ function New-Submission
 
         [switch] $Force,
 
+        [switch] $WaitUntilReady,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -262,26 +269,20 @@ function New-Submission
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
         }
 
+        $commonParams = @{
+            'ProductId' = $ProductId
+            'ClientRequestId' = $ClientRequestId
+            'CorrelationId' = $CorrelationId
+            'AccessToken' = $AccessToken
+            'NoStatus' = $NoStatus
+        }
+
         if ($Force -or $providedExistingPackageRolloutAction)
         {
             Write-Log -Message "Force creation requested. Removing any pending submission." -Level Verbose
 
-            $commonParams = @{
-                'ProductId' = $ProductId
-                'ClientRequestId' = $ClientRequestId
-                'CorrelationId' = $CorrelationId
-                'AccessToken' = $AccessToken
-                'NoStatus' = $NoStatus
-            }
-
-            $getSubmissionParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
-            $getSubmissionParams['FlightId'] = $FlightId
-            $getSubmissionParams['SandboxId'] = $SandboxId
-            $getSubmissionParams['Scope'] = $Scope
-
-            $subs = Get-Submission @getSubmissionParams
+            $subs = Get-Submission @commonParams -FlightId $FlightId -SandboxId $SandboxId -Scope $Scope
             $inProgressSub = $subs | Where-Object { $_.state -eq [StoreBrokerSubmissionState]::InProgress }
-            $commonParams['SubmissionId'] = $inProgressSub.id
 
             if ($Force -and ($null -ne $inProgressSub))
             {
@@ -297,24 +298,21 @@ function New-Submission
                 # We can't delete a submission that isn't in the InDraft substate.  We'd have to cancel it first.
                 if ($inProgressSub.substate -ne [StoreBrokerSubmissionSubState]::InDraft)
                 {
-                    $null = Stop-Submission @commonParams
+                    $null = Stop-Submission @commonParams -SubmissionId $inProgressSub.id
                 }
 
-                $null = Remove-Submission @commonParams
+                $null = Remove-Submission @commonParams -SubmissionId $inProgressSub.id
             }
 
             # The user may have requested that we also take care of any existing rollout state for them.
             if ($providedExistingPackageRolloutAction)
             {
                 $publishedSubmission = $subs | Where-Object { $_.state -eq [StoreBrokerSubmissionState]::Published }
-                $commonParams['SubmissionId'] = $publishedSubmission.id
 
-                $rollout = Get-SubmissionRollout @commonParams
+                $rollout = Get-SubmissionRollout @commonParams -SubmissionId $publishedSubmission.id
                 # TODO: Verify that I understand what these properties actually mean, compared to v1
                 if ($rollout.isEnabled -and ($rollout.state -eq [StoreBrokerRolloutState]::Initialized))
                 {
-                    $setSubmissionRolloutParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
-
                     if ($ExistingPackageRolloutAction -eq 'Completed')
                     {
                         Write-Log -Message "Finalizing package rollout for existing submission before continuing." -Level Verbose
@@ -326,8 +324,7 @@ function New-Submission
                         $rollout.state = [StoreBrokerRolloutState]::RolledBack
                     }
 
-                    $setSubmissionRolloutParams['Object'] = $rollout
-                    $null = Set-SubmissionRollout @setSubmissionRolloutParams
+                    $null = Set-SubmissionRollout @commonParams -SubmissionId $publishedSubmission.id -Object $rollout
                 }
             }
         }
@@ -379,8 +376,17 @@ function New-Submission
             "NoStatus" = $NoStatus
         }
 
-        return (Invoke-SBRestMethod @params)
+        $cloneResult = Invoke-SBRestMethod @params
 
+        if ($WaitUntilReady)
+        {
+            Write-Log 'The API will return back a newly cloned submission ID before it is ready to be used.  Will now query for the submission status until it is ready.' -Level Verbose
+            return (Get-Submission @commonParams -SubmissionId $cloneResult.id -WaitForCompletion)
+        }
+        else
+        {
+            return $cloneResult
+        }
     }
     catch
     {
@@ -1093,6 +1099,7 @@ function Get-SubmissionValidation
             "UriFragment" = "products/$ProductId/submissions/$SubmissionId/validation"
             "Method" = 'Get'
             "Description" = "Getting validation of submission $SubmissionId for $ProductId"
+            "WaitForCompletion" = $WaitForCompletion
             "ClientRequestId" = $ClientRequestId
             "CorrelationId" = $CorrelationId
             "AccessToken" = $AccessToken
@@ -1101,35 +1108,8 @@ function Get-SubmissionValidation
             "NoStatus" = $NoStatus
         }
 
-        $result = $null
-        if ($WaitForCompletion)
-        {
-            $params["ExtendedResult"] = $true
-
-            while ($true)
-            {
-                $result = Invoke-SBRestMethod @params
-                $statusCode = $result.StatusCode
-                $retryAfter = $result.RetryAfter
-                $params['UriFragment'] = $result.Location
-
-                if ($statusCode -eq 200)
-                {
-                    break
-                }
-
-                Write-Log -Message "Validation on the server has not completed (received status code of [$statusCode].  Will retry in [$retryAfter] seconds."
-                Start-Sleep -Seconds ($retryAfter)
-            }
-
-            return @($result.Result.items)
-        }
-        else
-        {
-            $result = Invoke-SBRestMethod @params
-            return @($result.items)
-        }
-
+        $result = Invoke-SBRestMethod @params
+        return @($result.items)
     }
     catch
     {
@@ -1149,6 +1129,8 @@ function Update-Submission
         [string] $ProductId,
 
         [string] $FlightId,
+
+        [string] $SandboxId,
 
         [ValidateScript({if (Test-Path -Path $_ -PathType Leaf) { $true } else { throw "$_ cannot be found." }})]
         [string] $JsonPath,
@@ -1338,9 +1320,10 @@ function Update-Submission
 
     # Extra layer of validation to protect users from trying to submit a payload to the wrong product
     $jsonProductId = $jsonSubmission.productId
+    $jsonAppId = $jsonSubmission.appId
     if ([String]::IsNullOrWhiteSpace($jsonProductId))
     {
-        $configPath = Join-Path -Path ([System.Environment]::GetFolderPath('Desktop')) -ChildPath 'newconfig.json'
+        $configPath = '.\newconfig.json'
 
         Write-Log -Level Warning -Message @(
             "The config file used to generate this submission did not have a ProductId defined in it.",
@@ -1352,14 +1335,14 @@ function Update-Submission
             "and then diff the new config file against your current one to see the requested productId change.")
 
         # May be an older json file that still uses the AppId.  If so, do the conversion to check that way.
-        if (-not ([String]::IsNullOrWhiteSpace($jsonSubmission.appId)))
+        if (-not ([String]::IsNullOrWhiteSpace($jsonAppId)))
         {
             $jsonProductId = $product.id
 
-            if ($jsonSubmission.appId -ne $appId)
+            if ($jsonAppId -ne $appId)
             {
                 $output = @()
-                $output += "The AppId [$($jsonSubmission.appId))] in the submission content is not for the intended ProductId [$ProductId]."
+                $output += "The AppId [$jsonAppId))] in the submission content is not for the intended ProductId [$ProductId]."
                 $output += "You either entered the wrong ProductId at the commandline, or you're referencing the wrong submission content to upload."
 
                 $newLineOutput = ($output -join [Environment]::NewLine)
@@ -1374,6 +1357,21 @@ function Update-Submission
         $output = @()
         $output += "The ProductId [$jsonProductId] in the submission content does not match the intended ProductId [$ProductId]."
         $output += "You either entered the wrong ProductId at the commandline, or you're referencing the wrong submission content to upload."
+
+        $newLineOutput = ($output -join [Environment]::NewLine)
+        Write-Log -Message $newLineOutput -Level Error
+        throw $newLineOutput
+    }
+
+    # This is to handle the scenario where a user has specified BOTH ProductId _and_ AppId in their
+    # config, but they don't refer to the same product.   We would have exited earlier if
+    # only the AppId was specified and didn't match the ProductId from the commandline.
+    if ((-not [String]::IsNullOrWhiteSpace($jsonAppId)) -and ($jsonAppId -ne $appId))
+    {
+        $output = @()
+        $output += "You have both ProductId [$jsonProductId] _and_ AppId [$jsonAppId] specified in the submission content,"
+        $output += "however they don't reference the same product.  Review and correct the config file that was used with"
+        $output += "New-SubmissionPackage, and once fixed, create a corrected package and try this command again."
 
         $newLineOutput = ($output -join [Environment]::NewLine)
         Write-Log -Message $newLineOutput -Level Error
@@ -1419,12 +1417,18 @@ function Update-Submission
         if ([System.String]::IsNullOrEmpty($SubmissionId))
         {
             $newSubmissionParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
-            if (-not [string]::IsNullOrWhiteSpace($FlightId))
+            $newSubmissionParams['Force'] = $Force
+            $newSubmissionParams['WaitUntilReady'] = $true
+            if (-not [String]::IsNullOrEmpty($FlightId))
             {
                 $newSubmissionParams['FlightId'] = $FlightId
             }
 
-            $newSubmissionParams['Force'] = $Force
+            if (-not [String]::IsNullOrEmpty($SandboxId))
+            {
+                $newSubmissionParams['SandboxId'] = $SandboxId
+            }
+
             if ($null -ne $PSBoundParameters['ExistingPackageRolloutAction']) { $newSubmissionParams['ExistingPackageRolloutAction'] = $ExistingPackageRolloutAction }
 
             $submission = New-Submission @newSubmissionParams
@@ -1559,7 +1563,8 @@ function Update-Submission
 
         if ($AutoSubmit)
         {
-            Write-Log -Message "User requested -AutoSubmit.  Ensuring that validation has completed before submitting the submission." -Level Verbose
+            Write-Log -Message "User requested -AutoSubmit.  Ensuring that all packages have been processed and submission validation has completed before submitting the submission." -Level Verbose
+            Wait-ProductPackageProcessed @commonParams
             $validation = Get-SubmissionValidation @commonParams -WaitForCompletion
             if ($null -eq $validation)
             {
@@ -1598,6 +1603,8 @@ function Update-Submission
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
             [StoreBrokerTelemetryProperty]::AppId = $AppId
+            [StoreBrokerTelemetryProperty]::FlightId = $FlightId
+            [StoreBrokerTelemetryProperty]::SandboxId = $SandboxId
             [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
             [StoreBrokerTelemetryProperty]::ZipPath = (Get-PiiSafeString -PlainText $ZipPath)
             [StoreBrokerTelemetryProperty]::PackageRootPath = (Get-PiiSafeString -PlainText $PackageRootPath)

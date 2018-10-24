@@ -1345,7 +1345,7 @@ function Start-SubmissionMonitor
             $report = Get-SubmissionReport @commonParams -ProductId $ProductId -SubmissionId $SubmissionId
             $validation = Get-SubmissionValidation @commonParams -ProductId $ProductId -SubmissionId $SubmissionId
 
-            if (($submission.status -ne $lastSubState) -or ($validation.Count -gt 0))
+            if (($submission.substate -ne $lastSubState) -or ($validation.Count -gt 0))
             {
                 $lastSubState = $submission.substate
 
@@ -1358,6 +1358,7 @@ function Start-SubmissionMonitor
                 }
 
                 $body += "SubmissionId          : $SubmissionId"
+                $body += "Friendly Name         : $($submission.friendlyName)"
                 $body += "Submission State      : $($submission.state)"
                 $body += "Submission State      : $lastSubState"
                 $body += ""
@@ -1521,7 +1522,7 @@ function Open-DevPortal
             Mandatory,
             ParameterSetName="AppSubmission",
             Position=0)]
-        [ValidateScript({if ($_.Length -eq 12) { $true } else { throw "It looks like you supplied an ProductId instead of an AppId.  Use the -ProductId parameter with this value instead." }})]
+        [ValidateScript({if ($_.Length -eq 12) { $true } else { throw "It looks like you supplied a ProductId instead of an AppId.  Use the -ProductId parameter with this value instead." }})]
         [string] $AppId,
 
         [Parameter(
@@ -1586,7 +1587,7 @@ function Open-DevPortal
     }
 }
 
-function Open-Store()
+function Open-Store
 {
 <#
 .SYNOPSIS
@@ -1626,7 +1627,7 @@ param(
         [Parameter(
             Mandatory,
             ParameterSetName="AppId")]
-        [ValidateScript({if ($_.Length -eq 12) { $true } else { throw "It looks like you supplied an ProductId instead of an AppId.  Use the -ProductId parameter with this value instead." }})]
+        [ValidateScript({if ($_.Length -eq 12) { $true } else { throw "It looks like you supplied a ProductId instead of an AppId.  Use the -ProductId parameter with this value instead." }})]
         [string] $AppId,
 
         [Parameter(
@@ -1759,6 +1760,8 @@ function Invoke-SBRestMethod
         [string] $Body = $null,
 
         [switch] $ExtendedResult,
+
+        [switch] $WaitForCompletion,
 
         [string] $ClientRequestId,
 
@@ -2049,20 +2052,31 @@ function Invoke-SBRestMethod
                 $finalResult = $finalResult
             }
 
-            if ($ExtendedResult)
+            $resultNotReadyStatusCode = 202
+            if ($WaitForCompletion -and ($statusCode -eq $resultNotReadyStatusCode))
             {
-                $finalResultEx = @{
-                    'Result' = $finalResult
-                    'StatusCode' = $statusCode
-                    'RetryAfter' = $retryAfterHeaderValue
-                    'Location' = $locationHeaderValue
-                }
-
-                return ([PSCustomObject] $finalResultEx)
+                Write-Log -Message "The server has indicated that the result is not yet ready (received status code of [$statusCode]).  Will retry in [$retryAfterHeaderValue] seconds."
+                Start-Sleep -Seconds ($retryAfterHeaderValue)
+                $PSBoundParameters['UriFragment'] = $locationHeaderValue
+                return (Invoke-SBRestMethod @PSBoundParameters)
             }
             else
             {
-                return $finalResult
+                if ($ExtendedResult)
+                {
+                    $finalResultEx = @{
+                        'Result' = $finalResult
+                        'StatusCode' = $statusCode
+                        'RetryAfter' = $retryAfterHeaderValue
+                        'Location' = $locationHeaderValue
+                    }
+
+                    return ([PSCustomObject] $finalResultEx)
+                }
+                else
+                {
+                    return $finalResult
+                }
             }
         }
         catch
