@@ -95,7 +95,8 @@ Add-Type -TypeDefinition @"
       Version,
       VideoId,
       Visibility,
-      WaitSeconds,
+      WaitForCompletion,
+      WaitUntilReady,
       Web,
       ZipPath
    }
