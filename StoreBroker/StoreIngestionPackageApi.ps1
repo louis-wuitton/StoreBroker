@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 Add-Type -TypeDefinition @"
    public enum StoreBrokerPackageProperty
    {
@@ -587,6 +590,7 @@ function Get-PackagesToKeep
         [Object[]] $Package,
 
         [Parameter(Mandatory)]
+        [ValidateRange(1, $([int]::MaxValue))]
         [int] $RedundantPackagesToKeep
     )
 
@@ -647,10 +651,10 @@ function Get-PackagesToKeep
             {
                 foreach ($bundleContent in $appBundles)
                 {
-                    $tempUniqueKey = $uniquePackageTypeKey + $bundleContent.architecture
-                    if ($null -eq $uniquePackageTypeMapping[$tempUniqueKey])
+                    $bundleContentUniqueKey = $uniquePackageTypeKey + $bundleContent.architecture
+                    if ($null -eq $uniquePackageTypeMapping[$bundleContentUniqueKey])
                     {
-                        $uniquePackageTypeMapping[$tempUniqueKey] = @()
+                        $uniquePackageTypeMapping[$bundleContentUniqueKey] = @()
                     }
 
                     $pkgObj = New-Object -TypeName PSObject -Property @{
@@ -658,7 +662,7 @@ function Get-PackagesToKeep
                         version = [System.Version]::Parse($bundleContent.version)
                     }
 
-                    $uniquePackageTypeMapping[$tempUniqueKey] += $pkgObj
+                    $uniquePackageTypeMapping[$bundleContentUniqueKey] += $pkgObj
                 }
             }
         }
@@ -668,18 +672,10 @@ function Get-PackagesToKeep
 
     foreach ($entry in $uniquePackageTypeMapping.Keys)
     {
-        # Sort-Object change the output into a single object if the length of the input array is 1
-        if ($uniquePackageTypeMapping[$entry].Count -gt 1)
-        {
-            $sortedPackageInfo = $uniquePackageTypeMapping[$entry] | Sort-Object version -Descending
-        }
-        else 
-        {
-            $sortedPackageInfo = $uniquePackageTypeMapping[$entry]
-        }
+        $sortedPackageInfo = @($uniquePackageTypeMapping[$entry] | Sort-Object version -Descending)
+        # We map each package type with the versions of the packages, and for each package type, the
+        # maximum number of packages to keep is defined by RedendantPackagesToKeep
 
-        # We map each package type with the versions of the packages, and for each package type, the maximum number of packages to keep is defined by RedendantPackagesToKeep
-        # We are not expecting the number of packages to keep is less than or equal to zero.
         foreach ($pkgObj in $sortedPackageInfo[0..($RedundantPackagesToKeep - 1)])
         {
             $packagesToKeepMap[$pkgObj.id] = $true
@@ -782,6 +778,7 @@ function Update-ProductPackage
            
             $packagesToKeep = Get-PackagesToKeep -Package $packages -RedundantPackagesToKeep $RedundantPackagesToKeep
             $numberOfPackagesRemoved = 0
+            Write-Log -Message "Cloned submission had [$($packages.Length)] package(s). New submission specified [$($SubmissionData.applicationPackages.Length)] package(s). User requested to keep [$RedundantPackagesToKeep] redundant package(s)." -Level Verbose
             foreach ($package in $packages)
             {
                 if (-not $packagesToKeep.Contains($package.id))
@@ -791,7 +788,7 @@ function Update-ProductPackage
                 }
             }
 
-            Write-Log -Message "Cloned submission had [$($packages.Length)] package(s). New submission specified [$($SubmissionData.applicationPackages.Length)] package(s). User requested to keep [$RedundantPackagesToKeep] redundant package(s). [$numberOfPackagesRemoved] package(s) were removed." -Level Verbose
+            Write-Log -Message "[$numberOfPackagesRemoved] package(s) were removed." -Level Verbose
         }
 
         # Regardless of which method we're following, the last thing that we'll do is get these new
