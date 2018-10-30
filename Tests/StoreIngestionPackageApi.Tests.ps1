@@ -7,6 +7,10 @@ InModuleScope StoreBroker {
     Describe "StoreIngestionPackageApi" {
 
         Context "Get-PackagesToKeep" {
+            It "returns empty when there is no package" {
+                $packages = @()
+                Get-PackagesToKeep -Package $packages -RedundantPackagesToKeep 1 | Should BeNullOrEmpty
+            }
 
             It "keeps all packages because there is only one bundle package" {
                 $packages = @(
@@ -95,6 +99,41 @@ InModuleScope StoreBroker {
                 $expectedOutput = @('2c4024fa-2b22-4019-a832-73904c2383c8')
 
                 Get-PackagesToKeep -Package $packages -RedundantPackagesToKeep 1 | Should BeExactly $expectedOutput
+            }
+
+            It "keeps all the bundles because the number of packages to keep is 2" {
+                $packages = @(
+                    @{          
+                        'architecture' = 'Neutral'
+                        'targetPlatforms' = @(
+                            @{'name'='Windows.Desktop'; 'minVersion'='10.0.17134.0'; 'maxVersionTested'='10.0.17649.0'}
+                        )
+                        'bundleContents' = @(
+                            @{'contentType'='Resource';'version'='16040.10827.20181.0'; 'architecture'='Neutral'},
+                            @{'contentType'='Application';'version'='16040.10827.20181.0'; 'architecture'='X86'},
+                            @{'contentType'='Application';'version'='16040.10827.20181.0'; 'architecture'='X64'}
+                        )
+                        'version' = '16040.10827.20181.0'
+                        'id' = '2c4024fa-2b22-4019-8832-73904c3183c8'
+                    },
+                    @{          
+                        'architecture' = 'Neutral'
+                        'targetPlatforms' = @(
+                            @{'name'='Windows.Desktop'; 'minVersion'='10.0.17134.0'; 'maxVersionTested'='10.0.17649.0'}
+                        )
+                        'bundleContents' = @(
+                            @{'contentType'='Resource';'version'='16040.10827.20191.0'; 'architecture'='Neutral'},
+                            @{'contentType'='Application';'version'='16040.10827.20191.0'; 'architecture'='X86'},
+                            @{'contentType'='Application';'version'='16040.10827.20191.0'; 'architecture'='X64'}
+                        )
+                        'version' = '16040.10827.20131.0'
+                        'id' = '2c4024fa-2b22-4019-a832-73904c2383c8'
+                    }
+                )
+
+                $expectedOutput = @('2c4024fa-2b22-4019-a832-73904c2383c8', '2c4024fa-2b22-4019-8832-73904c3183c8')
+
+                Get-PackagesToKeep -Package $packages -RedundantPackagesToKeep 2 | Should BeExactly $expectedOutput
             }
 
             It "keeps all bundle packages because one of them still references x86 and the higher version doesn't" {

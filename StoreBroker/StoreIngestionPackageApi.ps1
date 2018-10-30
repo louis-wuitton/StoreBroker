@@ -587,6 +587,7 @@ function Get-PackagesToKeep
 #>
     param(
         [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
         [Object[]] $Package,
 
         [Parameter(Mandatory)]
@@ -769,7 +770,7 @@ function Update-ProductPackage
         elseif ($UpdatePackages)
         {
             $packages = Get-ProductPackage @params
-            if ($null -eq $packages)
+            if ($packages.Count -eq 0)
             {
                 $message =  "Cannot update the packages because the cloned submission is missing its packages."
                 Write-Log -Message $message -Level Error
