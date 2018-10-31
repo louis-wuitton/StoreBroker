@@ -4,7 +4,7 @@
 Add-Type -TypeDefinition @"
    public enum StoreBrokerListingProperty
    {
-       additionalMiminumHardware,
+       additionalMininumHardware,
        additionalRecommendedHardware,
        description,
        devStudio,
