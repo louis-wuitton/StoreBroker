@@ -4,7 +4,7 @@
 Add-Type -TypeDefinition @"
    public enum StoreBrokerListingProperty
    {
-       additionalMininumHardware,
+       additionalMinimumHardware,
        additionalRecommendedHardware,
        description,
        devStudio,
@@ -792,7 +792,7 @@ function Update-Listing
                 $listingParams['Trademark'] = $suppliedListing.trademark
                 $listingParams['LicenseTerm'] = $suppliedListing.licenseTerm
                 $listingParams['Features'] = $suppliedListing.features
-                $listingParams['AdditionalMinimumHardware'] = $suppliedListing.minimumHardware
+                $listingParams['additionalMinimumHardware'] = $suppliedListing.minimumHardware
                 $listingParams['AdditionalRecommendedHardware'] = $suppliedListing.recommendedHardware
                 $listingParams['DevStudio'] = $suppliedListing.devStudio
                 $listingParams['Description'] = $suppliedListing.description
