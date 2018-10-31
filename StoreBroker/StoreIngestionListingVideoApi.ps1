@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 Add-Type -TypeDefinition @"
    public enum StoreBrokerListingVideoProperty
    {
@@ -495,6 +498,8 @@ function Update-ListingVideo
     {
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
+        $ContentPath = Resolve-UnverifiedPath -Path $ContentPath
+
         $params = @{
             'ProductId' = $ProductId
             'SubmissionId' = $SubmissionId
@@ -538,8 +543,10 @@ function Update-ListingVideo
                     $videoSubmission = New-ListingVideo @videoParams
                     $null = Set-StoreFile -FilePath (Join-Path -Path $MediaRootPath -ChildPath $fileName) -SasUri $videoSubmission.fileSasUri -NoStatus:$NoStatus
                     $null = Set-StoreFile -FilePath (Join-Path -Path $MediaRootPath -ChildPath $thumbnailFileName) -SasUri $videoSubmission.thumbnail.fileSasUri -NoStatus:$NoStatus
-                    $videoSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
-                    $videoSubmission.thumbnail.state = [StoreBrokerFileState]::Uploaded.ToString()
+
+                    Set-ObjectProperty -InputObject $videoSubmission -Name ([StoreBrokerListingVideoProperty]::state) -Value ([StoreBrokerFileState]::Uploaded.ToString())
+                    Set-ObjectProperty -InputObject $videoSubmission.thumbnail -Name ([StoreBrokerListingVideoThumbnailProperty]::state) -Value ([StoreBrokerFileState]::Uploaded.ToString())
+                    
                     $null = Set-ListingVideo @params -Object $videoSubmission
                 }
             }

@@ -1,4 +1,5 @@
-﻿# Copyright (C) Microsoft Corporation.  All rights reserved.
+﻿# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
 
 #region Comment Constants
 $script:LocIdAttribute = "_locID"
@@ -1227,7 +1228,7 @@ function Add-RecommendedHardware
 
     $elementName = "RecommendedHardware"
     $elementNode = Ensure-RootChild -Xml $Xml -Element $elementName
-    foreach ($recommendation in $Listing.recommendedHardware)
+    foreach ($recommendation in $Listing.additionalRecommendedHardware)
     {
         $child = $Xml.CreateElement("Recommendation", $xml.productDescription.NamespaceURI)
         $child.InnerText = $recommendation
@@ -1277,7 +1278,7 @@ function Add-MinimumHardware
 
     $elementName = "MinimumHardware"
     $elementNode = Ensure-RootChild -Xml $Xml -Element $elementName
-    foreach ($minimumRequirement in $Listing.minimumHardware)
+    foreach ($minimumRequirement in $Listing.additionalMiminumHardware)
     {
         $child = $Xml.CreateElement("MinimumRequirement", $xml.productDescription.NamespaceURI)
         $child.InnerText = $minimumRequirement

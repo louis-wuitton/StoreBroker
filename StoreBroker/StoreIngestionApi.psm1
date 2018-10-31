@@ -1,4 +1,5 @@
-# Copyright (C) Microsoft Corporation.  All rights reserved.
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
 
 # This will ensure that if an internal command throws an exception, we don't continue execution
 $script:ErrorActionPreference = 'Stop'
@@ -1302,7 +1303,7 @@ function Start-SubmissionMonitor
         'NoStatus' = $NoStatus
     }
 
-    if ($null -ne $PSBoundParameters['AccessToken'])
+    if ($PSBoundParameters.ContainsKey('AccessToken'))
     {
         $commonParams.Add('AccessToken', $AccessToken)
     }

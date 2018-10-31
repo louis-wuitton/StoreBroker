@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 Add-Type -TypeDefinition @"
    public enum StoreBrokerFlightProperty
    {
@@ -144,7 +147,7 @@ function New-Flight
             $hashBody[[StoreBrokerFlightProperty]::name] = $Name
             $hashBody[[StoreBrokerFlightProperty]::groupIds] = @($GroupId)
 
-            if ($null -ne $PSBoundParameters['RelativeRank'])
+            if ($PSBoundParameters.ContainsKey('RelativeRank')
             {
                 $hashBody[[StoreBrokerFlightProperty]::relativeRank] = $RelativeRank
             }
@@ -307,7 +310,7 @@ function Set-Flight
             $hashBody[[StoreBrokerFlightProperty]::groupIds] = @($GroupId)
             $hashBody[[StoreBrokerFlightProperty]::revisionToken] = $RevisionToken
 
-            if ($null -ne $PSBoundParameters['RelativeRank'])
+            if ($PSBoundParameters.ContainsKey('RelativeRank'))
             {
                 $hashBody[[StoreBrokerFlightProperty]::relativeRank] = $RelativeRank
             }
@@ -379,21 +382,21 @@ function Update-Flight
             'NoStatus' = $NoStatus
         }
 
-        $global:flight = Get-Flight @params
+        $flight = Get-Flight @params
 
-        if ($null -ne $PSBoundParameters['Name'])
+        if ($PSBoundParameters.ContainsKey('Name'))
         {
-            $flight.name = $Name
+            Set-ObjectProperty -InputObject $flight -Name ([StoreBrokerFlightProperty]::name) -Value $Name
         }
 
-        if ($null -ne $PSBoundParameters['GroupId'])
+        if ($PSBoundParameters.ContainsKey('GroupId'))
         {
-            $flight.groupIds = @($GroupId)
+            Set-ObjectProperty -InputObject $flight -Name ([StoreBrokerFlightProperty]::groupIds) -Value @($GroupId)
         }
 
-        if ($null -ne $PSBoundParameters['RelativeRank'])
+        if ($PSBoundParameters.ContainsKey('RelativeRank'))
         {
-            $flight.relativeRank = $RelativeRank
+            Set-ObjectProperty -InputObject $flight -Name ([StoreBrokerFlightProperty]::relativeRank) -Value $RelativeRank
         }
 
         $null = Set-Flight @params -Object $flight

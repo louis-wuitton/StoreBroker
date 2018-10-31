@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 Add-Type -TypeDefinition @"
    public enum StoreBrokerListingImageProperty
    {
@@ -466,6 +469,8 @@ function Update-ListingImage
     {
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
+        $ContentPath = Resolve-UnverifiedPath -Path $ContentPath
+
         $params = @{
             'ProductId' = $ProductId
             'SubmissionId' = $SubmissionId
@@ -496,10 +501,8 @@ function Update-ListingImage
                 $imageSubmission = New-ListingImage @params -FileName (Split-Path -Path $image.fileName -Leaf) -Type $type
                 $null = Set-StoreFile -FilePath (Join-Path -Path $MediaRootPath -ChildPath $image.fileName) -SasUri $imageSubmission.fileSasUri -NoStatus:$NoStatus
 
-                Add-Member -InputObject $imageSubmission -Name ([StoreBrokerListingImageProperty]::state.ToString()) -Value ([StoreBrokerFileState]::Uploaded.ToString()) -Type NoteProperty -Force
-
-                $imageSubmission.state = [StoreBrokerFileState]::Uploaded.ToString()
-                $imageSubmission.description = $image.description
+                Set-ObjectProperty -InputObject $imageSubmission -Name ([StoreBrokerListingImageProperty]::state) -Value ([StoreBrokerFileState]::Uploaded.ToString())
+                Set-ObjectProperty -InputObject $imageSubmission -Name ([StoreBrokerListingImageProperty]::description) -Value $image.description
 
                 $null = Set-ListingImage @params -Object $imageSubmission
             }

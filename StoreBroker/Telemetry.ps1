@@ -1,4 +1,5 @@
-﻿# Copyright (C) Microsoft Corporation.  All rights reserved.
+﻿# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
 
 # Singleton telemetry client. Don't directly access this though....always get it
 # by calling Get-TelemetryClient to ensure that the singleton is properly initialized.
@@ -24,7 +25,7 @@ Add-Type -TypeDefinition @"
       FlightId,
       Force,
       GetDetail,
-      GetReports,
+      GetReport,
       GetValidation,
       HasAudience,
       HResult,
@@ -37,6 +38,7 @@ Add-Type -TypeDefinition @"
       IsEnabled,
       IsMandatoryUpdate,
       IsManualPublish,
+      IsMinimialObject,
       IsSeekEnabled,
       JsonPath,
       LanguageCode,

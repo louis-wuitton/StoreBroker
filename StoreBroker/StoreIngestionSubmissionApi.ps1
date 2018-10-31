@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 Add-Type -TypeDefinition @"
    public enum StoreBrokerSubmissionProperty
    {
@@ -40,6 +43,7 @@ Add-Type -TypeDefinition @"
 Add-Type -TypeDefinition @"
    public enum StoreBrokerSubmissionSubState
    {
+       Cancelled,
        InDraft,
        Submitted,
        Failed,
@@ -53,6 +57,101 @@ Add-Type -TypeDefinition @"
 
 function Get-Submission
 {
+<#
+    .SYNOPSIS
+        Retrieves submissions for the specified Product in the Windows Store.
+
+    .DESCRIPTION
+        Retrieves submissions for the specified Product in the Windows Store.
+
+        Can be used to retrieve a specific submission, or to get all known
+        submission for a Product that are targeted for retail, a flight, a sandbox.
+
+        The Git repo for this module can be found here: http://aka.ms/StoreBroker
+
+    .PARAMETER ProductId
+        The ID of the Product in the Windows Store.
+
+    .PARAMETER FlightId
+        The ID of the Flight for the Product that contains the submissions desired to be seen.
+
+    .PARAMETER SandboxId
+        The ID of the Sandbox for the Product that contains the submissions desired to be seen.
+
+    .PARAMETER State
+        Optionally specify the state of the submissions desired to be seen.
+
+    .PARAMETER Scope
+        Optionally specify the scope of the submissions desired to be seen.
+        Please note: "Preview" is currently limited to Azure products.
+
+    .PARAMETER SubmissionId
+        The Submission to retrieve the information for.
+
+    .PARAMETER Detail
+        When specified, additionally calls Get-SubmissionDetail for the specified Submission.
+
+    .PARAMETER Report
+        When specified, additionally calls Get-SubmissionReport for the specified Submission.
+
+    .PARAMETER Validation
+        When specified, additionally calls Get-SubmissionValidation for the specified Submission.
+
+    .PARAMETER WaitUntilReady
+        When specified, will continue to query the API for information on the specified
+        Submission until the API has indicated that all resources are ready.  If the
+        specified Submission was recently created, it is possible that the API is asynchronously
+        creating resources for the Submission, and thus the information in the Submission
+        cannot be "trusted" until all of its resources are "ready".
+ 
+    .PARAMETER SinglePage
+        When specified, will only return back the first set of results supplied by the API.
+        If not specified, then the API continuously be queried until all results have been
+        retrieved, and then the final combined result set will be returned.
+
+    .PARAMETER ClientRequestId
+        An optional identifier that should be sent along to the Store to help with identifying
+        this request during post-mortem debugging.
+
+    .PARAMETER CorrelationId
+        An optional identifier that should be sent along to the Store to help with identifying
+        this request during post-mortem debugging.  This is typically supplied when trying to
+        associate a group of API requests with a single end-goal.
+
+    .PARAMETER AccessToken
+        If provided, this will be used as the AccessToken for authentication with the
+        REST Api as opposed to requesting a new one.
+
+    .PARAMETER NoStatus
+        If this switch is specified, long-running commands will run on the main thread
+        with no commandline status update.  When not specified, those commands run in
+        the background, enabling the command prompt to provide status information.
+
+    .OUTPUTS
+        [PSCustomObject] - The submission that matches the specified SubmissionId.
+        [PSCustomObject[]] - The collection of submissions that match the input.
+
+    .EXAMPLE
+        Get-Submission -ProductId 00012345678901234567 -SubmissionId 1234567890123456789
+
+        Gets the information for the specified submission.
+
+    .EXAMPLE
+        Get-Submission -ProductId 00012345678901234567 -SubmissionId 1234567890123456789 -Detail -Report -Validation
+
+        Gets the information for the specified submission, along with the submission's
+        detail, report and validation data.
+
+    .EXAMPLE
+        Get-Submission -ProductId 00012345678901234567 -FlightId abcdef01-2345-6789-abcd-ef0123456789
+
+        Gets all of the submissions currently associated with that Flight of the specified Product.
+
+    .EXAMPLE
+        Get-Submission -ProductId 00012345678901234567 -FlightId abcdef01-2345-6789-abcd-ef0123456789 -State Published
+
+        Returns the published submission associated with that Flight of the specified Product.
+#>
     [CmdletBinding(
         SupportsShouldProcess,
         DefaultParametersetName="Search")]
@@ -72,7 +171,7 @@ function Get-Submission
         [string] $State,
 
         [Parameter(ParameterSetName="Search")]
-        [ValidateSet('Live', 'Preview')]  # Preview is currently limited to Azure
+        [ValidateSet('Live', 'Preview')]
         [string] $Scope = 'Live',
 
         [Parameter(
@@ -84,13 +183,13 @@ function Get-Submission
         [switch] $Detail,
 
         [Parameter(ParameterSetName="Known")]
-        [switch] $Reports,
+        [switch] $Report,
 
         [Parameter(ParameterSetName="Known")]
         [switch] $Validation,
 
         [Parameter(ParameterSetName="Known")]
-        [switch] $WaitForCompletion,
+        [switch] $WaitUntilReady,
 
         [Parameter(ParameterSetName="Search")]
         [switch] $SinglePage,
@@ -116,9 +215,9 @@ function Get-Submission
             [StoreBrokerTelemetryProperty]::State = $State
             [StoreBrokerTelemetryProperty]::Scope = $Scope
             [StoreBrokerTelemetryProperty]::GetDetail = $Detail
-            [StoreBrokerTelemetryProperty]::GetReports = $Reports
+            [StoreBrokerTelemetryProperty]::GetReport = $Report
             [StoreBrokerTelemetryProperty]::GetValidation = $Validation
-            [StoreBrokerTelemetryProperty]::WaitForCompletion = ($WaitForCompletion -eq $true)
+            [StoreBrokerTelemetryProperty]::WaitUntilReady = ($WaitUntilReady -eq $true)
             [StoreBrokerTelemetryProperty]::SingleQuery = $singleQuery
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
@@ -137,7 +236,7 @@ function Get-Submission
                 'UriFragment' = "products/$ProductId/submissions/$SubmissionId"
                 'Method' = 'Get'
                 'Description' =  "Getting submission $SubmissionId for $ProductId"
-                'WaitForCompletion' = $WaitForCompletion
+                'WaitForCompletion' = $WaitUntilReady
                 'TelemetryEventName' = "Get-Submission"
                 'TelemetryProperties' = $telemetryProperties
             }
@@ -154,7 +253,7 @@ function Get-Submission
                 Write-Output (Get-SubmissionDetail @commonParams @additionalParams)
             }
 
-            if ($Reports)
+            if ($Report)
             {
                 Write-Output (Get-SubmissionReport @commonParams @additionalParams)
             }
@@ -201,7 +300,90 @@ function Get-Submission
 
 function New-Submission
 {
-    [CmdletBinding(
+<#
+    .SYNOPSIS
+        Creates a new submission for the specified Product in the Windows Store.
+
+    .DESCRIPTION
+        Creates a new submission for the specified Product in the Windows Store.
+
+        The Git repo for this module can be found here: http://aka.ms/StoreBroker
+
+    .PARAMETER ProductId
+        The ID of the Product in the Windows Store.
+
+    .PARAMETER FlightId
+        The ID of the Flight for the Product that the new submission is for.
+
+    .PARAMETER SandboxId
+        The ID of the Sandbox for the Product that the new submission is for.
+
+    .PARAMETER Scope
+        Optionally specify the scope of the new submission.
+        Please note: "Preview" is currently limited to Azure products.
+
+    .PARAMETER ExistingPackageRolloutAction
+        Use this parameter to specify what should be done if there is a published submission
+        currently in the process of a package rollout.  In that scenario, a new submission
+        cannot be created until the existing submission's rollout is either completed or rolled back.
+        There is no harm in specifying this if the current published submission is _not_ using
+        package rollout...this will simply be ignored in that scenario.
+
+    .PARAMETER Force
+        When specified, any existing pending submission that matches the set of input parameters
+        will be cancelled and removed before continuing with creation of the new submission.
+
+    .PARAMETER WaitUntilReady
+        When specified, will not return the newly created submission until the API has indicated
+        that all of its resources are ready.  The API creates all of the submission's related
+        objects asynchronously, and thus the information in the Submission cannot be "trusted"
+        until all of its resources are "ready".
+ 
+    .PARAMETER ClientRequestId
+        An optional identifier that should be sent along to the Store to help with identifying
+        this request during post-mortem debugging.
+
+    .PARAMETER CorrelationId
+        An optional identifier that should be sent along to the Store to help with identifying
+        this request during post-mortem debugging.  This is typically supplied when trying to
+        associate a group of API requests with a single end-goal.
+
+    .PARAMETER AccessToken
+        If provided, this will be used as the AccessToken for authentication with the
+        REST Api as opposed to requesting a new one.
+
+    .PARAMETER NoStatus
+        If this switch is specified, long-running commands will run on the main thread
+        with no commandline status update.  When not specified, those commands run in
+        the background, enabling the command prompt to provide status information.
+
+    .OUTPUTS
+        [PSCustomObject] - The newly created submission
+
+    .EXAMPLE
+        New-Submission -ProductId 00012345678901234567 -Force
+
+        Deletes any existing Pending retail submission for the specified Product, and then creates
+        a new one that is cloned from the previous submission.  Because -WaitUntilReady was not
+        specified, it's possible that errors may occur when trying to interact/modify the
+        Submission.
+
+    .EXAMPLE
+        New-Submission -ProductId 00012345678901234567 -FlightId abcdef01-2345-6789-abcd-ef0123456789 -Force -WaitUntilReady
+
+        Deletes any existing Pending submission in the Flight for the specified Product, and then
+        creates a new one that is cloned from the previous submission.  Does not return until all
+        of the resources for the submission are ready.
+
+    .EXAMPLE
+        New-Submission -ProductId 00012345678901234567 -Force -WaitUntilReady -ExistingPackageRolloutAction Completed
+
+        Deletes any existing Pending retail submission for the specified Product.  Then, completes
+        any package rollout that may be occurring on the current published Submission.  Finfally,
+        ceates a new submission that is cloned from the previous submission.  Does not return until
+        all of the resources for the submission are ready.
+#>
+        [CmdletBinding(
         SupportsShouldProcess,
         DefaultParameterSetName='Retail')]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
@@ -233,7 +415,7 @@ function New-Submission
             Position = 1)]
         [string] $SandboxId,
 
-        [ValidateSet('Live', 'Preview')]  # Preview is currently limited to Azure
+        [ValidateSet('Live', 'Preview')]
         [string] $Scope = 'Live',
 
         [ValidateSet('Completed', 'RolledBack')]
@@ -256,7 +438,7 @@ function New-Submission
 
     try
     {
-        $providedExistingPackageRolloutAction = ($null -ne $PSBoundParameters['ExistingPackageRolloutAction'])
+        $providedExistingPackageRolloutAction = ($PSBoundParameters.ContainsKey('ExistingPackageRolloutAction'))
 
         $telemetryProperties = @{
             [StoreBrokerTelemetryProperty]::ProductId = $ProductId
@@ -294,8 +476,9 @@ function New-Submission
                     throw $message
                 }
 
-                # We can't delete a submission that isn't in the InDraft substate.  We'd have to cancel it first.
-                if ($inProgressSub.substate -ne [StoreBrokerSubmissionSubState]::InDraft)
+                # We can't delete a submission that isn't in the InDraft substate.  We'd have to cancel it first,
+                # unless it has previously been cancelled.
+                if ($inProgressSub.substate -notin @([StoreBrokerSubmissionSubState]::Cancelled, [StoreBrokerSubmissionSubState]::InDraft))
                 {
                     $null = Stop-Submission @commonParams -SubmissionId $inProgressSub.id
                 }
@@ -374,7 +557,7 @@ function New-Submission
         if ($WaitUntilReady)
         {
             Write-Log 'The API will return back a newly cloned submission ID before it is ready to be used.  Will now query for the submission status until it is ready.' -Level Verbose
-            return (Get-Submission @commonParams -SubmissionId $cloneResult.id -WaitForCompletion)
+            return (Get-Submission @commonParams -SubmissionId $cloneResult.id -WaitUntilReady)
         }
         else
         {
@@ -389,6 +572,44 @@ function New-Submission
 
 function Remove-Submission
 {
+<#
+    .SYNOPSIS
+        Deletes the specified Submission for a Product in the Windows Store.
+
+    .DESCRIPTION
+        Deletes the specified Submission for a Product in the Windows Store.
+
+        The Git repo for this module can be found here: http://aka.ms/StoreBroker
+
+    .PARAMETER ProductId
+        The ID of the Product in the Windows Store.
+
+    .PARAMETER SubmissionId
+        The ID of the Submission for the Product that is to be deleted.
+
+    .PARAMETER ClientRequestId
+        An optional identifier that should be sent along to the Store to help with identifying
+        this request during post-mortem debugging.
+
+    .PARAMETER CorrelationId
+        An optional identifier that should be sent along to the Store to help with identifying
+        this request during post-mortem debugging.  This is typically supplied when trying to
+        associate a group of API requests with a single end-goal.
+
+    .PARAMETER AccessToken
+        If provided, this will be used as the AccessToken for authentication with the
+        REST Api as opposed to requesting a new one.
+
+    .PARAMETER NoStatus
+        If this switch is specified, long-running commands will run on the main thread
+        with no commandline status update.  When not specified, those commands run in
+        the background, enabling the command prompt to provide status information.
+
+    .EXAMPLE
+        Remove-Submission -ProductId 00012345678901234567 -SubmissionId 1234567890123456789
+
+        Deletes the specified Submission for the Product.
+#>
     [CmdletBinding(SupportsShouldProcess)]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
     [Alias("Delete-Submission")]
@@ -442,6 +663,50 @@ function Remove-Submission
 
 function Stop-Submission
 {
+<#
+    .SYNOPSIS
+        Stops the specified pending Submission from further processing.
+
+    .DESCRIPTION
+        Stops the specified pending Submission from further processing.
+
+        Once a submission has been submitted, it must be stopped/cancelled before it can
+        removed/deleted.
+
+        The Git repo for this module can be found here: http://aka.ms/StoreBroker
+
+    .PARAMETER ProductId
+        The ID of the Product in the Windows Store.
+
+    .PARAMETER SubmissionId
+        The ID of the Submission for the Product that is to be stopped/cancelled.
+
+    .PARAMETER ClientRequestId
+        An optional identifier that should be sent along to the Store to help with identifying
+        this request during post-mortem debugging.
+
+    .PARAMETER CorrelationId
+        An optional identifier that should be sent along to the Store to help with identifying
+        this request during post-mortem debugging.  This is typically supplied when trying to
+        associate a group of API requests with a single end-goal.
+
+    .PARAMETER AccessToken
+        If provided, this will be used as the AccessToken for authentication with the
+        REST Api as opposed to requesting a new one.
+
+    .PARAMETER NoStatus
+        If this switch is specified, long-running commands will run on the main thread
+        with no commandline status update.  When not specified, those commands run in
+        the background, enabling the command prompt to provide status information.
+
+    .OUTPUTS
+        [PSCustomObject] - The submission that matches the specified SubmissionId.
+
+    .EXAMPLE
+        Stop-Submission -ProductId 00012345678901234567 -SubmissionId 1234567890123456789
+
+        Stops/cancels the specified Submission from further processing.
+#>
     [Alias('Cancel-Submission')]
     [CmdletBinding(SupportsShouldProcess)]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
@@ -495,6 +760,47 @@ function Stop-Submission
 
 function Get-SubmissionDetail
 {
+<#
+    .SYNOPSIS
+        Gets the details of a Submission for a Product in the Windows Store.
+
+    .DESCRIPTION
+        Gets the details of a Submission for a Product in the Windows Store.
+
+        The Git repo for this module can be found here: http://aka.ms/StoreBroker
+
+    .PARAMETER ProductId
+        The ID of the Product in the Windows Store.
+
+    .PARAMETER SubmissionId
+        The ID of the Submission for the Product whose details are to be retrieved.
+
+    .PARAMETER ClientRequestId
+        An optional identifier that should be sent along to the Store to help with identifying
+        this request during post-mortem debugging.
+
+    .PARAMETER CorrelationId
+        An optional identifier that should be sent along to the Store to help with identifying
+        this request during post-mortem debugging.  This is typically supplied when trying to
+        associate a group of API requests with a single end-goal.
+
+    .PARAMETER AccessToken
+        If provided, this will be used as the AccessToken for authentication with the
+        REST Api as opposed to requesting a new one.
+
+    .PARAMETER NoStatus
+        If this switch is specified, long-running commands will run on the main thread
+        with no commandline status update.  When not specified, those commands run in
+        the background, enabling the command prompt to provide status information.
+
+    .OUTPUTS
+        [PSCustomObject] - The submission details
+
+    .EXAMPLE
+        Get-SubmissionDetails -ProductId 00012345678901234567 -SubmissionId 1234567890123456789
+
+        Gets the details for the specified Submission.
+#>
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
@@ -546,6 +852,84 @@ function Get-SubmissionDetail
 
 function Set-SubmissionDetail
 {
+<#
+    .SYNOPSIS
+        Updates the details of a Submission for a Product in the Windows Store.
+
+    .DESCRIPTION
+        Updates the details of a Submission for a Product in the Windows Store.
+
+        Can be used to update individual properties, or to replace the entire
+        object's contents.
+
+        The Git repo for this module can be found here: http://aka.ms/StoreBroker
+
+    .PARAMETER ProductId
+        The ID of the Product in the Windows Store.
+
+    .PARAMETER SubmissionId
+        The ID of the Submission for the Product whose details are to be updated.
+
+    .PARAMETER Object
+        If specified, the current submission details for this submission will be
+        replaced with the exact contents of this object.
+
+    .PARAMETER CertificationNotes
+        The new value for this submission's Certification Notes.
+        No change will be made if this value is not specified.
+
+    .PARAMETER ReleaseDate
+        The new value release date for this submission.
+        No change will be made if this value is not specified.
+
+    .PARAMETER ManualPublish
+        Change if this submission should be published manually or not.
+        If this switch is not specified, no change will be made to the existing object.
+        To change the corresponding value, you must explicitly specify either $true or $false
+        with this switch. 
+    
+    .PARAMETER AutoPromote
+        Only relevant for Products using Sandboxes.
+        Change if this submission should be automatically promoted from a Dev Sandbox to Cert Sandbox.
+        If this switch is not specified, no change will be made to the existing object.
+        To change the corresponding value, you must explicitly specify either $true or $false
+        with this switch. 
+
+    .PARAMETER ClientRequestId
+        An optional identifier that should be sent along to the Store to help with identifying
+        this request during post-mortem debugging.
+
+    .PARAMETER CorrelationId
+        An optional identifier that should be sent along to the Store to help with identifying
+        this request during post-mortem debugging.  This is typically supplied when trying to
+        associate a group of API requests with a single end-goal.
+
+    .PARAMETER AccessToken
+        If provided, this will be used as the AccessToken for authentication with the
+        REST Api as opposed to requesting a new one.
+
+    .PARAMETER NoStatus
+        If this switch is specified, long-running commands will run on the main thread
+        with no commandline status update.  When not specified, those commands run in
+        the background, enabling the command prompt to provide status information.
+
+    .EXAMPLE
+        Set-SubmissionDetails -ProductId 00012345678901234567 -SubmissionId 1234567890123456789 -Object $object
+
+        Updates the specified Submission to have the exact contents specified in $object.
+
+    .EXAMPLE
+        Set-SubmissionDetails -ProductId 00012345678901234567 -SubmissionId 1234567890123456789 -AutoPromote:$false
+
+        Updates the isAutoPromote field of the specified Submission's details to be $false.
+        (This of course implies that this Submission is in a Sandbox.)
+
+    .EXAMPLE
+        Set-SubmissionDetails -ProductId 00012345678901234567 -SubmissionId 1234567890123456789 -ReleaseDate ((Get-Date).AddDays(2)) -CertificationNotes 'Internal test'
+
+        For the spceified submission, updates the certification notes and sets it to automatically
+        publish two days from now.
+#>
     [CmdletBinding(SupportsShouldProcess)]
     [Alias('New-SubmissionDetail')]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess", "", Justification="Methods called within here make use of PSShouldProcess, and the switch is passed on to them inherently.")]
@@ -607,12 +991,12 @@ function Set-SubmissionDetail
             $hashBody = @{}
             $hashBody[[StoreBrokerSubmissionProperty]::resourceType] = [StoreBrokerResourceType]::SubmissionDetail
 
-            if ($null -ne $PSBoundParameters['ReleaseDate'])
+            if ($PSBoundParameters.ContainsKey('ReleaseDate'))
             {
                 $hashBody[[StoreBrokerSubmissionProperty]::releaseTimeInUtc] = $ReleaseDate.ToUniversalTime().ToString('o')
             }
 
-            if ($null -ne $PSBoundParameters['CertificationNotes'])
+            if ($PSBoundParameters.ContainsKey('CertificationNotes'))
             {
                 $hashBody[[StoreBrokerSubmissionProperty]::certificationNotes] = $CertificationNotes
             }
@@ -621,7 +1005,7 @@ function Set-SubmissionDetail
             # (so for $false, they'd have to pass in -ManualPublish:$false).
             # Otherwise, there'd be no way to know when the user wants to simply keep the
             # existing value.
-            if ($null -ne $PSBoundParameters['ManualPublish'])
+            if ($PSBoundParameters.ContainsKey('ManualPublish'))
             {
                 $hashBody[[StoreBrokerSubmissionProperty]::isManualPublish] = ($ManualPublish -eq $true)
                 $telemetryProperties[[StoreBrokerTelemetryProperty]::IsManualPublish] = ($ManualPublish -eq $true)
@@ -631,7 +1015,7 @@ function Set-SubmissionDetail
             # (so for $false, they'd have to pass in -AutoPromote:$false).
             # Otherwise, there'd be no way to know when the user wants to simply keep the
             # existing value.
-            if ($null -ne $PSBoundParameters['AutoPromote'])
+            if ($PSBoundParameters.ContainsKey('AutoPromote'))
             {
                 $hashBody[[StoreBrokerSubmissionProperty]::isAutoPromote] = ($AutoPromote -eq $true)
                 $telemetryProperties[[StoreBrokerTelemetryProperty]::IsAutoPromote] = ($AutoPromote -eq $true)
@@ -685,6 +1069,8 @@ function Update-SubmissionDetail
 
         [string] $CertificationNotes,
 
+        [switch] $IsMinimalObject,
+
         [string] $ClientRequestId,
 
         [string] $CorrelationId,
@@ -698,11 +1084,11 @@ function Update-SubmissionDetail
 
     try
     {
-        $providedTargetPublishMode = ($null -ne $PSBoundParameters['TargetPublishMode'])
-        $providedTargetPublishDate = ($null -ne $PSBoundParameters['TargetPublishDate'])
-        $providedCertificationNotes = ($null -ne $PSBoundParameters['CertificationNotes'])
+        $providedTargetPublishMode = ($PSBoundParameters.ContainsKey('TargetPublishMode'))
+        $providedTargetPublishDate = ($PSBoundParameters.ContainsKey('TargetPublishDate'))
+        $providedCertificationNotes = ($PSBoundParameters.ContainsKey('CertificationNotes'))
 
-        $providedSubmissionData = ($null -ne $PSBoundParameters['SubmissionData'])
+        $providedSubmissionData = ($PSBoundParameters.ContainsKey('SubmissionData'))
         if ((-not $providedSubmissionData) -and
             ($UpdatePublishModeAndDateFromSubmissionData -or $UpdateCertificationNotesFromSubmissionData))
         {
@@ -733,17 +1119,26 @@ function Update-SubmissionDetail
         }
 
         $detail = Get-SubmissionDetail @params
+        $setObjectPropertyParams = @{
+            'InputObject' = $detail
+            'SourceObject' = $SubmissionData
+            'SkipIfNotDefined' = $IsMinimalObject
+        }
 
         if ($UpdatePublishModeAndDateFromSubmissionData)
         {
-            $detail.isManualPublish = ($SubmissionData.targetPublishMode -eq $script:keywordManual)
-            $detail.releaseTimeInUtc = $SubmissionData.targetPublishDate
+            Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerSubmissionProperty]::releaseTimeInUtc) -SourceName 'targetPublishDate'
+            if ((Test-PropertyExists -InputObject $SubmissionData -Name 'targetPublishMode') -or
+                (-not $IsMinimalObject))
+            {
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerProductPropertyProperty]::isManualPublish) -Value ($SubmissionData.targetPublishMode -eq $script:keywordManual)
+            }
 
             # There is no equivalent of changing to "Immediate" from a specific date/time,
             # but we can set it to null which means "now".
             if ($SubmissionData.targetPublishMode -eq $script:keywordImmediate)
             {
-                $detail.releaseTimeInUtc = $null
+                Set-ObjectProperty -InputObject $detail -Name ([StoreBrokerSubmissionProperty]::releaseTimeInUtc) -Value $null
             }
         }
 
@@ -758,13 +1153,13 @@ function Update-SubmissionDetail
                 throw $output
             }
 
-            $detail.isManualPublish = ($TargetPublishMode -eq $script:keywordManual)
+            Set-ObjectProperty -InputObject $detail -Name ([StoreBrokerSubmissionProperty]::isManualPublish) -Value ($TargetPublishMode -eq $script:keywordManual)
 
             # There is no equivalent of changing to "Immediate" from a specific date/time,
             # but we can set it to null which means "now".
             if ($TargetPublishMode -eq $script:keywordImmediate)
             {
-                $detail.releaseTimeInUtc = $null
+                Set-ObjectProperty -InputObject $detail -Name ([StoreBrokerSubmissionProperty]::releaseTimeInUtc) -Value $null
             }
         }
 
@@ -777,19 +1172,19 @@ function Update-SubmissionDetail
                 throw $output
             }
 
-            $PatchedSubmission.targetPublishDate = $TargetPublishDate.ToUniversalTime().ToString('o')
+            Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerSubmissionProperty]::releaseTimeInUtc) -SourceName $TargetPublishDate.ToUniversalTime().ToString('o')
         }
 
         if ($UpdateCertificationNotesFromSubmissionData)
         {
-            $detail.certificationNotes = $SubmissionData.notesForCertification
+            Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerSubmissionProperty]::certificationNotes) -SourceName 'notesForCertification'
         }
 
         # If the user explicitly passes in CertificationNotes at the commandline, it will override
         # the value that might have come from the config file/SubmissionData.
         if ($providedCertificationNotes)
         {
-            $detail.certificationNotes = $CertificationNotes
+            Set-ObjectProperty -InputObject $detail -Name ([StoreBrokerSubmissionProperty]::certificationNotes) -Value $CertificationNotes
         }
 
         $null = Set-SubmissionDetail @params -Object $detail
@@ -1199,6 +1594,10 @@ function Update-Submission
         [switch] $UpdateCertificationNotes,
 
         [switch] $SeekEnabled,
+        # Normally, every single field is updated in a request, so if a field is missing or null,
+        # is is updated to be null.  If this is set, then only the non-null/non-empty fields will
+        # be updated.
+        [switch] $IsMinimalObject,
 
         [string] $ClientRequestId,
 
@@ -1211,6 +1610,17 @@ function Update-Submission
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    # Make sure that we're working with full paths (since we do use non-native PowerShell commands)
+    $pathsToResolve = @('JsonPath', 'ZipPath', 'ContentPath')
+    foreach ($path in $pathsToResolve)
+    {
+        if ($PSBoundParameters.ContainsKey($path))
+        {
+            $pathVar = Get-Variable -Name $path
+            $pathVar.Value = Resolve-UnverifiedPath -Path $pathVar.Value
+        }
+   }
 
     # Check for specified options that are invalid for Flight submission updates
     if (-not [String]::IsNullOrWhiteSpace($FlightId))
@@ -1423,7 +1833,7 @@ function Update-Submission
                 $newSubmissionParams['SandboxId'] = $SandboxId
             }
 
-            if ($null -ne $PSBoundParameters['ExistingPackageRolloutAction']) { $newSubmissionParams['ExistingPackageRolloutAction'] = $ExistingPackageRolloutAction }
+            if ($PSBoundParameters.ContainsKey('ExistingPackageRolloutAction')) { $newSubmissionParams['ExistingPackageRolloutAction'] = $ExistingPackageRolloutAction }
 
             $submission = New-Submission @newSubmissionParams
             Write-Log "New Submission: $($submission | ConvertTo-Json -Depth 20)" -Level Verbose
@@ -1484,6 +1894,7 @@ function Update-Submission
                 $listingParams.Add('UpdateImagesAndCaptions', $UpdateImagesAndCaptions)
                 $listingParams.Add('UpdateListingText', $UpdateListingText)
                 $listingParams.Add('UpdateVideos', $UpdateVideos)
+                $listingParams.Add('IsMinimalObject', $IsMinimalObject)
                 $null = Update-Listing @listingParams
             }
 
@@ -1493,6 +1904,7 @@ function Update-Submission
                 $propertyParams.Add('SubmissionData', $jsonSubmission)
                 $propertyParams.Add('UpdateCategoryFromSubmissionData', $UpdateAppProperties)
                 $propertyParams.Add('UpdatePropertiesFromSubmissionData', $UpdateAppProperties)
+                $propertyParams.Add('IsMinimalObject', $IsMinimalObject)
                 $propertyParams.Add('UpdateGamingOptions', $UpdateGamingOptions)
                 # NOTE: This pairing seems odd, but is correct for now.  API v2 puts this _localizable_
                 # data in a non-localized property object
@@ -1504,17 +1916,19 @@ function Update-Submission
             $detailParams.Add('SubmissionData', $jsonSubmission)
             $detailParams.Add('UpdatePublishModeAndDateFromSubmissionData', $UpdatePublishModeAndVisibility)
             $detailParams.Add('UpdateCertificationNotesFromSubmissionData', $UpdateCerificationNotes)
-            if ($null -ne $PSBoundParameters['TargetPublishMode']) { $detailParams.Add("TargetPublishMode", $TargetPublishMode) }
-            if ($null -ne $PSBoundParameters['TargetPublishDate']) { $detailParams.Add("TargetPublishDate", $TargetPublishDate) }
-            if ($null -ne $PSBoundParameters['CertificationNotes']) { $detailParams.Add("CertificationNotes", $CertificationNotes) }
+            if ($PSBoundParameters.ContainsKey('TargetPublishMode')) { $detailParams.Add("TargetPublishMode", $TargetPublishMode) }
+            if ($PSBoundParameters.ContainsKey('TargetPublishDate')) { $detailParams.Add("TargetPublishDate", $TargetPublishDate) }
+            if ($PSBoundParameters.ContainsKey('CertificationNotes')) { $detailParams.Add("CertificationNotes", $CertificationNotes) }
+            $detailParams.Add('IsMinimalObject', $IsMinimalObject)
             $null = Update-SubmissionDetail @detailParams
 
-            if ($UpdatePublishModeAndVisibility -or ($null -ne $PSBoundParameters['Visibility']))
+            if ($UpdatePublishModeAndVisibility -or ($PSBoundParameters.ContainsKey('Visibility')))
             {
                 $availabilityParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $availabilityParams.Add('SubmissionData', $jsonSubmission)
                 $availabilityParams.Add('UpdateVisibilityFromSubmissionData', $UpdatePublishModeAndVisibility)
-                if ($null -ne $PSBoundParameters['Visibility']) { $availabilityParams.Add("Visibility", $Visibility) }
+                if ($PSBoundParameters.ContainsKey('Visibility')) { $availabilityParams.Add("Visibility", $Visibility) }
+                $availabilityParams.Add('IsMinimalObject', $IsMinimalObject)
                 $null = Update-ProductAvailability @availabilityParams
             }
 
@@ -1529,7 +1943,7 @@ function Update-Submission
                 # $jsonContent.enterpriseLicensing
             }
 
-            if ($null -ne $PSBoundParameters['PackageRolloutPercentage'])
+            if ($PSBoundParameters.ContainsKey('PackageRolloutPercentage'))
             {
                 $rolloutParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $rolloutParams.Add('State', [StoreBrokerRolloutState]::Initialized)
@@ -1544,7 +1958,7 @@ function Update-Submission
             {
                 $configurationParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $configurationParams.Add('IsMandatoryUpdate', $true)
-                if ($null -ne $PSBoundParameters['MandatoryUpdateEffectiveDate']) { $configurationParams.Add('MandatoryUpdateEffectiveDate', $MandatoryUpdateEffectiveDate) }
+                if ($PSBoundParameters.ContainsKey('MandatoryUpdateEffectiveDate')) { $configurationParams.Add('MandatoryUpdateEffectiveDate', $MandatoryUpdateEffectiveDate) }
 
                 $null = Update-ProductPackageConfiguration @configurationParams
             }
@@ -1620,6 +2034,7 @@ function Update-Submission
             [StoreBrokerTelemetryProperty]::UpdateAppProperties = ($UpdateAppProperties -eq $true)
             [StoreBrokerTelemetryProperty]::UpdateCertificationNotes = ($UpdateCertificationNotes -eq $true)
             [StoreBrokerTelemetryProperty]::ProvidedCertificationNotes = (-not [String]::IsNullOrWhiteSpace($CertificationNotes))
+            [StoreBrokerTelemetryProperty]::IsMinimalObject = ($IsMinimalObject -eq $true)
             [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
             [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
             [StoreBrokerTelemetryProperty]::SeekEnabled = $SeekEnabled
