@@ -38,7 +38,7 @@ Add-Type -TypeDefinition @"
       IsEnabled,
       IsMandatoryUpdate,
       IsManualPublish,
-      IsMinimialObject,
+      IsMinimalObject,
       IsSeekEnabled,
       JsonPath,
       LanguageCode,
