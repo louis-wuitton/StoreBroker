@@ -708,7 +708,7 @@ function Update-Listing
                 Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::trademark) -SourceName 'copyrightAndTrademarkInfo'
                 Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::licenseTerm) -SourceName 'licenseTerms'
                 Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::features) -SourceName 'features'
-                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::additionalMiminumHardware) -SourceName 'minimumHardware'
+                Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::additionalMinimumHardware) -SourceName 'minimumHardware'
                 Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::additionalRecommendedHardware) -SourceName 'recommendedHardware'
                 Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::devStudio) -SourceName 'devStudio'
                 Set-ObjectProperty @setObjectPropertyParams -Name ([StoreBrokerListingProperty]::title) -SourceName 'title'
