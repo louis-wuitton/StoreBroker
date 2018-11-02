@@ -1,34 +1,4 @@
-﻿            [StoreBrokerTelemetryProperty]::ProductId = $ProductId
-            [StoreBrokerTelemetryProperty]::AppId = $AppId
-            [StoreBrokerTelemetryProperty]::FlightId = $FlightId
-            [StoreBrokerTelemetryProperty]::SandboxId = $SandboxId
-            [StoreBrokerTelemetryProperty]::SubmissionId = $SubmissionId
-            [StoreBrokerTelemetryProperty]::ZipPath = (Get-PiiSafeString -PlainText $ZipPath)
-            [StoreBrokerTelemetryProperty]::ContentPath = (Get-PiiSafeString -PlainText $ContentPath)
-            [StoreBrokerTelemetryProperty]::AutoSubmit = ($AutoSubmit -eq $true)
-            [StoreBrokerTelemetryProperty]::Force = ($Force -eq $true)
-            [StoreBrokerTelemetryProperty]::PackageRolloutPercentage = $PackageRolloutPercentage
-            [StoreBrokerTelemetryProperty]::IsMandatoryUpdate = ($IsMandatoryUpdate -eq $true)
-            [StoreBrokerTelemetryProperty]::AddPackages = ($AddPackages -eq $true)
-            [StoreBrokerTelemetryProperty]::ReplacePackages = ($ReplacePackages -eq $true)
-            [StoreBrokerTelemetryProperty]::UpdatePackages = ($UpdatePackages -eq $true)
-            [StoreBrokerTelemetryProperty]::RedundantPackagesToKeep = $RedundantPackagesToKeep
-            [StoreBrokerTelemetryProperty]::UpdateListingText = ($UpdateListingText -eq $true)
-            [StoreBrokerTelemetryProperty]::UpdateImagesAndCaptions = ($UpdateImagesAndCaptions -eq $true)
-            [StoreBrokerTelemetryProperty]::UpdateVideos = ($UpdateVideos -eq $true)
-            [StoreBrokerTelemetryProperty]::UpdatePublishModeAndVisibility = ($UpdatePublishModeAndVisibility -eq $true)
-            [StoreBrokerTelemetryProperty]::UpdatePricingAndAvailability = ($UpdatePricingAndAvailability -eq $true)
-            [StoreBrokerTelemetryProperty]::UpdateGamingOptions = ($UpdateGamingOptions -eq $true)
-            [StoreBrokerTelemetryProperty]::UpdateAppProperties = ($UpdateAppProperties -eq $true)
-            [StoreBrokerTelemetryProperty]::UpdateCertificationNotes = ($UpdateCertificationNotes -eq $true)
-            [StoreBrokerTelemetryProperty]::ProvidedCertificationNotes = (-not [String]::IsNullOrWhiteSpace($CertificationNotes))
-            [StoreBrokerTelemetryProperty]::IsMinimalObject = ($IsMinimalObject -eq $true)
-            [StoreBrokerTelemetryProperty]::ClientRequestId = $ClientRequesId
-            [StoreBrokerTelemetryProperty]::CorrelationId = $CorrelationId
-
-
-
-# Copyright (c) Microsoft Corporation. All rights reserved.
+﻿# Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
 # Singleton telemetry client. Don't directly access this though....always get it
