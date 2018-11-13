@@ -1570,7 +1570,7 @@ function Update-Submission
         [switch] $UpdatePackages,
 
         [Parameter(ParameterSetName="UpdatePackages")]
-        [int] $RedundantPackagesToKeep,
+        [int] $RedundantPackagesToKeep = 1,
 
         [string] $CertificationNotes,
 
