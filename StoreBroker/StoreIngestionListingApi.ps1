@@ -648,6 +648,15 @@ function Update-Listing
 
     Write-Log -Message "[$($MyInvocation.MyCommand.Module.Version)] Executing: $($MyInvocation.Line.Trim())" -Level Verbose
 
+    if ($SubmissionData.listings.Count -eq 0)
+    {
+        if ((-not $UpdateVideos) -or ($SubmissionData.trailers.Count -eq 0))
+        {
+            Write-Log -Message 'Your submission data does not contain any Listing metadata, yet you specified one or more switches for updating Listing metadata.  No action on listing metadata will occur.' -Level Warning
+            return
+        }
+    }
+
     try
     {
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -726,8 +735,8 @@ function Update-Listing
                 $hasAlternateIcons = (($suppliedListing.images |
                     Where-Object { $_.imageType -in ('Icon', 'Icon150x150', 'Icon71x71') }).Count -gt 0)
 
-                if ((Test-PropertyExists -InputObject $suppliedListing -Name 'images') -or
-                    (-not $IsMinimalObject))
+                if ((-not $IsMinimalObject) -or
+                    (Test-PropertyExists -InputObject $suppliedListing -Name 'images'))
                 {
                     Set-ObjectProperty -InputObject $listing -Name ([StoreBrokerListingProperty]::shouldOverridePackageLogos) -Value $hasAlternateIcons
                 }
@@ -738,18 +747,18 @@ function Update-Listing
                 $null = Set-Listing @commonParams -Object $listing
             }
 
-            # There is no guaranteed way to know how to properly do a "minimal update" for images
-            # given that there's no guarantee that filenames have to remain the same to reference
-            # the same file content.
-            if ($UpdateImagesAndCaptions -and (-not $IsMinimalObject))
+            # NOTE: There is no guaranteed way to know how to properly do a "minimal update" for
+            # images or videos given that there's no guarantee that filenames have to remain the
+            # same to reference the same file content.  Therefore, when -IsMinimalObject is
+            # specified and the user wants to update images and/or videos, the object is treated
+            # as a regular object, but will only be updated for the languages that were specified
+            # in the object.
+            if ($UpdateImagesAndCaptions)
             {
                 $null = Update-ListingImage @listingObjectParams -LanguageCode $langCode
             }
 
-            # There is no guaranteed way to know how to properly do a "minimal update" for videos
-            # given that there's no guarantee that filenames have to remain the same to reference
-            # the same file content.
-            if ($UpdateVideos -and (-not $IsMinimalObject))
+            if ($UpdateVideos)
             {
                 $null = Update-ListingVideo @listingObjectParams -LanguageCode $langCode
             }
@@ -757,15 +766,18 @@ function Update-Listing
 
         # Now we have to see what languages exist in the user's supplied content that we didn't already
         # have cloned submissions for
-        $SubmissionData.listings |
-            Get-Member -Type NoteProperty |
-                ForEach-Object {
-                    $langCode = $_.Name
-                    if (-not $existingLangCodes.Contains($langCode))
-                    {
-                        $null = $missingLangCodes.Add($langCode)
+        if ($SubmissionData.listings.Count -gt 0)
+        {
+            $SubmissionData.listings |
+                Get-Member -Type NoteProperty |
+                    ForEach-Object {
+                        $langCode = $_.Name
+                        if (-not $existingLangCodes.Contains($langCode))
+                        {
+                            $null = $missingLangCodes.Add($langCode)
+                        }
                     }
-                }
+        }
 
         Write-Log -Message 'Now adding listings for languages that don''t already exist.' -Level Verbose
         if (($missingLangCodes.Count -gt 0) -and (-not $UpdateListingText) -and ($UpdateImagesAndCaptions -or $UpdateVideos))
@@ -818,6 +830,8 @@ function Update-Listing
                 # one screenshot.  However, we definitely CAN'T do either of these if we're
                 # not also updating metadata, as there won't be a language listing that they
                 # could be associated with.
+                # Also note that, as mentioned above, for images/video updates, -IsMinimalObject
+                # is ignored.
                 if ($UpdateImagesAndCaptions)
                 {
                     $null = Update-ListingImage @listingObjectParams -LanguageCode $langCode
