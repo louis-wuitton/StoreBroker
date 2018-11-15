@@ -1612,7 +1612,7 @@ function Update-Submission
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
     # Make sure that we're working with full paths (since we do use non-native PowerShell commands)
-    $pathsToResolve = @('JsonPath', 'ZipPath', 'ContentPath')
+    $pathsToResolve = @('JsonPath', 'ZipPath', 'PackageRootPath', 'MediaRootPath')
     foreach ($path in $pathsToResolve)
     {
         if ($PSBoundParameters.ContainsKey($path))
@@ -1862,42 +1862,42 @@ function Update-Submission
             # If we know that we'll be doing anything with binary content, ensure that it's accessible unzipped.
             if ($UpdateListingText -or $UpdateImagesAndCaptions -or $UpdateVideos -or $AddPackages -or $ReplacePackages -or $UpdatePackages)
             {
-                if ([String]::IsNullOrEmpty($ContentPath))
+                $packageParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
+                $packageParams.Add('SubmissionData', $jsonSubmission)
+                if ([string]::IsNullOrEmpty($ZipPath))
                 {
-                    Add-Type -AssemblyName System.IO.Compression.FileSystem
-                    $isContentPathTemporary = $true
-                    $ContentPath = New-TemporaryDirectory
-                    Write-Log -Message "Unzipping archive (Item: $ZipPath) to (Target: $ContentPath)." -Level Verbose
-                    [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $ContentPath)
-                    Write-Log -Message "Unzip complete." -Level Verbose
+                    $packageParams.Add('PackageRootPath', $PackageRootPath)
+                }
+                else 
+                {
+                    $packageParams.Add('PackageRootPath', $expandedZipPath)
+                }
+                if ($AddPackages) { $packageParams.Add('AddPackages', $AddPackages) }
+                if ($ReplacePackages) { $packageParams.Add('ReplacePackages', $ReplacePackages) }
+                if ($UpdatePackages) {
+                    $packageParams.Add('UpdatePackages', $UpdatePackages)
+                    $packageParams.Add('RedundantPackagesToKeep', $RedundantPackagesToKeep)
+                }
+                $null = Update-ProductPackage @packageParams
+
+                $listingParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
+                $listingParams.Add('SubmissionData', $jsonSubmission)
+                if ([string]::IsNullOrWhiteSpace($ZipPath))
+                {
+                    $listingParams.Add('MediaRootPath', $MediaRootPath)
+                }
+                else 
+                {
+                    $listingParams.Add('MediaRootPath', $expandedZipPath)
                 }
 
-                if ($AddPackages -or $ReplacePackages -or $UpdatePackages)
-                {
-                    $packageParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
-                    $packageParams.Add('SubmissionData', $jsonSubmission)
-                    $packageParams.Add('ContentPath', $ContentPath)
-                    if ($AddPackages) { $packageParams.Add('AddPackages', $AddPackages) }
-                    if ($ReplacePackages) { $packageParams.Add('ReplacePackages', $ReplacePackages) }
-                    if ($UpdatePackages) {
-                        $packageParams.Add('UpdatePackages', $UpdatePackages)
-                        $packageParams.Add('RedundantPackagesToKeep', $RedundantPackagesToKeep)
-                    }
-                    $null = Update-ProductPackage @packageParams
-                }
-
-                if ($UpdateListingText -or $UpdateImagesAndCaptions -or $UpdateVideos)
-                {
-                    $listingParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
-                    $listingParams.Add('SubmissionData', $jsonSubmission)
-                    $listingParams.Add('ContentPath', $ContentPath)
-                    $listingParams.Add('UpdateListingText', $UpdateListingText)
-                    $listingParams.Add('UpdateImagesAndCaptions', $UpdateImagesAndCaptions)
-                    $listingParams.Add('UpdateVideos', $UpdateVideos)
-                    $listingParams.Add('IsMinimalObject', $IsMinimalObject)
-                    $null = Update-Listing @listingParams
-                }
+                $listingParams.Add('UpdateImagesAndCaptions', $UpdateImagesAndCaptions)
+                $listingParams.Add('UpdateListingText', $UpdateListingText)
+                $listingParams.Add('UpdateVideos', $UpdateVideos)
+                $listingParams.Add('IsMinimalObject', $IsMinimalObject)
+                $null = Update-Listing @listingParams
             }
+
 
             if ($UpdateAppProperties -or $UpdateGamingOptions)
             {
