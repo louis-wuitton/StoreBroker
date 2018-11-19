@@ -560,7 +560,9 @@ function Get-PackagesToKeep
         Determine the redundant packages to keep when users specify Update-Packages for packages submissions
 
     .PARAMETER Package
-        A List of packages from the given submission. This function will determine which packages to keep from this list
+        A List of packages from the given submission. This function will determine which packages to keep from this list.
+        Each package is a pscustomobject with several important fields that tell us some key information of this package, such
+        as packageFullName, architecture, target platforms, bundle contents, version, and state. 
 
     .PARAMETER RedundantPackagesToKeep
         Number of packages to keep in one flight group
@@ -585,6 +587,7 @@ function Get-PackagesToKeep
         Populate a hashtable using the key we derived above and associate it with the current package. We want to make sure
         that the number of packages we want to keep for each key is less than or equal to $RedundantPackagesToKeep
 #>
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
         [AllowEmptyCollection()]
@@ -621,7 +624,7 @@ function Get-PackagesToKeep
             throw $message
         }
 
-        $pkg.targetPlatforms = $pkg.targetPlatforms | Sort-Object name -CaseSensitive:$false
+        $pkg.targetPlatforms = @($pkg.targetPlatforms | Sort-Object name -CaseSensitive:$false)
         $appBundles = $pkg.bundleContents | Where-Object contentType -eq 'Application'
         # Concatenating all the target platforms followed by min version
         foreach ($targetPlatform in $pkg.targetPlatforms)
@@ -683,9 +686,7 @@ function Get-PackagesToKeep
         }
     }
 
-    $packagesToKeep = @()
-    $packagesToKeepMap.Keys | ForEach-Object { $packagesToKeep += $_ }
-    return $packagesToKeep
+    return $packagesToKeepMap.Keys | % ToString
 }
 
 function Update-ProductPackage
