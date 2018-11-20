@@ -271,17 +271,17 @@ function Format-SimpleTableString
         [Int16] $IndentationLevel = 0
     )
 
-    begin
+    Begin
     {
         $objects = @()
     }
 
-    process
+    Process
     {
         $objects += $Object
     }
 
-    end
+    End
     {
         if ($objects.count -gt 0)
         {
@@ -450,17 +450,17 @@ function ConvertTo-Array
         [Object] $Value
     )
 
-    begin
+    Begin
     {
         $output = @();
     }
 
-    process
+    Process
     {
         $output += $_;
     }
 
-    end
+    End
     {
         return ,$output;
     }
@@ -572,13 +572,13 @@ function Write-Log
         [System.Management.Automation.ErrorRecord] $Exception
     )
 
-    begin
+    Begin
     {
         # Accumulate the list of Messages, whether by pipeline or parameter.
         $messages = @()
     }
 
-    process
+    Process
     {
         foreach ($m in $Message)
         {
@@ -586,7 +586,7 @@ function Write-Log
         }
     }
 
-    end
+    End
     {
         if ($null -ne $Exception)
         {

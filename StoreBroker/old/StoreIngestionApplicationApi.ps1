@@ -140,7 +140,7 @@ function Format-Applications
         [PSCustomObject] $ApplicationsData
     )
 
-    begin
+    Begin
     {
         Set-TelemetryEvent -EventName Format-Applications
 
@@ -153,12 +153,12 @@ function Format-Applications
         $apps = @()
     }
 
-    process
+    Process
     {
         $apps += $ApplicationsData
     }
 
-    end
+    End
     {
         Write-Log -Message $($apps | Sort-Object primaryName | Format-Table primaryName, id, packagefamilyname, $publishedDateField, $publishedSubmissionField, $pendingSubmissionField | Out-String)
     }
@@ -278,7 +278,7 @@ function Format-Application
         [PSCustomObject] $ApplicationData
     )
 
-    begin
+    Begin
     {
         Set-TelemetryEvent -EventName Format-Application
 
@@ -287,7 +287,7 @@ function Format-Application
         $output = @()
     }
 
-    process
+    Process
     {
         $output += ""
         $output += "Primary Name              : $($ApplicationData.primaryName)"
@@ -299,7 +299,7 @@ function Format-Application
         $output += "Pending Submission        : $(if ($null -eq $ApplicationData.pendingApplicationSubmission.id) { "---" } else { $ApplicationData.pendingApplicationSubmission.id } )"
     }
 
-    end
+    End
     {
        Write-Log -Message $output
     }
@@ -421,7 +421,7 @@ function Format-ApplicationSubmission
         [PSCustomObject] $ApplicationSubmissionData
     )
 
-    begin
+    Begin
     {
         Set-TelemetryEvent -EventName Format-ApplicationSubmission
 
@@ -431,7 +431,7 @@ function Format-ApplicationSubmission
         $output = @()
     }
 
-    process
+    Process
     {
         # Normalize the trailer data by language so that the data can be displayed
         # with the rest of the language listing information
@@ -591,7 +591,7 @@ function Format-ApplicationSubmission
         }
     }
 
-    end
+    End
     {
         Write-Log -Message $output
     }

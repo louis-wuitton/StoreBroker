@@ -16,9 +16,7 @@
     NestedModules = @(
         'ConvertFrom-ExistingSubmission.ps1',
         'Helpers.ps1',
-        'MigrateTool.ps1',
         'NugetTools.ps1',
-        'PackageConfig.ps1',
         'PackageTool.ps1',
 
         'StoreIngestionFeatureAvailabilityApi.ps1',
@@ -126,8 +124,6 @@
         'New-ProductAvailability',
         'Set-ProductAvailability',
         'Update-ProductAvailability',
-
-        'ConvertTo-LatestStoreBroker',
 
         'ConvertFrom-ExistingSubmission',
 

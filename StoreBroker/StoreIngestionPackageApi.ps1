@@ -604,7 +604,7 @@ function Update-ProductPackage
         {
             $output = @()
             $output += "Your submission doesn't contain any packages, so you cannot Add, Replace or Update packages."
-            $output += "Please check your input settings to New-SubmissionPackage and ensure you're providing a value for PackagePath."
+            $output += "Please check your input settings to New-SubmissionPackage and ensure you're providing a value for AppxPath."
             $output = $output -join [Environment]::NewLine
             Write-Log -Message $output -Level Error
             throw $output

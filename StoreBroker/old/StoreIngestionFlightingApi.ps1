@@ -145,7 +145,7 @@ function Format-ApplicationFlights
         [PSCustomObject] $ApplicationFlightsData
     )
 
-    begin
+    Begin
     {
         Set-TelemetryEvent -EventName Format-ApplicationFlights
 
@@ -157,12 +157,12 @@ function Format-ApplicationFlights
         $flights = @()
     }
 
-    process
+    Process
     {
         $flights += $ApplicationFlightsData
     }
 
-    end
+    End
     {
         Write-Log -Message $($flights | Format-Table friendlyName, flightId, rankHigherThan, $publishedSubmissionField, $pendingSubmissionField, groupIds | Out-String)
     }
@@ -291,7 +291,7 @@ function Format-ApplicationFlight
         [PSCustomObject] $ApplicationFlightData
     )
 
-    begin
+    Begin
     {
         Set-TelemetryEvent -EventName Format-ApplicationFlight
 
@@ -301,7 +301,7 @@ function Format-ApplicationFlight
         $output = @()
     }
 
-    process
+    Process
     {
         $output += ""
         $output += "Friendly Name             : $($ApplicationFlightData.friendlyName)"
@@ -319,7 +319,7 @@ function Format-ApplicationFlight
         $output += "Pending Submission        : $(if ($null -eq $ApplicationFlightData.pendingFlightSubmission.id) { "---" } else { $ApplicationFlightData.pendingFlightSubmission.id } )"
     }
 
-    end
+    End
     {
         Write-Log -Message $output
     }
@@ -674,7 +674,7 @@ function Format-ApplicationFlightSubmission
         [PSCustomObject] $ApplicationFlightSubmissionData
     )
 
-    begin
+    Begin
     {
         Set-TelemetryEvent -EventName Format-ApplicationFlightSubmission
 
@@ -684,7 +684,7 @@ function Format-ApplicationFlightSubmission
         $output = @()
     }
 
-    process
+    Process
     {
         $output += ""
         $output += "Submission Id                       : $($ApplicationFlightSubmissionData.id)"
@@ -731,7 +731,7 @@ function Format-ApplicationFlightSubmission
         }
     }
 
-    end
+    End
     {
         Write-Log -Message $output
     }
