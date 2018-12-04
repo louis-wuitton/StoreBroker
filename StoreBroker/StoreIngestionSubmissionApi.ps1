@@ -1886,6 +1886,7 @@ function Update-Submission
             }
 
             if ($UpdateListingText -or $UpdateImagesAndCaptions -or $UpdateVideos)
+            {
                 $listingParams = $commonParams.PSObject.Copy() # Get a new instance, not a reference
                 $listingParams.Add('SubmissionData', $jsonSubmission)
                 if ([string]::IsNullOrWhiteSpace($ZipPath))
