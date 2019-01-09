@@ -1360,6 +1360,13 @@ function Start-SubmissionMonitor
                 $body += "Friendly Name         : $($submission.friendlyName)"
                 $body += "Submission State      : $($submission.state)"
                 $body += "Submission State      : $lastSubState"
+                $body += ""
+                $body += "To view the full submission"
+                $body += "---------------------------"
+                $body += "Dev Portal URL"
+                $body += "    https://dev.windows.com/en-us/dashboard/apps/$appId/submissions/$SubmissionId/"
+                $body += "StoreBroker command"
+                $body += "    Get-Submission -ProductId $productId -SubmissionId $SubmissionId"
 
                 $failedStates = @([StoreBrokerSubmissionSubState]::Failed, [StoreBrokerSubmissionSubState]::FailedInCertification)
                 if ($lastSubState -in $failedStates)
@@ -1406,14 +1413,6 @@ function Start-SubmissionMonitor
                         $body += $(" " * $indentLength) + $(Get-Date -Date $entry.reportTimeInUtc -Format R) + ": $($entry.status) | $($entry.fileUri)"
                     }
                 }
-
-                $body += ""
-                $body += "To view the full submission"
-                $body += "---------------------------"
-                $body += "Dev Portal URL"
-                $body += "    https://dev.windows.com/en-us/dashboard/apps/$appId/submissions/$SubmissionId/"
-                $body += "StoreBroker command"
-                $body += "    Get-Submission -ProductId $productId -SubmissionId $SubmissionId"
 
                 Write-Log -Message $body
 
