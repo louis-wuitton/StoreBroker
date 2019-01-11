@@ -1359,7 +1359,7 @@ function Start-SubmissionMonitor
                 $body += "SubmissionId          : $SubmissionId"
                 $body += "Friendly Name         : $($submission.friendlyName)"
                 $body += "Submission State      : $($submission.state)"
-                $body += "Submission Subtate      : $lastSubState"
+                $body += "Submission Substate   : $lastSubState"
                 $body += ""
                 $body += "To view the full submission"
                 $body += "---------------------------"
